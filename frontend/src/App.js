@@ -8,7 +8,9 @@ function App() {
   const [targetLang, setTargetLang] = useState('es');
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
+  const [translatedAudioURL, setTranslatedAudioURL] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
@@ -28,6 +30,27 @@ function App() {
       alert('Translation failed. Make sure the backend server is running.');
     }
     setLoading(false);
+  };
+
+  const speakTranslation = async () => {
+    if (!translatedText) return;
+    setSpeaking(true);
+    try {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/tts/speak?text=${encodeURIComponent(translatedText)}&language=${targetLang}`,
+        null,
+        { responseType: 'blob' }
+      );
+
+      const audioUrl = URL.createObjectURL(response.data);
+      setTranslatedAudioURL(audioUrl);
+      const audio = new Audio(audioUrl);
+      audio.play();
+    } catch (error) {
+      console.error('TTS error:', error);
+      alert('Could not play audio.');
+    }
+    setSpeaking(false);
   };
 
   const startRecording = async () => {
@@ -146,7 +169,7 @@ function App() {
             cursor: 'pointer'
           }}
         >
-          {recording ? '🛑 Stop Recording' : '🎤 Speak'}
+          {recording ? '🛑 Stop' : '🎤 Speak'}
         </button>
 
         <button
@@ -177,6 +200,27 @@ function App() {
         <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#f0f4f8', borderRadius: '8px' }}>
           <h3 style={{ marginBottom: '10px', color: '#2c3e50' }}>Translation:</h3>
           <p style={{ fontSize: '20px', color: '#34495e' }}>{translatedText}</p>
+          
+          <button
+            onClick={speakTranslation}
+            disabled={speaking}
+            style={{
+              marginTop: '10px',
+              padding: '12px 20px',
+              fontSize: '16px',
+              backgroundColor: '#27ae60',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            {speaking ? '🔊 Playing...' : '🔊 Hear Translation'}
+          </button>
+
+          {translatedAudioURL && (
+            <audio controls src={translatedAudioURL} style={{ width: '100%', marginTop: '10px' }} />
+          )}
         </div>
       )}
     </div>
