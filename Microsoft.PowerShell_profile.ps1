@@ -1,1 +1,0 @@
-$env:Path = $env:Path + ";C:\Users\user\AppData\Local\Programs"
