@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 
 const API_URL = 'http://127.0.0.1:8000';
@@ -22,6 +22,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
   const [translatedAudioURL, setTranslatedAudioURL] = useState(null);
   const mediaRecorderRef = useRef(null);
@@ -148,7 +149,11 @@ function App() {
         const audioUrl = URL.createObjectURL(audioBlob);
         setAudioURL(audioUrl);
         setRecording(false);
-        await sendAudioForTranscription(audioBlob);
+        if (voiceMode) {
+          await sendAudioForVoiceTranslation(audioBlob);
+        } else {
+          await sendAudioForTranscription(audioBlob);
+        }
       };
 
       mediaRecorder.start();
@@ -164,6 +169,48 @@ function App() {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
+  };
+
+  const sendAudioForVoiceTranslation = async (audioBlob) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.wav');
+
+      const response = await axios.post(`${API_URL}/speech/voice-to-voice`, formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        },
+        params: {
+          source_language: sourceLang,
+          target_language: targetLang
+        }
+      });
+
+      const data = response.data;
+      setSourceText(data.original_text);
+      setTranslatedText(data.translated_text);
+
+      if (data.audio_base64) {
+        const binaryString = atob(data.audio_base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const audioBlobFromBase64 = new Blob([bytes], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlobFromBase64);
+        setTranslatedAudioURL(audioUrl);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      }
+
+      fetchHistory();
+    } catch (error) {
+      console.error('Voice translation error:', error);
+      alert('Voice translation failed.');
+    }
+    setLoading(false);
   };
 
   const sendAudioForTranscription = async (audioBlob) => {
@@ -381,6 +428,24 @@ function App() {
             placeholder="Enter text or click the microphone to speak..."
             style={{ width: '100%', height: '150px', marginBottom: '10px', padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc' }}
           />
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <button
+              onClick={() => setVoiceMode(!voiceMode)}
+              style={{
+                flex: 1,
+                padding: '10px',
+                fontSize: '14px',
+                backgroundColor: voiceMode ? '#8e44ad' : '#bdc3c7',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              {voiceMode ? '🔊 Voice-to-Voice: ON' : '🎤 Voice-to-Text: ON'}
+            </button>
+          </div>
 
           <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
             <button
