@@ -42,3 +42,44 @@ async def translate_text(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/history")
+async def get_translation_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    translations = db.query(models.Translation).filter(
+        models.Translation.user_id == current_user.id
+    ).order_by(models.Translation.created_at.desc()).all()
+
+    return [
+        {
+            "id": t.id,
+            "source_text": t.source_text,
+            "translated_text": t.translated_text,
+            "source_language": t.source_language,
+            "target_language": t.target_language,
+            "translation_type": t.translation_type,
+            "created_at": t.created_at
+        }
+        for t in translations
+    ]
+
+@router.delete("/{translation_id}")
+async def delete_translation(
+    translation_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    translation = db.query(models.Translation).filter(
+        models.Translation.id == translation_id,
+        models.Translation.user_id == current_user.id
+    ).first()
+
+    if not translation:
+        raise HTTPException(status_code=404, detail="Translation not found")
+
+    db.delete(translation)
+    db.commit()
+
+    return {"message": "Translation deleted successfully"}

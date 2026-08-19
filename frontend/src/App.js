@@ -12,6 +12,8 @@ function App() {
   const [regUsername, setRegUsername] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [activeTab, setActiveTab] = useState('translate');
+  const [history, setHistory] = useState([]);
   
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -24,6 +26,18 @@ function App() {
   const [translatedAudioURL, setTranslatedAudioURL] = useState(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+
+  const fetchHistory = async () => {
+    if (!token) return;
+    try {
+      const response = await axios.get(`${API_URL}/translate/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setHistory(response.data);
+    } catch (error) {
+      console.error('History error:', error);
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -71,6 +85,7 @@ function App() {
     localStorage.removeItem('username');
     setSourceText('');
     setTranslatedText('');
+    setHistory([]);
   };
 
   const handleTranslate = async () => {
@@ -86,6 +101,7 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTranslatedText(response.data.translated_text);
+      fetchHistory();
     } catch (error) {
       console.error('Translation error:', error);
       alert('Translation failed: ' + (error.response?.data?.detail || 'Unknown error'));
@@ -170,6 +186,17 @@ function App() {
       alert('Speech transcription failed.');
     }
     setLoading(false);
+  };
+
+  const deleteTranslation = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/translate/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchHistory();
+    } catch (error) {
+      alert('Delete failed');
+    }
   };
 
   if (!token) {
@@ -268,7 +295,7 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '30px', maxWidth: '700px', margin: '0 auto', fontFamily: 'Arial' }}>
+    <div style={{ padding: '30px', maxWidth: '800px', margin: '0 auto', fontFamily: 'Arial' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ color: '#2c3e50', margin: 0 }}>🌐 LingoLink AI</h1>
         <div>
@@ -282,114 +309,159 @@ function App() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-        <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="it">Italian</option>
-          <option value="pt">Portuguese</option>
-          <option value="zh">Chinese</option>
-          <option value="ja">Japanese</option>
-          <option value="ko">Korean</option>
-          <option value="sw">Swahili</option>
-          <option value="lg">Luganda</option>
-          <option value="ar">Arabic</option>
-          <option value="ru">Russian</option>
-        </select>
-        
-        <span style={{ fontSize: '24px', alignSelf: 'center' }}>→</span>
-        
-        <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
-          <option value="es">Spanish</option>
-          <option value="en">English</option>
-          <option value="fr">French</option>
-          <option value="de">German</option>
-          <option value="it">Italian</option>
-          <option value="pt">Portuguese</option>
-          <option value="zh">Chinese</option>
-          <option value="ja">Japanese</option>
-          <option value="ko">Korean</option>
-          <option value="sw">Swahili</option>
-          <option value="lg">Luganda</option>
-          <option value="ar">Arabic</option>
-          <option value="ru">Russian</option>
-        </select>
-      </div>
-
-      <textarea
-        value={sourceText}
-        onChange={(e) => setSourceText(e.target.value)}
-        placeholder="Enter text or click the microphone to speak..."
-        style={{ width: '100%', height: '150px', marginBottom: '10px', padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc' }}
-      />
-
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <button
-          onClick={recording ? stopRecording : startRecording}
-          style={{
-            flex: 1,
-            padding: '15px',
-            fontSize: '18px',
-            backgroundColor: recording ? '#e74c3c' : '#f39c12',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
-          }}
+          onClick={() => setActiveTab('translate')}
+          style={{ flex: 1, padding: '12px', backgroundColor: activeTab === 'translate' ? '#3498db' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}
         >
-          {recording ? '🛑 Stop' : '🎤 Speak'}
+          Translate
         </button>
-
         <button
-          onClick={handleTranslate}
-          disabled={loading || !sourceText}
-          style={{
-            flex: 1,
-            padding: '15px',
-            fontSize: '18px',
-            backgroundColor: '#3498db',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
-          }}
+          onClick={() => { setActiveTab('history'); fetchHistory(); }}
+          style={{ flex: 1, padding: '12px', backgroundColor: activeTab === 'history' ? '#3498db' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}
         >
-          {loading ? 'Working...' : 'Translate'}
+          History
         </button>
       </div>
 
-      {audioURL && (
-        <div style={{ marginBottom: '10px' }}>
-          <audio controls src={audioURL} style={{ width: '100%' }} />
-        </div>
-      )}
+      {activeTab === 'translate' ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+            <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+              <option value="zh">Chinese</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="sw">Swahili</option>
+              <option value="lg">Luganda</option>
+              <option value="ar">Arabic</option>
+              <option value="ru">Russian</option>
+            </select>
+            
+            <span style={{ fontSize: '24px', alignSelf: 'center' }}>→</span>
+            
+            <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
+              <option value="es">Spanish</option>
+              <option value="en">English</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="it">Italian</option>
+              <option value="pt">Portuguese</option>
+              <option value="zh">Chinese</option>
+              <option value="ja">Japanese</option>
+              <option value="ko">Korean</option>
+              <option value="sw">Swahili</option>
+              <option value="lg">Luganda</option>
+              <option value="ar">Arabic</option>
+              <option value="ru">Russian</option>
+            </select>
+          </div>
 
-      {translatedText && (
-        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#f0f4f8', borderRadius: '8px' }}>
-          <h3 style={{ marginBottom: '10px', color: '#2c3e50' }}>Translation:</h3>
-          <p style={{ fontSize: '20px', color: '#34495e' }}>{translatedText}</p>
+          <textarea
+            value={sourceText}
+            onChange={(e) => setSourceText(e.target.value)}
+            placeholder="Enter text or click the microphone to speak..."
+            style={{ width: '100%', height: '150px', marginBottom: '10px', padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc' }}
+          />
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <button
+              onClick={recording ? stopRecording : startRecording}
+              style={{
+                flex: 1,
+                padding: '15px',
+                fontSize: '18px',
+                backgroundColor: recording ? '#e74c3c' : '#f39c12',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              {recording ? '🛑 Stop' : '🎤 Speak'}
+            </button>
+
+            <button
+              onClick={handleTranslate}
+              disabled={loading || !sourceText}
+              style={{
+                flex: 1,
+                padding: '15px',
+                fontSize: '18px',
+                backgroundColor: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              {loading ? 'Working...' : 'Translate'}
+            </button>
+          </div>
+
+          {audioURL && (
+            <div style={{ marginBottom: '10px' }}>
+              <audio controls src={audioURL} style={{ width: '100%' }} />
+            </div>
+          )}
+
+          {translatedText && (
+            <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#f0f4f8', borderRadius: '8px' }}>
+              <h3 style={{ marginBottom: '10px', color: '#2c3e50' }}>Translation:</h3>
+              <p style={{ fontSize: '20px', color: '#34495e' }}>{translatedText}</p>
+              
+              <button
+                onClick={speakTranslation}
+                disabled={speaking}
+                style={{
+                  marginTop: '10px',
+                  padding: '12px 20px',
+                  fontSize: '16px',
+                  backgroundColor: '#27ae60',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                {speaking ? '🔊 Playing...' : '🔊 Hear Translation'}
+              </button>
+
+              {translatedAudioURL && (
+                <audio controls src={translatedAudioURL} style={{ width: '100%', marginTop: '10px' }} />
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <div>
+          <h2 style={{ marginBottom: '20px', color: '#2c3e50' }}>📜 Translation History</h2>
           
-          <button
-            onClick={speakTranslation}
-            disabled={speaking}
-            style={{
-              marginTop: '10px',
-              padding: '12px 20px',
-              fontSize: '16px',
-              backgroundColor: '#27ae60',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-            {speaking ? '🔊 Playing...' : '🔊 Hear Translation'}
-          </button>
-
-          {translatedAudioURL && (
-            <audio controls src={translatedAudioURL} style={{ width: '100%', marginTop: '10px' }} />
+          {history.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#7f8c8d', padding: '40px' }}>No translations yet.</p>
+          ) : (
+            history.map((item) => (
+              <div key={item.id} style={{ padding: '15px', marginBottom: '10px', backgroundColor: '#f8f9fa', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: '16px' }}><strong>{item.source_text}</strong></p>
+                  <p style={{ margin: '5px 0 0', fontSize: '16px', color: '#3498db' }}>{item.translated_text}</p>
+                  <p style={{ margin: '5px 0 0', fontSize: '12px', color: '#7f8c8d' }}>
+                    {item.source_language} → {item.target_language} • {new Date(item.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => deleteTranslation(item.id)}
+                  style={{ padding: '8px 12px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                >
+                  Delete
+                </button>
+              </div>
+            ))
           )}
         </div>
       )}
