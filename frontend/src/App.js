@@ -23,6 +23,10 @@ function App() {
   const [recording, setRecording] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [voiceMode, setVoiceMode] = useState(false);
+  const [conversationMode, setConversationMode] = useState(false);
+  const [langA, setLangA] = useState('en');
+  const [langB, setLangB] = useState('es');
+  const [currentSpeaker, setCurrentSpeaker] = useState('A');
   const [audioURL, setAudioURL] = useState(null);
   const [translatedAudioURL, setTranslatedAudioURL] = useState(null);
   const mediaRecorderRef = useRef(null);
@@ -149,7 +153,9 @@ function App() {
         const audioUrl = URL.createObjectURL(audioBlob);
         setAudioURL(audioUrl);
         setRecording(false);
-        if (voiceMode) {
+        if (conversationMode) {
+          await sendConversationAudio(audioBlob);
+        } else if (voiceMode) {
           await sendAudioForVoiceTranslation(audioBlob);
         } else {
           await sendAudioForTranscription(audioBlob);
@@ -169,6 +175,52 @@ function App() {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
+  };
+
+  const sendConversationAudio = async (audioBlob) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.wav');
+
+      const sourceLangForThis = currentSpeaker === 'A' ? langA : langB;
+      const targetLangForThis = currentSpeaker === 'A' ? langB : langA;
+
+      const response = await axios.post(`${API_URL}/speech/voice-to-voice`, formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        },
+        params: {
+          source_language: sourceLangForThis,
+          target_language: targetLangForThis
+        }
+      });
+
+      const data = response.data;
+      setSourceText(data.original_text);
+      setTranslatedText(data.translated_text);
+
+      if (data.audio_base64) {
+        const binaryString = atob(data.audio_base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const audioBlobFromBase64 = new Blob([bytes], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlobFromBase64);
+        setTranslatedAudioURL(audioUrl);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      }
+
+      setCurrentSpeaker(currentSpeaker === 'A' ? 'B' : 'A');
+      fetchHistory();
+    } catch (error) {
+      console.error('Conversation error:', error);
+      alert('Conversation translation failed.');
+    }
+    setLoading(false);
   };
 
   const sendAudioForVoiceTranslation = async (audioBlob) => {
@@ -373,6 +425,17 @@ function App() {
 
       {activeTab === 'translate' ? (
         <>
+          {conversationMode && (
+            <div style={{ padding: '15px', backgroundColor: '#fff3e0', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>
+              <p style={{ margin: 0, fontWeight: 'bold', color: '#e67e22' }}>
+                💬 Conversation Mode — {currentSpeaker === 'A' ? 'Person A speaking' : 'Person B speaking'}
+              </p>
+              <p style={{ margin: '5px 0 0', fontSize: '14px', color: '#7f8c8d' }}>
+                {langA} ↔ {langB}
+              </p>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
             <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
               <option value="auto">Auto Detect</option>
@@ -444,6 +507,22 @@ function App() {
               }}
             >
               {voiceMode ? '🔊 Voice-to-Voice: ON' : '🎤 Voice-to-Text: ON'}
+            </button>
+
+            <button
+              onClick={() => setConversationMode(!conversationMode)}
+              style={{
+                flex: 1,
+                padding: '10px',
+                fontSize: '14px',
+                backgroundColor: conversationMode ? '#e67e22' : '#bdc3c7',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              {conversationMode ? '💬 Conversation: ON' : '💬 Conversation: OFF'}
             </button>
           </div>
 
