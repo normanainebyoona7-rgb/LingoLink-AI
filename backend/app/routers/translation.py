@@ -1,12 +1,70 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from deep_translator import GoogleTranslator
+from langdetect import detect
 from app.database import get_db
 from app.routers.auth import get_current_user
 import app.models as models
 import app.schemas as schemas
 
 router = APIRouter(prefix="/translate", tags=["translation"])
+
+LANGUAGES = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "zh": "Chinese",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "sw": "Swahili",
+    "lg": "Luganda",
+    "ar": "Arabic",
+    "ru": "Russian",
+    "hi": "Hindi",
+    "nl": "Dutch",
+    "pl": "Polish",
+    "tr": "Turkish",
+    "vi": "Vietnamese",
+    "th": "Thai",
+    "id": "Indonesian",
+    "ms": "Malay",
+    "fa": "Persian",
+    "he": "Hebrew",
+    "el": "Greek",
+    "cs": "Czech",
+    "ro": "Romanian",
+    "hu": "Hungarian",
+    "sv": "Swedish",
+    "no": "Norwegian",
+    "da": "Danish",
+    "fi": "Finnish",
+    "uk": "Ukrainian",
+    "am": "Amharic",
+    "ha": "Hausa",
+    "yo": "Yoruba",
+    "ig": "Igbo",
+    "zu": "Zulu",
+    "xh": "Xhosa",
+    "af": "Afrikaans"
+}
+
+@router.get("/languages")
+async def get_languages():
+    return {"languages": LANGUAGES}
+
+@router.post("/detect")
+async def detect_language(request: schemas.TranslationRequest):
+    try:
+        detected = detect(request.text)
+        return {
+            "detected_language": detected,
+            "language_name": LANGUAGES.get(detected, detected)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/text")
 async def translate_text(
@@ -15,8 +73,12 @@ async def translate_text(
     current_user: models.User = Depends(get_current_user)
 ):
     try:
+        source_lang = request.source_language
+        if source_lang == "auto":
+            source_lang = detect(request.text)
+
         translator = GoogleTranslator(
-            source=request.source_language,
+            source=source_lang,
             target=request.target_language
         )
         translated = translator.translate(request.text)
@@ -25,7 +87,7 @@ async def translate_text(
             user_id=current_user.id,
             source_text=request.text,
             translated_text=translated,
-            source_language=request.source_language,
+            source_language=source_lang,
             target_language=request.target_language,
             translation_type="text"
         )
@@ -36,7 +98,7 @@ async def translate_text(
         return {
             "id": db_translation.id,
             "translated_text": translated,
-            "source_language": request.source_language,
+            "source_language": source_lang,
             "target_language": request.target_language,
             "username": current_user.username
         }

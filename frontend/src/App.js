@@ -17,7 +17,7 @@ function App() {
   
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
-  const [sourceLang, setSourceLang] = useState('en');
+  const [sourceLang, setSourceLang] = useState('auto');
   const [targetLang, setTargetLang] = useState('es');
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -180,7 +180,7 @@ function App() {
       });
 
       setSourceText(response.data.text);
-      setSourceLang(response.data.language || 'en');
+      setSourceLang('auto');
     } catch (error) {
       console.error('Transcription error:', error);
       alert('Speech transcription failed.');
@@ -328,6 +328,7 @@ function App() {
         <>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
             <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
+              <option value="auto">Auto Detect</option>
               <option value="en">English</option>
               <option value="es">Spanish</option>
               <option value="fr">French</option>
@@ -341,6 +342,12 @@ function App() {
               <option value="lg">Luganda</option>
               <option value="ar">Arabic</option>
               <option value="ru">Russian</option>
+              <option value="hi">Hindi</option>
+              <option value="am">Amharic</option>
+              <option value="ha">Hausa</option>
+              <option value="yo">Yoruba</option>
+              <option value="ig">Igbo</option>
+              <option value="zu">Zulu</option>
             </select>
             
             <span style={{ fontSize: '24px', alignSelf: 'center' }}>→</span>
@@ -359,6 +366,12 @@ function App() {
               <option value="lg">Luganda</option>
               <option value="ar">Arabic</option>
               <option value="ru">Russian</option>
+              <option value="hi">Hindi</option>
+              <option value="am">Amharic</option>
+              <option value="ha">Hausa</option>
+              <option value="yo">Yoruba</option>
+              <option value="ig">Igbo</option>
+              <option value="zu">Zulu</option>
             </select>
           </div>
 
