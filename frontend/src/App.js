@@ -1,7 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 
+const API_URL = 'http://127.0.0.1:8000';
+
 function App() {
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [username, setUsername] = useState(localStorage.getItem('username') || '');
+  const [showLogin, setShowLogin] = useState(true);
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [sourceLang, setSourceLang] = useState('en');
@@ -14,20 +25,70 @@ function App() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+  const handleLogin = async () => {
+    try {
+      const formData = new URLSearchParams();
+      formData.append('username', loginUsername);
+      formData.append('password', loginPassword);
+
+      const response = await axios.post(`${API_URL}/auth/login`, formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+
+      setToken(response.data.access_token);
+      setUsername(response.data.username);
+      localStorage.setItem('token', response.data.access_token);
+      localStorage.setItem('username', response.data.username);
+      setLoginUsername('');
+      setLoginPassword('');
+    } catch (error) {
+      alert('Login failed: ' + (error.response?.data?.detail || 'Unknown error'));
+    }
+  };
+
+  const handleRegister = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/register`, {
+        username: regUsername,
+        email: regEmail,
+        password: regPassword
+      });
+
+      alert('Registration successful! Please login.');
+      setShowLogin(true);
+      setRegUsername('');
+      setRegEmail('');
+      setRegPassword('');
+    } catch (error) {
+      alert('Registration failed: ' + (error.response?.data?.detail || 'Unknown error'));
+    }
+  };
+
+  const handleLogout = () => {
+    setToken('');
+    setUsername('');
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    setSourceText('');
+    setTranslatedText('');
+  };
+
   const handleTranslate = async () => {
-    if (!sourceText) return;
+    if (!sourceText || !token) return;
     setLoading(true);
     try {
-      const response = await axios.post('http://127.0.0.1:8000/translate/text', {
+      const response = await axios.post(`${API_URL}/translate/text`, {
         text: sourceText,
         source_language: sourceLang,
         target_language: targetLang,
         user_id: 1
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       setTranslatedText(response.data.translated_text);
     } catch (error) {
       console.error('Translation error:', error);
-      alert('Translation failed. Make sure the backend server is running.');
+      alert('Translation failed: ' + (error.response?.data?.detail || 'Unknown error'));
     }
     setLoading(false);
   };
@@ -37,7 +98,7 @@ function App() {
     setSpeaking(true);
     try {
       const response = await axios.post(
-        `http://127.0.0.1:8000/tts/speak?text=${encodeURIComponent(translatedText)}&language=${targetLang}`,
+        `${API_URL}/tts/speak?text=${encodeURIComponent(translatedText)}&language=${targetLang}`,
         null,
         { responseType: 'blob' }
       );
@@ -95,8 +156,11 @@ function App() {
       const formData = new FormData();
       formData.append('file', audioBlob, 'recording.wav');
 
-      const response = await axios.post('http://127.0.0.1:8000/speech/transcribe', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await axios.post(`${API_URL}/speech/transcribe`, formData, {
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
       });
 
       setSourceText(response.data.text);
@@ -108,10 +172,116 @@ function App() {
     setLoading(false);
   };
 
+  if (!token) {
+    return (
+      <div style={{ padding: '30px', maxWidth: '500px', margin: '50px auto', fontFamily: 'Arial' }}>
+        <h1 style={{ textAlign: 'center', color: '#2c3e50' }}>🌐 LingoLink AI</h1>
+        <p style={{ textAlign: 'center', color: '#7f8c8d' }}>Enterprise-grade AI translation platform</p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+          <button 
+            onClick={() => setShowLogin(true)} 
+            style={{ 
+              padding: '10px 20px', 
+              backgroundColor: showLogin ? '#3498db' : '#bdc3c7', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '5px', 
+              cursor: 'pointer' 
+            }}
+          >
+            Login
+          </button>
+          <button 
+            onClick={() => setShowLogin(false)} 
+            style={{ 
+              padding: '10px 20px', 
+              backgroundColor: !showLogin ? '#3498db' : '#bdc3c7', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '5px', 
+              cursor: 'pointer' 
+            }}
+          >
+            Register
+          </button>
+        </div>
+
+        {showLogin ? (
+          <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+            <h2 style={{ marginBottom: '15px' }}>Login</h2>
+            <input
+              type="text"
+              placeholder="Username"
+              value={loginUsername}
+              onChange={(e) => setLoginUsername(e.target.value)}
+              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ccc' }}
+            />
+            <button
+              onClick={handleLogin}
+              style={{ width: '100%', padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}
+            >
+              Login
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+            <h2 style={{ marginBottom: '15px' }}>Register</h2>
+            <input
+              type="text"
+              placeholder="Username"
+              value={regUsername}
+              onChange={(e) => setRegUsername(e.target.value)}
+              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={regEmail}
+              onChange={(e) => setRegEmail(e.target.value)}
+              style={{ width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={regPassword}
+              onChange={(e) => setRegPassword(e.target.value)}
+              style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ccc' }}
+            />
+            <button
+              onClick={handleRegister}
+              style={{ width: '100%', padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}
+            >
+              Register
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '30px', maxWidth: '700px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <h1 style={{ textAlign: 'center', color: '#2c3e50' }}>🌐 LingoLink AI Translator</h1>
-      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ color: '#2c3e50', margin: 0 }}>🌐 LingoLink AI</h1>
+        <div>
+          <span style={{ marginRight: '10px', color: '#7f8c8d' }}>👤 {username}</span>
+          <button
+            onClick={handleLogout}
+            style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
         <select value={sourceLang} onChange={(e) => setSourceLang(e.target.value)} style={{ padding: '10px', fontSize: '16px' }}>
           <option value="en">English</option>
