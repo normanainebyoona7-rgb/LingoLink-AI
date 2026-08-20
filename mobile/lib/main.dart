@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
 
 void main() {
   runApp(const LingoLinkApp());
@@ -67,6 +69,7 @@ class _AuthScreenState extends State<AuthScreen> {
             builder: (context) => HomeScreen(
               token: data['access_token'],
               username: data['username'],
+              isPremium: data['is_premium'] ?? false,
             ),
           ),
         );
@@ -254,8 +257,14 @@ class _AuthScreenState extends State<AuthScreen> {
 class HomeScreen extends StatefulWidget {
   final String token;
   final String username;
+  final bool isPremium;
 
-  const HomeScreen({super.key, required this.token, required this.username});
+  const HomeScreen({
+    super.key,
+    required this.token,
+    required this.username,
+    required this.isPremium,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -267,12 +276,22 @@ class _HomeScreenState extends State<HomeScreen> {
   final AudioPlayer _player = AudioPlayer();
 
   String _translatedText = '';
-  String _sourceLanguage = 'en';
+  String _sourceLanguage = 'auto';
   String _targetLanguage = 'es';
   bool _isLoading = false;
   bool _isRecording = false;
+  bool _isPremium = false;
   int _currentTab = 0;
   List<dynamic> _history = [];
+  File? _videoFile;
+  String? _videoResult;
+  bool _videoLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPremium = widget.isPremium;
+  }
 
   Future<void> _translateText() async {
     if (_textController.text.isEmpty) return;
@@ -303,7 +322,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _translatedText = data['translated_text'];
         });
       } else {
-        throw Exception('Translation failed');
+        final error = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error['detail'] ?? 'Translation failed')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -313,6 +335,30 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _upgradeToPremium() async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/auth/upgrade'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _isPremium = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Upgraded to Premium! 🎉')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upgrade failed: $e')),
+      );
     }
   }
 
@@ -348,13 +394,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         _fetchHistory();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Deleted')),
-        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Delete error: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickVideoAndExtract() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.video,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.isNotEmpty && result.first.path != null) {
+        setState(() {
+          _videoFile = File(result.first.path!);
+          _videoLoading = true;
+          _videoResult = null;
+        });
+
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('http://127.0.0.1:8000/video/extract-subtitles'),
+        );
+
+        request.headers['Authorization'] = 'Bearer ${widget.token}';
+        request.files.add(
+          await http.MultipartFile.fromPath('file', _videoFile!.path),
+        );
+        request.fields['target_language'] = _targetLanguage;
+
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          setState(() {
+            _videoResult = 'Language: ${data['detected_language']}\n'
+                'Segments: ${data['segment_count']}\n'
+                'Duration: ${data['video_duration'].round()} seconds\n\n'
+                'Translated Text:\n${data['translated_text']}';
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Video processing failed')),
+          );
+        }
+        setState(() {
+          _videoLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _videoLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Video error: $e')),
       );
     }
   }
@@ -415,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = jsonDecode(response.body);
         setState(() {
           _textController.text = data['text'] ?? '';
-          _sourceLanguage = data['language'] ?? 'en';
+          _sourceLanguage = 'auto';
         });
       }
     } catch (e) {
@@ -462,9 +560,15 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 10.0),
             child: Center(
-              child: Text('👤 ${widget.username}'),
+              child: Text('👤 ${widget.username} ${_isPremium ? '⭐' : ''}'),
             ),
           ),
+          if (!_isPremium)
+            IconButton(
+              icon: const Icon(Icons.star_border, color: Colors.orange),
+              onPressed: _upgradeToPremium,
+              tooltip: 'Upgrade to Premium',
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
@@ -495,9 +599,17 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.history),
             label: 'History',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.video_library),
+            label: 'Video',
+          ),
         ],
       ),
-      body: _currentTab == 0 ? _buildTranslateTab() : _buildHistoryTab(),
+      body: _currentTab == 0
+          ? _buildTranslateTab()
+          : _currentTab == 1
+              ? _buildHistoryTab()
+              : _buildVideoTab(),
     );
   }
 
@@ -517,6 +629,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: const [
+                    DropdownMenuItem(value: 'auto', child: Text('Auto Detect')),
                     DropdownMenuItem(value: 'en', child: Text('English')),
                     DropdownMenuItem(value: 'es', child: Text('Spanish')),
                     DropdownMenuItem(value: 'fr', child: Text('French')),
@@ -623,6 +736,91 @@ class _HomeScreenState extends State<HomeScreen> {
                         foregroundColor: Colors.white,
                       ),
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            '🎬 Video Subtitle Studio',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _videoLoading ? null : _pickVideoAndExtract,
+                    icon: const Icon(Icons.upload_file),
+                    label: Text(_videoLoading ? 'Processing...' : 'Select Video'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  if (_videoFile != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Selected: ${_videoFile!.path.split('\\').last}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                  const SizedBox(height: 15),
+                  DropdownButtonFormField<String>(
+                    value: _targetLanguage,
+                    decoration: const InputDecoration(
+                      labelText: 'Target Language',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'es', child: Text('Spanish')),
+                      DropdownMenuItem(value: 'fr', child: Text('French')),
+                      DropdownMenuItem(value: 'de', child: Text('German')),
+                      DropdownMenuItem(value: 'sw', child: Text('Swahili')),
+                      DropdownMenuItem(value: 'lg', child: Text('Luganda')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _targetLanguage = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_videoResult != null) ...[
+            const SizedBox(height: 20),
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '📝 Results',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(_videoResult!, style: const TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
