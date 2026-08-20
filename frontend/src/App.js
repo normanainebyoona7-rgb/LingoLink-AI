@@ -14,6 +14,9 @@ function App() {
   const [regPassword, setRegPassword] = useState('');
   const [activeTab, setActiveTab] = useState('translate');
   const [history, setHistory] = useState([]);
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoResult, setVideoResult] = useState(null);
+  const [videoLoading, setVideoLoading] = useState(false);
   
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
@@ -91,6 +94,8 @@ function App() {
     setSourceText('');
     setTranslatedText('');
     setHistory([]);
+    setVideoResult(null);
+    setVideoFile(null);
   };
 
   const handleTranslate = async () => {
@@ -287,6 +292,35 @@ function App() {
     setLoading(false);
   };
 
+  const handleVideoUpload = async () => {
+    if (!videoFile) {
+      alert('Please select a video file first');
+      return;
+    }
+    setVideoLoading(true);
+    setVideoResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', videoFile);
+
+      const response = await axios.post(`${API_URL}/video/extract-subtitles`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        },
+        params: {
+          target_language: targetLang
+        }
+      });
+
+      setVideoResult(response.data);
+    } catch (error) {
+      console.error('Video upload error:', error);
+      alert('Video processing failed: ' + (error.response?.data?.detail || 'Unknown error'));
+    }
+    setVideoLoading(false);
+  };
+
   const deleteTranslation = async (id) => {
     try {
       await axios.delete(`${API_URL}/translate/${id}`, {
@@ -421,9 +455,61 @@ function App() {
         >
           History
         </button>
+        <button
+          onClick={() => setActiveTab('video')}
+          style={{ flex: 1, padding: '12px', backgroundColor: activeTab === 'video' ? '#3498db' : '#bdc3c7', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}
+        >
+          Video
+        </button>
       </div>
 
-      {activeTab === 'translate' ? (
+      {activeTab === 'video' ? (
+        <div>
+          <h2 style={{ marginBottom: '20px', color: '#2c3e50' }}>🎬 Video Subtitle Studio</h2>
+          
+          <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', marginBottom: '20px' }}>
+            <input
+              type="file"
+              accept="video/*"
+              onChange={(e) => setVideoFile(e.target.files[0])}
+              style={{ marginBottom: '15px', width: '100%' }}
+            />
+            
+            <select 
+              value={targetLang} 
+              onChange={(e) => setTargetLang(e.target.value)} 
+              style={{ width: '100%', padding: '10px', marginBottom: '15px', fontSize: '16px', borderRadius: '5px', border: '1px solid #ccc' }}
+            >
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+              <option value="sw">Swahili</option>
+              <option value="lg">Luganda</option>
+            </select>
+
+            <button
+              onClick={handleVideoUpload}
+              disabled={videoLoading || !videoFile}
+              style={{ width: '100%', padding: '12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '16px' }}
+            >
+              {videoLoading ? 'Processing video...' : 'Extract Subtitles'}
+            </button>
+          </div>
+
+          {videoResult && (
+            <div style={{ padding: '20px', backgroundColor: '#f0f4f8', borderRadius: '8px' }}>
+              <h3 style={{ marginBottom: '15px' }}>📝 Results</h3>
+              <p><strong>Detected Language:</strong> {videoResult.detected_language}</p>
+              <p><strong>Segments:</strong> {videoResult.segment_count}</p>
+              <p><strong>Video Duration:</strong> {Math.round(videoResult.video_duration)} seconds</p>
+              
+              <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>Translated Text:</h4>
+              <p style={{ fontSize: '16px', color: '#34495e' }}>{videoResult.translated_text}</p>
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'translate' ? (
         <>
           {conversationMode && (
             <div style={{ padding: '15px', backgroundColor: '#fff3e0', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>
