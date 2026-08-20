@@ -78,7 +78,9 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = models.User(
         username=user.username,
         email=user.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        is_premium=False,
+        daily_translation_count=0
     )
 
     db.add(db_user)
@@ -89,6 +91,7 @@ async def register(user: UserCreate, db: Session = Depends(get_db)):
         "id": db_user.id,
         "username": db_user.username,
         "email": db_user.email,
+        "is_premium": db_user.is_premium,
         "message": "Registration successful"
     }
 
@@ -108,7 +111,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "username": user.username
+        "username": user.username,
+        "is_premium": user.is_premium
     }
 
 @router.get("/me")
@@ -117,5 +121,22 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
+        "is_premium": current_user.is_premium,
+        "daily_translation_count": current_user.daily_translation_count,
         "created_at": current_user.created_at
+    }
+
+@router.post("/upgrade")
+async def upgrade_to_premium(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    current_user.is_premium = True
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Upgraded to premium successfully",
+        "is_premium": current_user.is_premium,
+        "username": current_user.username
     }

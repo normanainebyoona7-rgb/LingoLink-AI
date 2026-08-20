@@ -6,6 +6,7 @@ const API_URL = 'http://127.0.0.1:8000';
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [username, setUsername] = useState(localStorage.getItem('username') || '');
+  const [isPremium, setIsPremium] = useState(localStorage.getItem('isPremium') === 'true' || false);
   const [showLogin, setShowLogin] = useState(true);
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -61,6 +62,8 @@ function App() {
       setUsername(response.data.username);
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('username', response.data.username);
+      localStorage.setItem('isPremium', response.data.is_premium || false);
+      setIsPremium(response.data.is_premium || false);
       setLoginUsername('');
       setLoginPassword('');
     } catch (error) {
@@ -86,11 +89,26 @@ function App() {
     }
   };
 
+  const handleUpgrade = async () => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/upgrade`, null, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIsPremium(true);
+      localStorage.setItem('isPremium', 'true');
+      alert('Upgraded to Premium! 🎉');
+    } catch (error) {
+      alert('Upgrade failed: ' + (error.response?.data?.detail || 'Unknown error'));
+    }
+  };
+
   const handleLogout = () => {
     setToken('');
     setUsername('');
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('isPremium');
+    setIsPremium(false);
     setSourceText('');
     setTranslatedText('');
     setHistory([]);
@@ -432,7 +450,17 @@ function App() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ color: '#2c3e50', margin: 0 }}>🌐 LingoLink AI</h1>
         <div>
-          <span style={{ marginRight: '10px', color: '#7f8c8d' }}>👤 {username}</span>
+          <span style={{ marginRight: '10px', color: '#7f8c8d' }}>
+            👤 {username} {isPremium ? '⭐ Premium' : '(Free)'}
+          </span>
+          {!isPremium && (
+            <button
+              onClick={handleUpgrade}
+              style={{ marginRight: '10px', padding: '8px 15px', backgroundColor: '#f39c12', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+            >
+              Upgrade
+            </button>
+          )}
           <button
             onClick={handleLogout}
             style={{ padding: '8px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}

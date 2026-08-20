@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
 from sqlalchemy.orm import Session
 from deep_translator import GoogleTranslator
 from langdetect import detect
@@ -73,6 +74,22 @@ async def translate_text(
     current_user: models.User = Depends(get_current_user)
 ):
     try:
+        # Check daily limit for free users
+        today = datetime.utcnow().date()
+        
+        if current_user.last_translation_date is None or current_user.last_translation_date.date() != today:
+            current_user.daily_translation_count = 0
+            current_user.last_translation_date = datetime.utcnow()
+        
+        if not current_user.is_premium and current_user.daily_translation_count >= 10:
+            raise HTTPException(
+                status_code=403,
+                detail="Daily free limit reached (10 translations). Upgrade to premium for unlimited."
+            )
+        
+        current_user.daily_translation_count += 1
+        db.commit()
+
         source_lang = request.source_language
         if source_lang == "auto":
             source_lang = detect(request.text)
@@ -100,8 +117,12 @@ async def translate_text(
             "translated_text": translated,
             "source_language": source_lang,
             "target_language": request.target_language,
-            "username": current_user.username
+            "username": current_user.username,
+            "is_premium": current_user.is_premium,
+            "daily_count": current_user.daily_translation_count
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
