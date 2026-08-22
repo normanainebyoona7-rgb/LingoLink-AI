@@ -29,15 +29,8 @@ app.include_router(admin.router)
 
 @app.get("/")
 async def root():
-    return {
-        "message": "Welcome to LingoLink AI",
-        "status": "operational",
-        "version": "1.0.0"
-    }
+    return {"message": "Welcome to LingoLink AI", "status": "operational"}
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "database": "connected"
-    }
+    return {"status": "healthy"}
