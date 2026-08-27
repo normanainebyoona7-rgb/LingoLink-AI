@@ -22,37 +22,32 @@ LANGUAGES = {
     "hungarian": "Hungarian", "ukrainian": "Ukrainian", "persian": "Persian",
 
     # Uganda
-    "luganda": "Luganda", "lusoga": "Lusoga", "lugwere": "Lugwere", "gwere": "Gwere",
-    "runyankole": "Runyankole", "rukiga": "Rukiga", "rutooro": "Rutooro", "runyoro": "Runyoro",
-    "acholi": "Acholi", "alur": "Alur", "lango": "Lango", "lugbara": "Lugbara",
-    "ateso": "Ateso", "karamojong": "Karamojong", "adhola": "Adhola", "kumam": "Kumam",
+    "luganda": "Luganda", "rukiga": "Rukiga", "runyankole": "Runyankole",
+    "acholi": "Acholi", "alur": "Alur", "ateso": "Ateso", "lango": "Lango",
+    "lugbara": "Lugbara", "lusoga": "Lusoga", "lugwere": "Lugwere", "gwere": "Gwere",
 
     # East Africa
     "swahili": "Swahili", "kinyarwanda": "Kinyarwanda", "kirundi": "Kirundi",
     "amharic": "Amharic", "somali": "Somali", "oromo": "Oromo", "tigrinya": "Tigrinya",
-    "kikuyu": "Kikuyu", "dholuo": "Dholuo", "maasai": "Maasai", "kalenjin": "Kalenjin",
-    "kamba": "Kamba", "meru": "Meru", "luhya": "Luhya",
+    "kikuyu": "Kikuyu", "dholuo": "Dholuo",
 
     # West Africa
     "yoruba": "Yoruba", "hausa": "Hausa", "igbo": "Igbo", "fulfulde": "Fulfulde",
-    "wolof": "Wolof", "bambara": "Bambara", "twi": "Twi", "akan": "Akan",
-    "ewe": "Ewe", "ga": "Ga", "dagbani": "Dagbani", "fon": "Fon",
-    "efik": "Efik", "tiv": "Tiv", "kanuri": "Kanuri",
+    "wolof": "Wolof", "bambara": "Bambara", "twi": "Twi", "ewe": "Ewe",
 
     # Central Africa
-    "lingala": "Lingala", "kikongo": "Kikongo", "luba": "Luba-Katanga",
-    "chichewa": "Chichewa", "bemba": "Bemba",
+    "lingala": "Lingala", "kikongo": "Kikongo", "bemba": "Bemba", "chichewa": "Chichewa",
 
     # Southern Africa
     "zulu": "Zulu", "xhosa": "Xhosa", "afrikaans": "Afrikaans", "sesotho": "Sesotho",
-    "setswana": "Setswana", "shona": "Shona", "ndebele": "Ndebele", "swati": "Swati",
-    "venda": "Venda", "tsonga": "Tsonga",
+    "setswana": "Setswana", "shona": "Shona",
 
     # North Africa
-    "kabyle": "Kabyle", "tachelhit": "Tachelhit", "tamazight": "Tamazight",
+    "kabyle": "Kabyle", "tachelhit": "Tachelhit",
 }
 
 CODES = {
+    # International
     "english": "en", "french": "fr", "spanish": "es", "german": "de",
     "portuguese": "pt", "italian": "it", "dutch": "nl", "russian": "ru",
     "arabic": "ar", "hindi": "hi", "chinese": "zh", "japanese": "ja",
@@ -61,17 +56,18 @@ CODES = {
     "polish": "pl", "swedish": "sv", "danish": "da", "finnish": "fi",
     "norwegian": "no", "czech": "cs", "romanian": "ro",
     "hungarian": "hu", "ukrainian": "uk", "persian": "fa",
+    # African
     "swahili": "sw", "luganda": "lg", "kinyarwanda": "rw", "kirundi": "run",
-    "amharic": "am", "somali": "so", "yoruba": "yo", "hausa": "ha",
-    "igbo": "ig", "shona": "sn", "chichewa": "ny", "afrikaans": "af",
-    "zulu": "zu", "xhosa": "xh", "sesotho": "st", "setswana": "tn",
-    "fulfulde": "ff", "wolof": "wo", "bambara": "bm",
-    "lingala": "ln", "kikongo": "kg", "luba": "lu",
-    "kabyle": "kab", "tachelhit": "shi", "tamazight": "zgh",
-    "oromo": "om", "tigrinya": "ti", "kikuyu": "kik", "bemba": "bem",
-    "rukiga": "cgg", "runyankole": "nyn",
-    "acholi": "ach", "alur": "alz", "ateso": "teo", "karamojong": "kdj",
-    "lango": "laj", "lugbara": "nbr", "adhola": "adh", "kumam": "kdi",
+    "amharic": "am", "somali": "so", "oromo": "om", "tigrinya": "ti",
+    "yoruba": "yo", "hausa": "ha", "igbo": "ig", "fulfulde": "ff",
+    "wolof": "wo", "bambara": "bm", "twi": "tw", "ewe": "ee",
+    "lingala": "ln", "kikongo": "kg", "bemba": "bem", "chichewa": "ny",
+    "zulu": "zu", "xhosa": "xh", "afrikaans": "af", "sesotho": "st",
+    "setswana": "tn", "shona": "sn",
+    "kabyle": "kab", "tachelhit": "shi",
+    "rukiga": "cgg", "runyankole": "nyn", "acholi": "ach", "alur": "alz",
+    "ateso": "teo", "lango": "laj", "lugbara": "nbr", "lusoga": "bus",
+    "lugwere": "lgg", "gwere": "gwr", "kikuyu": "kik", "dholuo": "luo",
 }
 
 LANG_CODE_MAP = {
@@ -80,20 +76,16 @@ LANG_CODE_MAP = {
     "ar": "arabic", "hi": "hindi", "zh": "chinese", "ja": "japanese",
     "ko": "korean", "tr": "turkish", "vi": "vietnamese", "th": "thai",
     "id": "indonesian", "he": "hebrew", "el": "greek",
-    "pl": "polish", "sv": "swedish", "da": "danish", "fi": "finnish",
-    "no": "norwegian", "cs": "czech", "ro": "romanian",
-    "hu": "hungarian", "uk": "ukrainian", "fa": "persian",
     "sw": "swahili", "lg": "luganda", "rw": "kinyarwanda", "run": "kirundi",
-    "am": "amharic", "so": "somali", "yo": "yoruba", "ha": "hausa",
-    "ig": "igbo", "sn": "shona", "ny": "chichewa", "af": "afrikaans",
-    "zu": "zulu", "xh": "xhosa", "st": "sesotho", "tn": "setswana",
-    "ff": "fulfulde", "wo": "wolof", "bm": "bambara",
-    "ln": "lingala", "kg": "kikongo", "lu": "luba",
-    "kab": "kabyle", "shi": "tachelhit", "zgh": "tamazight",
-    "om": "oromo", "ti": "tigrinya", "kik": "kikuyu", "bem": "bemba",
-    "cgg": "rukiga", "nyn": "runyankole",
-    "ach": "acholi", "alz": "alur", "teo": "ateso", "kdj": "karamojong",
-    "laj": "lango", "nbr": "lugbara", "adh": "adhola", "kdi": "kumam",
+    "am": "amharic", "so": "somali", "om": "oromo", "ti": "tigrinya",
+    "yo": "yoruba", "ha": "hausa", "ig": "igbo", "ff": "fulfulde",
+    "wo": "wolof", "bm": "bambara", "tw": "twi", "ee": "ewe",
+    "ln": "lingala", "kg": "kikongo", "bem": "bemba", "ny": "chichewa",
+    "zu": "zulu", "xh": "xhosa", "af": "afrikaans", "st": "sesotho",
+    "tn": "setswana", "sn": "shona", "kab": "kabyle", "shi": "tachelhit",
+    "cgg": "rukiga", "nyn": "runyankole", "ach": "acholi", "alz": "alur",
+    "teo": "ateso", "laj": "lango", "nbr": "lugbara", "bus": "lusoga",
+    "lgg": "lugwere", "gwr": "gwere", "kik": "kikuyu", "luo": "dholuo",
 }
 
 def translate_with_google(text, source_lang, target_lang):
