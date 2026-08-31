@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoLink AI — CRM Widget</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0c29;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .widget-container {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+    }
+
+    .widget-header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      padding: 15px;
+      border-radius: 12px 12px 0 0;
+      text-align: center;
+    }
+
+    .widget-body {
+      background: #1a1a2e;
+      padding: 20px;
+      border-radius: 0 0 12px 12px;
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: 1px solid #667eea;
+      background: #0f0c29;
+      color: white;
+      font-size: 14px;
+    }
+
+    button {
+      background: #667eea;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #764ba2;
+    }
+
+    .result {
+      background: rgba(255,255,255,0.05);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+      min-height: 50px;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 12px;
+      color: #999;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-container">
+    <div class="widget-header">
+      <h2>🌐 LingoLink AI</h2>
+      <p style="font-size: 12px; color: rgba(255,255,255,0.8);">CRM Translation Widget</p>
+    </div>
+    
+    <div class="widget-body">
+      <!-- Login Section -->
+      <div id="loginSection">
+        <h3 style="margin-bottom: 15px; text-align: center;">Login</h3>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+      </div>
+
+      <!-- Translation Section -->
+      <div id="translateSection" style="display: none;">
+        <select id="sourceLang">
+          <option value="auto">⚡ Auto Detect</option>
+          <option value="english">English</option>
+          <option value="luganda">Luganda</option>
+          <option value="swahili">Swahili</option>
+          <option value="french">French</option>
+          <option value="spanish">Spanish</option>
+          <option value="german">German</option>
+          <option value="arabic">Arabic</option>
+          <option value="chinese">Chinese</option>
+          <option value="japanese">Japanese</option>
+          <option value="korean">Korean</option>
+          <option value="russian">Russian</option>
+          <option value="hindi">Hindi</option>
+          <option value="yoruba">Yoruba</option>
+          <option value="hausa">Hausa</option>
+          <option value="zulu">Zulu</option>
+          <option value="amharic">Amharic</option>
+          <option value="somali">Somali</option>
+        </select>
+
+        <select id="targetLang">
+          <option value="english">English</option>
+          <option value="luganda">Luganda</option>
+          <option value="swahili">Swahili</option>
+          <option value="french">French</option>
+          <option value="spanish">Spanish</option>
+          <option value="german">German</option>
+          <option value="arabic">Arabic</option>
+          <option value="chinese">Chinese</option>
+          <option value="japanese">Japanese</option>
+          <option value="korean">Korean</option>
+          <option value="russian">Russian</option>
+          <option value="hindi">Hindi</option>
+          <option value="yoruba">Yoruba</option>
+          <option value="hausa">Hausa</option>
+          <option value="zulu">Zulu</option>
+          <option value="amharic">Amharic</option>
+          <option value="somali">Somali</option>
+        </select>
+
+        <textarea id="sourceText" rows="3" placeholder="Enter text to translate..."></textarea>
+        <button onclick="translateText()">🌐 Translate</button>
+
+        <div class="result" id="result">
+          Translation will appear here...
+        </div>
+
+        <button onclick="logout()" style="background: #e74c3c; margin-top: 10px;">Logout</button>
+      </div>
+
+      <div class="status" id="status">Ready</div>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('lingolink_token') || '';
+    const API_URL = 'http://127.0.0.1:8000';
+
+    // Check if already logged in
+    if (token) {
+      showTranslateSection();
+    }
+
+    async function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      if (!username || !password) {
+        document.getElementById('status').textContent = 'Please enter credentials';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `username=${username}&password=${password}`
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          token = data.access_token;
+          localStorage.setItem('lingolink_token', token);
+          showTranslateSection();
+          document.getElementById('status').textContent = 'Logged in as ' + data.username;
+        } else {
+          document.getElementById('status').textContent = 'Login failed';
+        }
+      } catch (error) {
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+      }
+    }
+
+    function showTranslateSection() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('translateSection').style.display = 'block';
+    }
+
+    async function translateText() {
+      const text = document.getElementById('sourceText').value;
+      const sourceLang = document.getElementById('sourceLang').value;
+      const targetLang = document.getElementById('targetLang').value;
+
+      if (!text) {
+        document.getElementById('status').textContent = 'Please enter text';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/translate/text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            text: text,
+            source_language: sourceLang,
+            target_language: targetLang,
+            user_id: 1
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('result').textContent = '✨ ' + data.translated_text;
+          document.getElementById('status').textContent = 'Translation successful';
+        } else {
+          document.getElementById('status').textContent = 'Translation failed';
+        }
+      } catch (error) {
+        document.getElementById('status').textContent = 'Error: ' + error.message;
+      }
+    }
+
+    function logout() {
+      token = '';
+      localStorage.removeItem('lingolink_token');
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('translateSection').style.display = 'none';
+      document.getElementById('status').textContent = 'Logged out';
+    }
+
+    // Listen for messages from parent (Zendesk/Salesforce)
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'lingolink_translate') {
+        document.getElementById('sourceText').value = event.data.text;
+        translateText();
+      }
+    });
+  </script>
+</body>
+</html>
