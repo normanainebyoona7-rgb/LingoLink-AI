@@ -3,12 +3,26 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 import langid
 import requests
+import os
+from typing import Optional
+from dotenv import load_dotenv
 from app.database import get_db
 from app.routers.auth import get_current_user
 import app.models as models
 import app.schemas as schemas
 
+# Load environment variables
+load_dotenv()
+
 router = APIRouter(prefix="/translate", tags=["translation"])
+
+# Cache for translations
+_cache = {}
+CACHE_LIMIT = 1000
+
+# Load Gemini API key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = "gemini-3.6-flash"
 
 LANGUAGES = {
     # International
@@ -22,32 +36,37 @@ LANGUAGES = {
     "hungarian": "Hungarian", "ukrainian": "Ukrainian", "persian": "Persian",
 
     # Uganda
-    "luganda": "Luganda", "rukiga": "Rukiga", "runyankole": "Runyankole",
-    "acholi": "Acholi", "alur": "Alur", "ateso": "Ateso", "lango": "Lango",
-    "lugbara": "Lugbara", "lusoga": "Lusoga", "lugwere": "Lugwere", "gwere": "Gwere",
+    "luganda": "Luganda", "lusoga": "Lusoga", "lugwere": "Lugwere", "gwere": "Gwere",
+    "runyankole": "Runyankole", "rukiga": "Rukiga", "rutooro": "Rutooro", "runyoro": "Runyoro",
+    "acholi": "Acholi", "alur": "Alur", "lango": "Lango", "lugbara": "Lugbara",
+    "ateso": "Ateso", "karamojong": "Karamojong", "adhola": "Adhola", "kumam": "Kumam",
 
     # East Africa
     "swahili": "Swahili", "kinyarwanda": "Kinyarwanda", "kirundi": "Kirundi",
     "amharic": "Amharic", "somali": "Somali", "oromo": "Oromo", "tigrinya": "Tigrinya",
-    "kikuyu": "Kikuyu", "dholuo": "Dholuo",
+    "kikuyu": "Kikuyu", "dholuo": "Dholuo", "maasai": "Maasai", "kalenjin": "Kalenjin",
+    "kamba": "Kamba", "meru": "Meru", "luhya": "Luhya",
 
     # West Africa
     "yoruba": "Yoruba", "hausa": "Hausa", "igbo": "Igbo", "fulfulde": "Fulfulde",
-    "wolof": "Wolof", "bambara": "Bambara", "twi": "Twi", "ewe": "Ewe",
+    "wolof": "Wolof", "bambara": "Bambara", "twi": "Twi", "akan": "Akan",
+    "ewe": "Ewe", "ga": "Ga", "dagbani": "Dagbani", "fon": "Fon",
+    "efik": "Efik", "tiv": "Tiv", "kanuri": "Kanuri",
 
     # Central Africa
-    "lingala": "Lingala", "kikongo": "Kikongo", "bemba": "Bemba", "chichewa": "Chichewa",
+    "lingala": "Lingala", "kikongo": "Kikongo", "luba": "Luba-Katanga",
+    "chichewa": "Chichewa", "bemba": "Bemba",
 
     # Southern Africa
     "zulu": "Zulu", "xhosa": "Xhosa", "afrikaans": "Afrikaans", "sesotho": "Sesotho",
-    "setswana": "Setswana", "shona": "Shona",
+    "setswana": "Setswana", "shona": "Shona", "ndebele": "Ndebele", "swati": "Swati",
+    "venda": "Venda", "tsonga": "Tsonga",
 
     # North Africa
-    "kabyle": "Kabyle", "tachelhit": "Tachelhit",
+    "kabyle": "Kabyle", "tachelhit": "Tachelhit", "tamazight": "Tamazight",
 }
 
 CODES = {
-    # International
     "english": "en", "french": "fr", "spanish": "es", "german": "de",
     "portuguese": "pt", "italian": "it", "dutch": "nl", "russian": "ru",
     "arabic": "ar", "hindi": "hi", "chinese": "zh", "japanese": "ja",
@@ -56,18 +75,17 @@ CODES = {
     "polish": "pl", "swedish": "sv", "danish": "da", "finnish": "fi",
     "norwegian": "no", "czech": "cs", "romanian": "ro",
     "hungarian": "hu", "ukrainian": "uk", "persian": "fa",
-    # African
     "swahili": "sw", "luganda": "lg", "kinyarwanda": "rw", "kirundi": "run",
-    "amharic": "am", "somali": "so", "oromo": "om", "tigrinya": "ti",
-    "yoruba": "yo", "hausa": "ha", "igbo": "ig", "fulfulde": "ff",
-    "wolof": "wo", "bambara": "bm", "twi": "tw", "ewe": "ee",
-    "lingala": "ln", "kikongo": "kg", "bemba": "bem", "chichewa": "ny",
-    "zulu": "zu", "xhosa": "xh", "afrikaans": "af", "sesotho": "st",
-    "setswana": "tn", "shona": "sn",
-    "kabyle": "kab", "tachelhit": "shi",
-    "rukiga": "cgg", "runyankole": "nyn", "acholi": "ach", "alur": "alz",
-    "ateso": "teo", "lango": "laj", "lugbara": "nbr", "lusoga": "bus",
-    "lugwere": "lgg", "gwere": "gwr", "kikuyu": "kik", "dholuo": "luo",
+    "amharic": "am", "somali": "so", "yoruba": "yo", "hausa": "ha",
+    "igbo": "ig", "shona": "sn", "chichewa": "ny", "afrikaans": "af",
+    "zulu": "zu", "xhosa": "xh", "sesotho": "st", "setswana": "tn",
+    "fulfulde": "ff", "wolof": "wo", "bambara": "bm",
+    "lingala": "ln", "kikongo": "kg", "luba": "lu",
+    "kabyle": "kab", "tachelhit": "shi", "tamazight": "zgh",
+    "oromo": "om", "tigrinya": "ti", "kikuyu": "kik", "bemba": "bem",
+    "rukiga": "cgg", "runyankole": "nyn",
+    "acholi": "ach", "alur": "alz", "ateso": "teo", "karamojong": "kdj",
+    "lango": "laj", "lugbara": "nbr", "adhola": "adh", "kumam": "kdi",
 }
 
 LANG_CODE_MAP = {
@@ -76,19 +94,32 @@ LANG_CODE_MAP = {
     "ar": "arabic", "hi": "hindi", "zh": "chinese", "ja": "japanese",
     "ko": "korean", "tr": "turkish", "vi": "vietnamese", "th": "thai",
     "id": "indonesian", "he": "hebrew", "el": "greek",
+    "pl": "polish", "sv": "swedish", "da": "danish", "fi": "finnish",
+    "no": "norwegian", "cs": "czech", "ro": "romanian",
+    "hu": "hungarian", "uk": "ukrainian", "fa": "persian",
     "sw": "swahili", "lg": "luganda", "rw": "kinyarwanda", "run": "kirundi",
-    "am": "amharic", "so": "somali", "om": "oromo", "ti": "tigrinya",
-    "yo": "yoruba", "ha": "hausa", "ig": "igbo", "ff": "fulfulde",
-    "wo": "wolof", "bm": "bambara", "tw": "twi", "ee": "ewe",
-    "ln": "lingala", "kg": "kikongo", "bem": "bemba", "ny": "chichewa",
-    "zu": "zulu", "xh": "xhosa", "af": "afrikaans", "st": "sesotho",
-    "tn": "setswana", "sn": "shona", "kab": "kabyle", "shi": "tachelhit",
-    "cgg": "rukiga", "nyn": "runyankole", "ach": "acholi", "alz": "alur",
-    "teo": "ateso", "laj": "lango", "nbr": "lugbara", "bus": "lusoga",
-    "lgg": "lugwere", "gwr": "gwere", "kik": "kikuyu", "luo": "dholuo",
+    "am": "amharic", "so": "somali", "yo": "yoruba", "ha": "hausa",
+    "ig": "igbo", "sn": "shona", "ny": "chichewa", "af": "afrikaans",
+    "zu": "zulu", "xh": "xhosa", "st": "sesotho", "tn": "setswana",
+    "ff": "fulfulde", "wo": "wolof", "bm": "bambara",
+    "ln": "lingala", "kg": "kikongo", "lu": "luba",
+    "kab": "kabyle", "shi": "tachelhit", "zgh": "tamazight",
+    "om": "oromo", "ti": "tigrinya", "kik": "kikuyu", "bem": "bemba",
+    "cgg": "rukiga", "nyn": "runyankole",
+    "ach": "acholi", "alz": "alur", "teo": "ateso", "kdj": "karamojong",
+    "laj": "lango", "nbr": "lugbara", "adh": "adhola", "kdi": "kumam",
 }
 
+def get_cached(key):
+    return _cache.get(key)
+
+def set_cache(key, value):
+    if len(_cache) >= CACHE_LIMIT:
+        _cache.clear()
+    _cache[key] = value
+
 def translate_with_google(text, source_lang, target_lang):
+    """Google free endpoint - works for many languages including Acholi, Alur"""
     try:
         src = CODES.get(source_lang, "en")
         tgt = CODES.get(target_lang, "en")
@@ -103,6 +134,7 @@ def translate_with_google(text, source_lang, target_lang):
     return None
 
 def translate_with_mymemory(text, source_lang, target_lang):
+    """MyMemory API - fallback for Google"""
     try:
         src = CODES.get(source_lang, "en")
         tgt = CODES.get(target_lang, "en")
@@ -114,6 +146,56 @@ def translate_with_mymemory(text, source_lang, target_lang):
             return translated
     except:
         pass
+    return None
+
+def translate_with_gemini(text, source_lang, target_lang):
+    """Gemini AI - final fallback for unsupported languages"""
+    if not GEMINI_API_KEY:
+        return None
+    
+    cache_key = f"gemini:{source_lang}:{target_lang}:{text[:200]}"
+    cached = get_cached(cache_key)
+    if cached:
+        return cached
+    
+    try:
+        source_name = LANGUAGES.get(source_lang, source_lang)
+        target_name = LANGUAGES.get(target_lang, target_lang)
+        
+        prompt = f"""Translate the following text from {source_name} to {target_name}.
+Return ONLY the translation, nothing else.
+
+Text: "{text}"
+
+Translation:"""
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+        
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 1000,
+            }
+        }
+        
+        resp = requests.post(url, json=payload, timeout=20)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                result = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                result = result.strip()
+                if result and result != text:
+                    set_cache(cache_key, result)
+                    return result
+        else:
+            print(f"Gemini API error: {resp.status_code}")
+    except Exception as e:
+        print(f"Gemini error: {e}")
     return None
 
 @router.get("/languages")
@@ -146,11 +228,21 @@ async def translate_text(
         target_lang = request.target_language
         target_lang = LANG_CODE_MAP.get(target_lang, target_lang)
 
+        # Translation fallback chain: Google -> MyMemory -> Gemini
         translated = translate_with_google(request.text, source_lang, target_lang)
+        provider = "google" if translated else None
+        
         if translated is None:
             translated = translate_with_mymemory(request.text, source_lang, target_lang)
+            provider = "mymemory" if translated else None
+        
+        if translated is None:
+            translated = translate_with_gemini(request.text, source_lang, target_lang)
+            provider = "gemini" if translated else None
+        
         if translated is None:
             translated = request.text
+            provider = "none"
 
         db_translation = models.Translation(
             user_id=current_user.id, source_text=request.text,
@@ -160,10 +252,16 @@ async def translate_text(
         db.add(db_translation)
         db.commit()
 
-        return {"translated_text": translated, "source_language": source_lang, "target_language": target_lang}
+        return {
+            "translated_text": translated,
+            "source_language": source_lang,
+            "target_language": target_lang,
+            "provider": provider
+        }
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/history")
@@ -179,3 +277,13 @@ async def delete_translation(translation_id: int, db: Session = Depends(get_db),
     db.delete(translation)
     db.commit()
     return {"message": "Deleted"}
+
+@router.get("/providers")
+async def get_providers():
+    return {
+        "providers": {
+            "gemini": bool(GEMINI_API_KEY),
+            "google": True,
+            "mymemory": True,
+        }
+    }

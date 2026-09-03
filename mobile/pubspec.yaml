@@ -1,23 +1,17 @@
 name: mobile
-description: "LingoLink AI Mobile App"
+description: "LingoLink AI - Enterprise AI Translation Platform"
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ^3.13.0
 
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.6.0
-  record: ^7.1.1
-  audioplayers: ^6.8.1
-  file_picker: ^12.0.0
-  permission_handler: ^12.0.0
-  audio_waveforms: ^2.0.0
-  onnxruntime: ^1.4.1
-  cupertino_icons: ^1.0.8
-  flutter_background_service: ^5.1.0
+  http: ^1.2.0
+  audioplayers: ^6.0.0
+  permission_handler: ^11.4.0
 
 dev_dependencies:
   flutter_test:
@@ -26,6 +20,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
-  assets:
-    - assets/models/
