@@ -1,0 +1,113 @@
+/* ============ AUTH ============ */
+.auth-full {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.auth-dark { background: linear-gradient(135deg, #0f0c29, #302b63); }
+.auth-light { background: linear-gradient(135deg, #667eea, #764ba2); }
+
+.auth-box {
+  padding: 40px;
+  width: 420px;
+  max-width: 90%;
+  text-align: center;
+  border-radius: 20px;
+}
+
+.auth-dark .auth-box {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(20px);
+}
+
+.auth-light .auth-box {
+  background: white;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.auth-logo { font-size: 48px; margin-bottom: 10px; }
+
+.auth-box h1 { font-size: 24px; margin-bottom: 5px; }
+.auth-dark .auth-box h1 { color: white; }
+.auth-light .auth-box h1 { color: #1a1a2e; }
+
+.auth-box p { font-size: 14px; margin-bottom: 20px; }
+.auth-dark .auth-box p { color: #999; }
+.auth-light .auth-box p { color: #888; }
+
+.auth-box input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  border: 2px solid;
+  transition: border 0.3s;
+}
+
+.auth-dark .auth-box input {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: white;
+}
+
+.auth-light .auth-box input {
+  background: white;
+  border-color: #e0e0e0;
+  color: #333;
+}
+
+.auth-box input:focus { outline: none; border-color: #667eea; }
+
+.auth-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: transform 0.2s;
+}
+
+.auth-btn:hover { transform: translateY(-2px); }
+
+.auth-link {
+  width: 100%;
+  padding: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.auth-dark .auth-link { color: #667eea; }
+.auth-light .auth-link { color: #667eea; }
+
+.auth-link:hover { text-decoration: underline; }
+
+.auth-error {
+  padding: 10px;
+  background: rgba(231,76,60,0.15);
+  border: 1px solid rgba(231,76,60,0.3);
+  border-radius: 8px;
+  color: #e74c3c;
+  font-size: 13px;
+  margin-bottom: 15px;
+}
+
+.auth-success {
+  padding: 10px;
+  background: rgba(40,167,69,0.15);
+  border: 1px solid rgba(40,167,69,0.3);
+  border-radius: 8px;
+  color: #28a745;
+  font-size: 13px;
+  margin-bottom: 15px;
+}

@@ -1,51 +1,29 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-*.egg-info/
-dist/
-build/
-
-# Node
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+venv/
+__pycache__/
+*.pyc
 
-# Flutter
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-*.iml
-.gradle/
-build/
+# Build folders
+mobile/android/app/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins-dependencies
 
-# Environment variables
+# Models (too large)
+backend/nllb_model/
+backend/nllb_tokenizer_fixed/
+backend/models/
+
+# Environment
+backend/.env
 .env
-.env.local
 .env.production
 
 # IDE
-.vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+.vscode/
+*.iml
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Docker
-*.log
-
-# Database
-*.db
-*.sqlite3
