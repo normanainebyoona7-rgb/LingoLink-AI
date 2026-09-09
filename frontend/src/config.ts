@@ -11,6 +11,11 @@ export const getApiUrl = (): string => {
     return 'http://localhost:8000';
   }
   
+  // If running on Vercel
+  if (hostname.includes('vercel.app')) {
+    return 'https://lingolink-ai.onrender.com';
+  }
+  
   // If running on phone or other device on same network
   return `http://${hostname}:8000`;
 };
