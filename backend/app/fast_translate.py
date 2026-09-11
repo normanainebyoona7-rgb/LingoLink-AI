@@ -1,4 +1,4 @@
-"""Fast translation using Google Translate + Gemini (cloud-only)"""
+"""Ultra-fast translation using Groq (primary) + Google Translate (fallback)"""
 import requests
 import re
 import threading
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
@@ -17,8 +17,60 @@ _cache_lock = threading.Lock()
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
 
+def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
+    """Groq - ultra fast LLM translation"""
+    if not GROQ_API_KEY:
+        return None
+    
+    try:
+        lang_names = {
+            "english": "English", "luganda": "Luganda", "swahili": "Swahili",
+            "french": "French", "spanish": "Spanish", "german": "German",
+            "acholi": "Acholi", "alur": "Alur", "ateso": "Ateso",
+            "rukiga": "Rukiga", "runyankole": "Runyankole",
+            "kinyarwanda": "Kinyarwanda", "kirundi": "Kirundi",
+            "amharic": "Amharic", "somali": "Somali", "oromo": "Oromo",
+            "yoruba": "Yoruba", "hausa": "Hausa", "igbo": "Igbo",
+            "zulu": "Zulu", "xhosa": "Xhosa", "shona": "Shona",
+            "chichewa": "Chichewa", "afrikaans": "Afrikaans",
+            "portuguese": "Portuguese", "italian": "Italian",
+            "dutch": "Dutch", "russian": "Russian", "arabic": "Arabic",
+            "hindi": "Hindi", "chinese": "Chinese", "japanese": "Japanese",
+            "korean": "Korean", "turkish": "Turkish",
+        }
+        target_name = lang_names.get(target_lang, target_lang.capitalize())
+        
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": f"Translate to {target_name}. Output ONLY the translation. No explanations, no notes, no original text."},
+                {"role": "user", "content": text}
+            ],
+            "temperature": 0.1,
+            "max_tokens": 2000
+        }
+        
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            result = data["choices"][0]["message"]["content"]
+            result = clean(result)
+            if result and result.lower() != text.lower():
+                return result
+        else:
+            print(f"Groq error: {resp.status_code} - {resp.text[:200]}")
+    except Exception as e:
+        print(f"Groq error: {e}")
+    return None
+
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google Translate free API - PRIMARY"""
+    """Google Translate free API - fallback"""
     try:
         lang_codes = {
             "english": "en", "french": "fr", "spanish": "es", "german": "de",
@@ -53,49 +105,8 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
         pass
     return None
 
-def gemini_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Gemini 3.6 Flash for African languages (Luganda, Alur, Ateso, Rukiga, etc.)"""
-    if not GEMINI_API_KEY:
-        return None
-    
-    try:
-        lang_names = {
-            "english": "English", "luganda": "Luganda", "swahili": "Swahili",
-            "french": "French", "spanish": "Spanish", "german": "German",
-            "acholi": "Acholi", "alur": "Alur", "ateso": "Ateso",
-            "rukiga": "Rukiga", "runyankole": "Runyankole",
-            "kinyarwanda": "Kinyarwanda", "kirundi": "Kirundi",
-            "amharic": "Amharic", "somali": "Somali", "oromo": "Oromo",
-            "yoruba": "Yoruba", "hausa": "Hausa", "igbo": "Igbo",
-            "zulu": "Zulu", "xhosa": "Xhosa", "shona": "Shona",
-            "chichewa": "Chichewa", "afrikaans": "Afrikaans",
-        }
-        target_name = lang_names.get(target_lang, target_lang.capitalize())
-        
-        prompt = f"Translate to {target_name}: {text}"
-        
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 500, "temperature": 0.2}
-        }
-        
-        resp = requests.post(url, json=payload, timeout=30)
-        
-        if resp.status_code == 200:
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                result = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                result = clean(result)
-                if result and result.lower() != text.lower():
-                    return result
-    except Exception as e:
-        print(f"Gemini error: {e}")
-    return None
-
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google first (fast), Gemini second (African languages)"""
+    """Google first (fastest for major languages), Groq second (African languages)"""
     if not text or not text.strip():
         return None
     
@@ -104,7 +115,22 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         if cache_key in _cache:
             return _cache[cache_key]
     
-    # 1. Google Translate (fast, major languages)
+    african_langs = {"luganda", "acholi", "alur", "ateso", "rukiga", "runyankole",
+                     "lusoga", "lugwere", "lango", "lugbara", "dholuo", "kikuyu",
+                     "kinyarwanda", "kirundi", "oromo", "tigrinya", "igbo", "bemba",
+                     "lingala", "kikongo", "shona", "chichewa"}
+    
+    # For African languages, use Groq (Google doesn't support them)
+    if source_lang in african_langs or target_lang in african_langs:
+        start = time.time()
+        result = groq_translate(text, target_lang, source_lang)
+        if result:
+            with _cache_lock:
+                _cache[cache_key] = result
+            print(f"⚡ Groq responded in {time.time()-start:.1f}s")
+            return result
+    
+    # Google first for major languages (fastest)
     start = time.time()
     result = google_translate(text, target_lang, source_lang)
     if result:
@@ -113,12 +139,13 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 2. Gemini (African languages)
-    result = gemini_translate(text, target_lang, source_lang)
+    # Groq as fallback
+    start = time.time()
+    result = groq_translate(text, target_lang, source_lang)
     if result:
         with _cache_lock:
             _cache[cache_key] = result
-        print(f"⚡ Gemini responded in {time.time()-start:.1f}s")
+        print(f"⚡ Groq responded in {time.time()-start:.1f}s")
         return result
     
     return None
