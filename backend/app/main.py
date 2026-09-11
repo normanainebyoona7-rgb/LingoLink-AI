@@ -3,11 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, SessionLocal
 import app.models as models
 from app.routers import translation, speech, tts, auth, video, admin, oauth
-from passlib.context import CryptContext
+import bcrypt
 
 models.Base.metadata.create_all(bind=engine)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def create_default_users():
     db = SessionLocal()
@@ -24,12 +26,16 @@ def create_default_users():
                 user = models.User(
                     username=u["username"],
                     email=f"{u['username']}@lingolink.ai",
-                    hashed_password=pwd_context.hash(u["password"]),
+                    hashed_password=hash_password(u["password"]),
                     is_admin=u["is_admin"],
                     is_premium=u["is_premium"],
                 )
                 db.add(user)
                 print(f"✅ Created user: {u['username']}")
+            else:
+                # Reset password to be sure
+                existing.hashed_password = hash_password(u["password"])
+                print(f"🔄 Reset password for: {u['username']}")
         db.commit()
     except Exception as e:
         print(f"User creation error: {e}")
