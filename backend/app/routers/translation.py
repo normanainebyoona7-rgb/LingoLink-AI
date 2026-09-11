@@ -4,15 +4,13 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 import requests
 import os
-import json
 import re
 from app.database import get_db
 from app.routers.auth import get_current_user
 import app.models as models
 import app.schemas as schemas
 from dotenv import load_dotenv
-from app.fast_translate import fast_translate
-from app.dictionary import lookup_word
+from app.fast_translate import fast_translate, google_translate
 
 load_dotenv()
 
@@ -97,69 +95,6 @@ def clean_translation(text: str) -> str:
     text = text.strip('"').strip("'").strip()
     return text
 
-def translate_with_gemini(text: str, source_lang: str, target_lang: str) -> Optional[str]:
-    return fast_translate(text, target_lang, source_lang)
-
-def translate_with_google_free(text: str, source_lang: str, target_lang: str) -> Optional[str]:
-    try:
-        src = CODES.get(source_lang, "en")
-        tgt = CODES.get(target_lang, "en")
-        
-        unsupported = {'lg', 'alz', 'teo', 'cgg', 'nyn', 'xog', 'gwr', 'laj', 'lgg', 'ach'}
-        if src in unsupported or tgt in unsupported:
-            return None
-        
-        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src}&tl={tgt}&dt=t&q={requests.utils.quote(text[:500])}"
-        resp = requests.get(url, timeout=10)
-        data = resp.json()
-        result = "".join([part[0] for part in data[0] if part[0]])
-        result = clean_translation(result)
-        if result and result != text:
-            return result
-    except:
-        pass
-    return None
-
-def translate_with_mymemory(text: str, source_lang: str, target_lang: str) -> Optional[str]:
-    try:
-        src = CODES.get(source_lang, "en")
-        tgt = CODES.get(target_lang, "en")
-        url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(text[:500])}&langpair={src}|{tgt}"
-        resp = requests.get(url, timeout=10)
-        data = resp.json()
-        translated = data["responseData"]["translatedText"]
-        translated = clean_translation(translated)
-        if translated and translated != text and "INVALID" not in translated.upper():
-            return translated
-    except:
-        pass
-    return None
-
-def translate_text_smart(text: str, source_lang: str, target_lang: str) -> Dict[str, Any]:
-    result = None
-    provider = None
-    
-    if GEMINI_API_KEY:
-        result = translate_with_gemini(text, source_lang, target_lang)
-        if result:
-            provider = "gemini"
-    
-    if result is None:
-        result = translate_with_google_free(text, source_lang, target_lang)
-        if result:
-            provider = "google"
-    
-    if result is None:
-        result = translate_with_mymemory(text, source_lang, target_lang)
-        if result:
-            provider = "mymemory"
-    
-    return {
-        "text": clean_translation(result) if result else text,
-        "provider": provider if provider else "none",
-        "success": result is not None
-    }
-
 @router.get("/languages")
 async def get_languages():
     return {"languages": LANGUAGES}
@@ -188,10 +123,22 @@ async def detect_language_endpoint(text: str):
     
     return {"detected_language": "english", "confidence": 0.3}
 
-@router.get("/dictionary")
-async def get_dictionary(word: str, source_lang: str, target_lang: str):
-    """Look up word in dictionary"""
-    return lookup_word(word, source_lang, target_lang)
+@router.post("/quick")
+async def quick_translate(
+    request: schemas.TranslationRequest,
+    current_user: models.User = Depends(get_current_user)
+):
+    """Fast translation for live typing - Google only, no DB save"""
+    source_lang = normalize_language(request.source_language)
+    target_lang = normalize_language(request.target_language)
+    result = google_translate(request.text, target_lang, source_lang)
+    return {
+        "translated_text": result or request.text,
+        "source_language": source_lang,
+        "target_language": target_lang,
+        "provider": "google",
+        "success": result is not None
+    }
 
 @router.post("/text")
 async def translate_text(
@@ -225,12 +172,15 @@ async def translate_text(
                 "success": True
             }
         
-        translation_result = translate_text_smart(request.text, source_lang, target_lang)
+        result = fast_translate(request.text, target_lang, source_lang)
+        
+        if not result:
+            result = request.text
         
         db_translation = models.Translation(
             user_id=current_user.id,
             source_text=request.text,
-            translated_text=translation_result["text"],
+            translated_text=result,
             source_language=source_lang,
             target_language=target_lang,
             translation_type="text"
@@ -239,11 +189,11 @@ async def translate_text(
         db.commit()
         
         return {
-            "translated_text": translation_result["text"],
+            "translated_text": result,
             "source_language": source_lang,
             "target_language": target_lang,
-            "provider": translation_result["provider"],
-            "success": translation_result["success"]
+            "provider": "multi",
+            "success": result != request.text
         }
     except HTTPException:
         raise
@@ -282,8 +232,8 @@ async def delete_translation(translation_id: int, db: Session = Depends(get_db),
 async def get_providers():
     return {
         "providers": {
-            "gemini": bool(GEMINI_API_KEY),
+            "sunbird": bool(os.getenv("SUNBIRD_API_KEY", "")),
+            "groq": bool(os.getenv("GROQ_API_KEY", "")),
             "google": True,
-            "mymemory": True,
         }
     }

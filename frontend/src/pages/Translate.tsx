@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../config';
 import SearchableDropdown, { LANGUAGES } from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
@@ -12,12 +12,15 @@ export default function Translate({ token }: Props) {
   const [targetLanguage, setTargetLanguage] = useState('english');
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
+  const [liveText, setLiveText] = useState('');
   const [detectedLanguage, setDetectedLanguage] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState('');
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const liveDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const fullDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentRequestRef = useRef<number>(0);
 
   const detectLanguage = async (text: string) => {
     if (!text.trim()) return;
@@ -33,7 +36,12 @@ export default function Translate({ token }: Props) {
   };
 
   const translate = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      setTranslatedText('');
+      setLiveText('');
+      return;
+    }
+    const requestId = ++currentRequestRef.current;
     setIsTranslating(true);
     setError('');
     try {
@@ -49,26 +57,75 @@ export default function Translate({ token }: Props) {
           target_language: targetLanguage,
         }),
       });
+      if (requestId !== currentRequestRef.current) return;
       if (res.ok) {
         const data = await res.json();
         setTranslatedText(data.translated_text);
+        setLiveText('');
       } else {
         setError('Translation failed. Check backend.');
       }
     } catch {
       setError('Connection error. Is backend running?');
     } finally {
-      setIsTranslating(false);
+      if (requestId === currentRequestRef.current) {
+        setIsTranslating(false);
+      }
     }
+  };
+
+  const liveTranslate = async (text: string) => {
+    if (!text.trim()) {
+      setLiveText('');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/translate/text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text,
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLiveText(data.translated_text);
+      }
+    } catch {}
   };
 
   const handleTextChange = (text: string) => {
     setInputText(text);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
+
+    if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current);
+    liveDebounceRef.current = setTimeout(() => {
+      liveTranslate(text);
+    }, 250);
+
+    if (fullDebounceRef.current) clearTimeout(fullDebounceRef.current);
+    fullDebounceRef.current = setTimeout(() => {
       if (sourceLanguage === 'auto') detectLanguage(text);
       translate(text);
-    }, 700);
+    }, 800);
+  };
+
+  const handleSend = () => {
+    if (!inputText.trim()) return;
+    if (sourceLanguage === 'auto') detectLanguage(inputText);
+    translate(inputText);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl/Cmd + Enter to send
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const speakTranslation = async () => {
@@ -89,9 +146,21 @@ export default function Translate({ token }: Props) {
           audioRef.current = new Audio(url);
           audioRef.current.play();
         }
+      } else {
+        setError('Audio generation failed.');
       }
-    } catch {}
+    } catch {
+      setError('Audio playback error.');
+    }
     setIsSpeaking(false);
+  };
+
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsSpeaking(false);
+    }
   };
 
   const swapLanguages = () => {
@@ -102,23 +171,43 @@ export default function Translate({ token }: Props) {
       const textTemp = inputText;
       setInputText(translatedText);
       setTranslatedText(textTemp);
+      setLiveText('');
     }
   };
 
+  const clearAll = () => {
+    setTranslatedText('');
+    setInputText('');
+    setLiveText('');
+    setDetectedLanguage('');
+    setError('');
+  };
+
+  useEffect(() => {
+    return () => {
+      if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current);
+      if (fullDebounceRef.current) clearTimeout(fullDebounceRef.current);
+      if (audioRef.current) audioRef.current.pause();
+    };
+  }, []);
+
+  const displayText = isTranslating && liveText ? liveText : translatedText;
+
   return (
     <div className="translate-page">
+      {/* Language selector row */}
       <div className="lang-row fade-in-up">
         <SearchableDropdown
           value={sourceLanguage}
           onChange={setSourceLanguage}
-          placeholder="source language"
+          placeholder="Source language"
           includeAutoDetect
         />
         <button className="swap-btn" onClick={swapLanguages} title="Swap languages">⇄</button>
         <SearchableDropdown
           value={targetLanguage}
           onChange={setTargetLanguage}
-          placeholder="target language"
+          placeholder="Target language"
         />
       </div>
 
@@ -128,39 +217,84 @@ export default function Translate({ token }: Props) {
         </div>
       )}
 
+      {/* Input panel */}
       <div className="text-panels">
-        <textarea
-          placeholder="Type or paste text here... (auto-translates)"
-          value={inputText}
-          onChange={(e) => handleTextChange(e.target.value)}
-        />
+        <div className="input-panel">
+          <div className="panel-header">
+            <span className="panel-label">INPUT</span>
+            <span className="char-count">{inputText.length}</span>
+          </div>
+          <textarea
+            placeholder="Type or paste text here... (translates as you type)"
+            value={inputText}
+            onChange={(e) => handleTextChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <div className="input-actions">
+            <button
+              className="send-btn"
+              onClick={handleSend}
+              disabled={!inputText.trim() || isTranslating}
+            >
+              {isTranslating ? '⏳ Translating...' : '➤ Send'}
+            </button>
+            {inputText && (
+              <button className="clear-btn" onClick={clearAll}>🗑️ Clear</button>
+            )}
+          </div>
+        </div>
+
+        {/* Output panel */}
         <div className="output-panel fade-in-up">
-          {isTranslating ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p className="loading-text">Translating...</p>
-            </div>
-          ) : translatedText ? (
-            translatedText
-          ) : (
-            'Translation appears here...'
-          )}
+          <div className="panel-header">
+            <span className="panel-label">TRANSLATION</span>
+            {isTranslating && liveText && (
+              <span className="live-indicator">⚡ live</span>
+            )}
+          </div>
+          <div className="output-content">
+            {isTranslating && !liveText ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p className="loading-text">Translating...</p>
+              </div>
+            ) : displayText ? (
+              <span>{displayText}</span>
+            ) : (
+              <span className="placeholder-text">Translation appears here...</span>
+            )}
+          </div>
           {translatedText && !isTranslating && (
             <div className="output-actions">
-              <button onClick={speakTranslation} disabled={isSpeaking}>
+              <button onClick={speakTranslation} disabled={isSpeaking} title="Speak">
                 {isSpeaking ? '🔊...' : '🔊'}
               </button>
-              <button onClick={() => navigator.clipboard.writeText(translatedText)}>📋</button>
-              <button onClick={() => { setTranslatedText(''); setInputText(''); }}>🗑️</button>
+              {isSpeaking && (
+                <button onClick={stopSpeaking} title="Stop">⏹️</button>
+              )}
+              <button
+                onClick={() => navigator.clipboard.writeText(translatedText)}
+                title="Copy"
+              >
+                📋
+              </button>
+              <button onClick={clearAll} title="Clear">🗑️</button>
             </div>
           )}
         </div>
       </div>
 
-      {error && <p className="error-text">{error}</p>}
+      {error && <p className="error-text">❌ {error}</p>}
 
       <div className="mic-section">
-        <HoldToSpeak token={token} onTranscribed={(text) => { setInputText(text); translate(text); }} />
+        <HoldToSpeak
+          token={token}
+          onTranscribed={(text) => {
+            setInputText(text);
+            if (sourceLanguage === 'auto') detectLanguage(text);
+            translate(text);
+          }}
+        />
       </div>
     </div>
   );
