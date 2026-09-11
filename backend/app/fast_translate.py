@@ -15,12 +15,17 @@ SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
 
+# Languages Sunbird Sunflower supports well
+SUNBIRD_LANGS = {
+    "luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara",
+    "lusoga", "rutooro", "lumasaba"
+}
+
+# Languages with poor translation quality across all engines
+POOR_SUPPORT_LANGS = {"alur", "lango", "lugwere", "dholuo", "kikuyu"}
+
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
-
-def is_too_short(text: str) -> bool:
-    """Sunflower handles short phrases, so only skip if extremely short"""
-    return len(text.strip()) < 3
 
 def is_bad_translation(original: str, result: str) -> bool:
     """Detect hallucinations, repetition loops, and untranslated output"""
@@ -41,37 +46,31 @@ def is_bad_translation(original: str, result: str) -> bool:
     return False
 
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Sunbird AI Sunflower - BEST for Ugandan languages"""
+    """Sunbird AI Sunflower - for Ugandan languages"""
     if not SUNBIRD_API_KEY:
         return None
     
-    if is_too_short(text):
-        return None
-    
     try:
-        sunbird_lang_names = {
-            "luganda": "Luganda", "acholi": "Acholi", "ateso": "Ateso",
-            "runyankole": "Runyankole", "rukiga": "Rukiga", "lugbara": "Lugbara",
-            "lusoga": "Lusoga", "rutooro": "Rutooro", "lumasaba": "Lumasaba",
-            "swahili": "Swahili", "kinyarwanda": "Kinyarwanda",
-            "english": "English",
+        sunbird_codes = {
+            "luganda": ("Luganda", "lug"),
+            "acholi": ("Acholi", "ach"),
+            "ateso": ("Ateso", "teo"),
+            "runyankole": ("Runyankole", "nyn"),
+            "rukiga": ("Rukiga", "cgg"),
+            "lugbara": ("Lugbara", "lgg"),
+            "lusoga": ("Lusoga", "xog"),
+            "rutooro": ("Rutooro", "ttj"),
+            "lumasaba": ("Lumasaba", "myx"),
+            "swahili": ("Swahili", "swa"),
+            "kinyarwanda": ("Kinyarwanda", "kin"),
         }
         
-        target_name = sunbird_lang_names.get(target_lang)
-        if not target_name:
+        if target_lang not in sunbird_codes:
             return None
         
-        # Map to Sunbird's internal language codes
-        sunbird_codes = {
-            "luganda": "lug", "acholi": "ach", "ateso": "teo",
-            "runyankole": "nyn", "rukiga": "cgg", "lugbara": "lgg",
-            "lusoga": "xog", "rutooro": "ttj", "lumasaba": "myx",
-            "swahili": "swa", "kinyarwanda": "kin",
-        }
+        target_name, code = sunbird_codes[target_lang]
         
-        code = sunbird_codes.get(target_lang, "lug")
-        
-        prompt = f"Translate the following English text to {target_name}. Return ONLY the {target_name} translation, no explanation, no notes:\n\n{text}"
+        prompt = f"Translate the following English text to {target_name}. Return ONLY the {target_name} translation, no explanation:\n\n{text}"
         
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {
@@ -79,9 +78,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
             "Content-Type": "application/json"
         }
         payload = {
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "target_language": code,
             "temperature": 0.1
         }
@@ -136,7 +133,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         payload = {
             "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": f"You are a native {target_name} translator. Translate the user's text to {target_name}. Output ONLY the translation. No explanations, no notes, no original text, no greetings."},
+                {"role": "system", "content": f"You are a native {target_name} translator. Translate the user's text to {target_name}. Output ONLY the translation. No explanations, no notes, no original text."},
                 {"role": "user", "content": text}
             ],
             "temperature": 0.1,
@@ -192,7 +189,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Priority: Sunbird (Ugandan) → Google (major) → Groq (fallback)"""
+    """Priority: Sunbird (Ugandan) → Google (major) → Groq (fallback) → error message"""
     if not text or not text.strip():
         return None
     
@@ -201,10 +198,15 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         if cache_key in _cache:
             return _cache[cache_key]
     
-    sunbird_langs = {"luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara", "lusoga", "rutooro", "lumasaba"}
+    # Languages with no reliable translation engine
+    if target_lang in POOR_SUPPORT_LANGS:
+        msg = f"[{target_lang.capitalize()} translation not yet supported. Original: {text}]"
+        with _cache_lock:
+            _cache[cache_key] = msg
+        return msg
     
     # 1. Sunbird Sunflower for Ugandan languages
-    if source_lang in sunbird_langs or target_lang in sunbird_langs:
+    if source_lang in SUNBIRD_LANGS or target_lang in SUNBIRD_LANGS:
         start = time.time()
         result = sunbird_translate(text, target_lang, source_lang)
         if result:
