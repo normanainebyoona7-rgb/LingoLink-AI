@@ -16,8 +16,8 @@ router = APIRouter(prefix="/speech", tags=["speech"])
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-def transcribe_with_groq(audio_path: str) -> dict:
-    """Use Groq Whisper API - fast and works on Render free tier"""
+def transcribe_with_groq(audio_path: str, language: str = None) -> dict:
+    """Use Groq Whisper Large v3 Turbo - fastest, works on Render"""
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not set")
     
@@ -27,7 +27,12 @@ def transcribe_with_groq(audio_path: str) -> dict:
         
         with open(audio_path, "rb") as f:
             files = {"file": (os.path.basename(audio_path), f, "audio/webm")}
-            data = {"model": "whisper-large-v3", "response_format": "json"}
+            data = {
+                "model": "whisper-large-v3-turbo",
+                "response_format": "json"
+            }
+            if language and language != "auto":
+                data["language"] = language
             
             resp = requests.post(url, headers=headers, files=files, data=data, timeout=60)
         
@@ -84,7 +89,7 @@ async def translate_voice(
             tmp.write(content)
             tmp_path = tmp.name
         
-        result = transcribe_with_groq(tmp_path)
+        result = transcribe_with_groq(tmp_path, source_language)
         os.unlink(tmp_path)
         
         full_text = result["text"]
@@ -130,7 +135,7 @@ async def voice_to_voice(
             tmp.write(content)
             tmp_path = tmp.name
         
-        result = transcribe_with_groq(tmp_path)
+        result = transcribe_with_groq(tmp_path, source_language)
         os.unlink(tmp_path)
         
         full_text = result["text"]
