@@ -15,7 +15,6 @@ load_dotenv()
 router = APIRouter(prefix="/tts", tags=["tts"])
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 
 _audio_cache = {}
 CACHE_LIMIT = 500
@@ -29,7 +28,7 @@ def set_cache(key, value):
     _audio_cache[key] = value
 
 def google_tts(text: str, language: str) -> Optional[bytes]:
-    """Google Translate TTS - free, no library, works everywhere"""
+    """Google Translate TTS - free, works on Render"""
     try:
         lang_codes = {
             "english": "en", "french": "fr", "spanish": "es", "german": "de",
@@ -44,20 +43,20 @@ def google_tts(text: str, language: str) -> Optional[bytes]:
         
         lang_code = lang_codes.get(language, "en")
         
-        # Google Translate TTS endpoint (200 char limit)
+        # Split text into 200-char chunks
         chunks = [text[i:i+200] for i in range(0, len(text), 200)]
         audio_parts = []
         
         for chunk in chunks:
             url = f"https://translate.google.com/translate_tts?ie=UTF-8&q={requests.utils.quote(chunk)}&tl={lang_code}&client=tw-ob"
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
             resp = requests.get(url, headers=headers, timeout=15)
-            if resp.status_code == 200:
+            if resp.status_code == 200 and len(resp.content) > 100:
                 audio_parts.append(resp.content)
             else:
-                print(f"Google TTS error: {resp.status_code}")
+                print(f"Google TTS chunk failed: {resp.status_code}")
                 return None
         
         if audio_parts:
@@ -67,21 +66,11 @@ def google_tts(text: str, language: str) -> Optional[bytes]:
     return None
 
 def groq_tts(text: str, language: str) -> Optional[bytes]:
-    """Groq PlayAI TTS - high quality multilingual"""
+    """Groq PlayAI TTS"""
     if not GROQ_API_KEY:
         return None
     
     try:
-        # Groq TTS voices
-        voices = {
-            "english": "Arista-PlayAI",
-            "french": "Amelie-PlayAI",
-            "spanish": "Diego-PlayAI",
-            "german": "Katja-PlayAI",
-            "default": "Arista-PlayAI",
-        }
-        voice = voices.get(language, voices["default"])
-        
         url = "https://api.groq.com/openai/v1/audio/speech"
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -90,7 +79,7 @@ def groq_tts(text: str, language: str) -> Optional[bytes]:
         payload = {
             "model": "playai-tts",
             "input": text[:4000],
-            "voice": voice,
+            "voice": "Arista-PlayAI",
             "response_format": "mp3"
         }
         
@@ -105,7 +94,7 @@ def groq_tts(text: str, language: str) -> Optional[bytes]:
     return None
 
 def gtts_fallback(text: str, language: str) -> Optional[bytes]:
-    """gTTS library as last resort"""
+    """gTTS library fallback"""
     try:
         from gtts import gTTS
         lang_codes = {
@@ -146,16 +135,16 @@ async def speak_text(
             headers={"Content-Disposition": "inline; filename=speech.mp3"}
         )
     
-    # Try Groq PlayAI first (best quality)
-    audio = groq_tts(text, language)
-    provider = "groq"
+    # Try Google first (fast, works for most languages)
+    audio = google_tts(text, language)
+    provider = "google"
     
-    # Try Google Translate TTS (fast, free, broad support)
+    # Try Groq second
     if not audio:
-        audio = google_tts(text, language)
-        provider = "google"
+        audio = groq_tts(text, language)
+        provider = "groq"
     
-    # Try gTTS library as final fallback
+    # Try gTTS last
     if not audio:
         audio = gtts_fallback(text, language)
         provider = "gtts"
@@ -179,9 +168,9 @@ async def speak_text(
 async def get_voices():
     return {
         "providers": {
-            "groq_playai": "High quality multilingual",
             "google_tts": "Fast, broad language support",
+            "groq_playai": "High quality multilingual",
             "gtts": "Library fallback"
         },
-        "languages_supported": "60+ languages including Luganda, Swahili, Acholi"
+        "languages_supported": "60+ languages"
     }
