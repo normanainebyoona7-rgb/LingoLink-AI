@@ -1,4 +1,4 @@
-"""Ultra-fast translation with smart fallbacks for accuracy"""
+"""Ultra-fast translation with Sunbird Sunflower (Ugandan) + Groq + Google"""
 import requests
 import re
 import threading
@@ -18,81 +18,87 @@ _cache_lock = threading.Lock()
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
 
-def is_short_phrase(text: str) -> bool:
-    """Check if text is too short for NLLB-based models"""
-    return len(text.split()) < 3 or len(text) < 15
+def is_too_short(text: str) -> bool:
+    """Sunflower handles short phrases, so only skip if extremely short"""
+    return len(text.strip()) < 3
 
 def is_bad_translation(original: str, result: str) -> bool:
     """Detect hallucinations, repetition loops, and untranslated output"""
     if not result or len(result.strip()) < 1:
         return True
     
-    # If output contains the original English unchanged
     if original.lower().strip() in result.lower():
         return True
     
-    # If same word repeats more than 2 times (NLLB loop bug)
     words = result.lower().split()
     for w in set(words):
         if len(w) > 2 and words.count(w) > 2:
             return True
     
-    # If output is suspiciously similar to input
     if result.lower().strip() == original.lower().strip():
         return True
     
     return False
 
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Sunbird AI - for Ugandan languages (skip on short phrases)"""
+    """Sunbird AI Sunflower - BEST for Ugandan languages"""
     if not SUNBIRD_API_KEY:
         return None
     
-    # Skip Sunbird for short phrases - it hallucinates
-    if is_short_phrase(text):
-        print("⚠️ Short phrase, skipping Sunbird (hallucination risk)")
+    if is_too_short(text):
         return None
     
     try:
-        sunbird_codes = {
-            "english": "eng", "luganda": "lug", "acholi": "ach",
-            "ateso": "teo", "runyankole": "nyn", "rukiga": "nyn",
-            "lugbara": "lgg", "swahili": "swa", "lusoga": "xog",
-            "rutooro": "ttj", "kinyarwanda": "kin", "lumasaba": "myx",
+        sunbird_lang_names = {
+            "luganda": "Luganda", "acholi": "Acholi", "ateso": "Ateso",
+            "runyankole": "Runyankole", "rukiga": "Rukiga", "lugbara": "Lugbara",
+            "lusoga": "Lusoga", "rutooro": "Rutooro", "lumasaba": "Lumasaba",
+            "swahili": "Swahili", "kinyarwanda": "Kinyarwanda",
+            "english": "English",
         }
         
-        src = sunbird_codes.get(source_lang, "eng")
-        tgt = sunbird_codes.get(target_lang)
-        
-        if not tgt:
+        target_name = sunbird_lang_names.get(target_lang)
+        if not target_name:
             return None
         
-        url = "https://api.sunbird.ai/tasks/nllb_translate"
+        # Map to Sunbird's internal language codes
+        sunbird_codes = {
+            "luganda": "lug", "acholi": "ach", "ateso": "teo",
+            "runyankole": "nyn", "rukiga": "cgg", "lugbara": "lgg",
+            "lusoga": "xog", "rutooro": "ttj", "lumasaba": "myx",
+            "swahili": "swa", "kinyarwanda": "kin",
+        }
+        
+        code = sunbird_codes.get(target_lang, "lug")
+        
+        prompt = f"Translate the following English text to {target_name}. Return ONLY the {target_name} translation, no explanation, no notes:\n\n{text}"
+        
+        url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {
             "Authorization": f"Bearer {SUNBIRD_API_KEY}",
             "Content-Type": "application/json"
         }
         payload = {
-            "source_language": src,
-            "target_language": tgt,
-            "text": text
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "target_language": code,
+            "temperature": 0.1
         }
         
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
         
         if resp.status_code == 200:
             data = resp.json()
-            if data.get("status") == "success":
-                result = data.get("output", {}).get("translated_text", "")
-                result = clean(result)
-                
-                # Validate output
-                if is_bad_translation(text, result):
-                    print(f"⚠️ Sunbird returned bad output: {result}")
-                    return None
-                
-                if result:
-                    return result
+            result = data.get("content", "")
+            result = clean(result)
+            
+            if is_bad_translation(text, result):
+                print(f"⚠️ Sunbird returned bad output: {result}")
+                return None
+            
+            if result:
+                return result
         else:
             print(f"Sunbird error: {resp.status_code} - {resp.text[:200]}")
     except Exception as e:
@@ -100,7 +106,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
     return None
 
 def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Groq - fast LLM translation for all languages"""
+    """Groq - fast LLM translation fallback"""
     if not GROQ_API_KEY:
         return None
     
@@ -150,7 +156,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google Translate free API - fallback for major languages"""
+    """Google Translate free API - for major languages"""
     try:
         lang_codes = {
             "english": "en", "french": "fr", "spanish": "es", "german": "de",
@@ -186,7 +192,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Priority: Short→Groq, Ugandan→Sunbird, Major→Google, Fallback→Groq"""
+    """Priority: Sunbird (Ugandan) → Google (major) → Groq (fallback)"""
     if not text or not text.strip():
         return None
     
@@ -197,17 +203,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     
     sunbird_langs = {"luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara", "lusoga", "rutooro", "lumasaba"}
     
-    # 1. Short phrases → Groq (Sunbird/NLLB hallucinates)
-    if is_short_phrase(text) and (source_lang in sunbird_langs or target_lang in sunbird_langs):
-        start = time.time()
-        result = groq_translate(text, target_lang, source_lang)
-        if result:
-            with _cache_lock:
-                _cache[cache_key] = result
-            print(f"⚡ Groq (short phrase) responded in {time.time()-start:.1f}s")
-            return result
-    
-    # 2. Sunbird AI for Ugandan languages (long phrases)
+    # 1. Sunbird Sunflower for Ugandan languages
     if source_lang in sunbird_langs or target_lang in sunbird_langs:
         start = time.time()
         result = sunbird_translate(text, target_lang, source_lang)
@@ -225,7 +221,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             print(f"⚡ Groq (Sunbird fallback) responded in {time.time()-start:.1f}s")
             return result
     
-    # 3. Google for major languages
+    # 2. Google for major languages
     start = time.time()
     result = google_translate(text, target_lang, source_lang)
     if result:
@@ -234,7 +230,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 4. Groq final fallback
+    # 3. Groq final fallback
     start = time.time()
     result = groq_translate(text, target_lang, source_lang)
     if result:
