@@ -35,7 +35,7 @@ export default function Translate({ token }: Props) {
     } catch {}
   };
 
-  const translate = async (text: string) => {
+  const translate = async (text: string, sourceOverride?: string) => {
     if (!text.trim()) {
       setTranslatedText('');
       setLiveText('');
@@ -53,7 +53,7 @@ export default function Translate({ token }: Props) {
         },
         body: JSON.stringify({
           text,
-          source_language: sourceLanguage,
+          source_language: sourceOverride || sourceLanguage,
           target_language: targetLanguage,
         }),
       });
@@ -80,7 +80,7 @@ export default function Translate({ token }: Props) {
       return;
     }
     try {
-      const res = await fetch(`${API_URL}/translate/text`, {
+      const res = await fetch(`${API_URL}/translate/quick`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -121,11 +121,30 @@ export default function Translate({ token }: Props) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Ctrl/Cmd + Enter to send
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleVoiceTranscribed = async (text: string) => {
+    setInputText(text);
+    // Detect language if source is auto, then translate with detected language
+    let detected = sourceLanguage;
+    if (sourceLanguage === 'auto') {
+      try {
+        const res = await fetch(`${API_URL}/translate/detect?text=${encodeURIComponent(text)}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          detected = data.detected_language;
+          setDetectedLanguage(detected);
+        }
+      } catch {}
+    }
+    // Force translation with correct source
+    translate(text, detected);
   };
 
   const speakTranslation = async () => {
@@ -195,7 +214,6 @@ export default function Translate({ token }: Props) {
 
   return (
     <div className="translate-page">
-      {/* Language selector row */}
       <div className="lang-row fade-in-up">
         <SearchableDropdown
           value={sourceLanguage}
@@ -217,7 +235,6 @@ export default function Translate({ token }: Props) {
         </div>
       )}
 
-      {/* Input panel */}
       <div className="text-panels">
         <div className="input-panel">
           <div className="panel-header">
@@ -244,7 +261,6 @@ export default function Translate({ token }: Props) {
           </div>
         </div>
 
-        {/* Output panel */}
         <div className="output-panel fade-in-up">
           <div className="panel-header">
             <span className="panel-label">TRANSLATION</span>
@@ -289,11 +305,7 @@ export default function Translate({ token }: Props) {
       <div className="mic-section">
         <HoldToSpeak
           token={token}
-          onTranscribed={(text) => {
-            setInputText(text);
-            if (sourceLanguage === 'auto') detectLanguage(text);
-            translate(text);
-          }}
+          onTranscribed={handleVoiceTranscribed}
         />
       </div>
     </div>
