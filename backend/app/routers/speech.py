@@ -7,66 +7,38 @@ import base64
 from app.database import get_db
 from app.routers.auth import get_current_user
 import app.models as models
-import langid
-from gtts import gTTS
+from app.fast_translate import fast_translate
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 
-model = None
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-def get_model():
-    global model
-    if model is None:
-        print("Loading faster-whisper small model...")
-        from faster_whisper import WhisperModel
-        model = WhisperModel("small", device="cpu", compute_type="int8")
-        print("Model loaded!")
-    return model
-
-def fast_translate(text, source_lang, target_lang):
-    url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={source_lang}&tl={target_lang}&dt=t&q={text[:500]}"
-    resp = requests.get(url, timeout=5)
-    data = resp.json()
-    return "".join([part[0] for part in data[0] if part[0]])
-
-def transcribe_audio_file(audio_path):
-    """Transcribe using faster-whisper with fallback to Google"""
+def transcribe_with_groq(audio_path: str) -> dict:
+    """Use Groq Whisper API - fast and works on Render free tier"""
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not set")
+    
     try:
-        whisper_model = get_model()
-        segments, info = whisper_model.transcribe(
-            audio_path,
-            beam_size=1,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500)
-        )
+        url = "https://api.groq.com/openai/v1/audio/transcriptions"
+        headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
         
-        text_parts = [s.text.strip() for s in segments]
-        full_text = " ".join(text_parts)
+        with open(audio_path, "rb") as f:
+            files = {"file": (os.path.basename(audio_path), f, "audio/webm")}
+            data = {"model": "whisper-large-v3", "response_format": "json"}
+            
+            resp = requests.post(url, headers=headers, files=files, data=data, timeout=60)
         
-        detected_lang = info.language
-        try:
-            if full_text.strip():
-                detected_lang = langid.classify(full_text)[0]
-        except:
-            pass
-        
-        return {"text": full_text, "language": detected_lang}
-    except Exception as e:
-        # Fallback to Google Speech Recognition
-        try:
-            import speech_recognition as sr
-            recognizer = sr.Recognizer()
-            with sr.AudioFile(audio_path) as source:
-                audio = recognizer.record(source)
-            text = recognizer.recognize_google(audio)
-            detected_lang = "en"
-            try:
-                detected_lang = langid.classify(text)[0]
-            except:
-                pass
-            return {"text": text, "language": detected_lang}
-        except:
-            raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+        if resp.status_code == 200:
+            result = resp.json()
+            return {"text": result.get("text", "").strip(), "language": "auto"}
+        else:
+            print(f"❌ Groq Whisper error: {resp.status_code} - {resp.text[:300]}")
+            raise HTTPException(status_code=500, detail=f"Groq Whisper failed: {resp.status_code}")
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=500, detail="Groq Whisper timed out")
 
 @router.post("/transcribe")
 async def transcribe_audio(
@@ -75,19 +47,26 @@ async def transcribe_audio(
     current_user: models.User = Depends(get_current_user)
 ):
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
-
-        result = transcribe_audio_file(tmp_path)
+        
+        print(f"🎤 Transcribing {len(content)} bytes...")
+        result = transcribe_with_groq(tmp_path)
         os.unlink(tmp_path)
-
+        
+        print(f"✅ Transcribed: {result['text'][:100]}")
+        
         return {
             "text": result["text"],
             "language": result["language"]
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"❌ Transcription error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/translate-voice")
@@ -99,42 +78,40 @@ async def translate_voice(
     current_user: models.User = Depends(get_current_user)
 ):
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
-
-        result = transcribe_audio_file(tmp_path)
+        
+        result = transcribe_with_groq(tmp_path)
         os.unlink(tmp_path)
-
+        
         full_text = result["text"]
-        detected_lang = result["language"]
-
-        if source_language != "auto":
-            detected_lang = source_language
-
+        translated = ""
+        
         if full_text.strip():
-            translated = fast_translate(full_text, detected_lang, target_language)
-        else:
-            translated = ""
-
+            translated = fast_translate(full_text, target_language, source_language) or full_text
+        
         db_translation = models.Translation(
             user_id=current_user.id,
             source_text=full_text,
             translated_text=translated,
-            source_language=detected_lang,
+            source_language=source_language,
             target_language=target_language,
             translation_type="voice"
         )
         db.add(db_translation)
         db.commit()
-
+        
         return {
             "original_text": full_text,
             "translated_text": translated,
-            "source_language": detected_lang,
+            "source_language": source_language,
             "target_language": target_language
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -147,50 +124,39 @@ async def voice_to_voice(
     current_user: models.User = Depends(get_current_user)
 ):
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
-
-        result = transcribe_audio_file(tmp_path)
+        
+        result = transcribe_with_groq(tmp_path)
         os.unlink(tmp_path)
-
+        
         full_text = result["text"]
-        detected_lang = result["language"]
-
-        if source_language != "auto":
-            detected_lang = source_language
-
+        translated = ""
+        
         if full_text.strip():
-            translated = fast_translate(full_text, detected_lang, target_language)
-        else:
-            translated = ""
-
-        tts = gTTS(text=translated, lang=target_language, slow=False)
-        output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3").name
-        tts.save(output_path)
-
+            translated = fast_translate(full_text, target_language, source_language) or full_text
+        
         db_translation = models.Translation(
             user_id=current_user.id,
             source_text=full_text,
             translated_text=translated,
-            source_language=detected_lang,
+            source_language=source_language,
             target_language=target_language,
             translation_type="voice"
         )
         db.add(db_translation)
         db.commit()
-
-        with open(output_path, "rb") as f:
-            audio_base64 = base64.b64encode(f.read()).decode("utf-8")
-        os.unlink(output_path)
-
+        
         return {
             "original_text": full_text,
             "translated_text": translated,
-            "source_language": detected_lang,
-            "target_language": target_language,
-            "audio_base64": audio_base64
+            "source_language": source_language,
+            "target_language": target_language
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
