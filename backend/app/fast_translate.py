@@ -1,4 +1,4 @@
-"""Ultra-fast translation: Sunbird + NLLB (CTranslate2) + Groq + Google"""
+"""Ultra-fast translation with Sunbird Sunflower (Ugandan) + Groq + Google"""
 import requests
 import re
 import threading
@@ -15,33 +15,34 @@ SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
 
+# Languages Sunbird Sunflower supports well
 SUNBIRD_LANGS = {
     "luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara",
     "lusoga", "rutooro", "lumasaba"
 }
 
-# Languages NLLB supports well (fallback when Sunbird is unavailable)
-NLLB_LANGS = {
-    "luganda", "acholi", "alur", "ateso", "runyankole", "rukiga",
-    "lugbara", "lango", "lusoga", "lugwere", "kinyarwanda", "kirundi",
-    "swahili", "amharic", "somali", "oromo", "tigrinya", "yoruba",
-    "hausa", "igbo", "zulu", "xhosa", "shona", "chichewa",
-}
+# Languages with poor translation quality across all engines
+POOR_SUPPORT_LANGS = {"alur", "lango", "lugwere", "dholuo", "kikuyu"}
 
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
 
 def is_bad_translation(original: str, result: str) -> bool:
+    """Detect hallucinations, repetition loops, and untranslated output"""
     if not result or len(result.strip()) < 1:
         return True
+    
     if original.lower().strip() in result.lower():
         return True
+    
     words = result.lower().split()
     for w in set(words):
         if len(w) > 2 and words.count(w) > 2:
             return True
+    
     if result.lower().strip() == original.lower().strip():
         return True
+    
     return False
 
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
@@ -60,6 +61,8 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
             "lusoga": ("Lusoga", "xog"),
             "rutooro": ("Rutooro", "ttj"),
             "lumasaba": ("Lumasaba", "myx"),
+            "swahili": ("Swahili", "swa"),
+            "kinyarwanda": ("Kinyarwanda", "kin"),
         }
         
         if target_lang not in sunbird_codes:
@@ -67,7 +70,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         
         target_name, code = sunbird_codes[target_lang]
         
-        prompt = f"Translate the following text to {target_name}. Return ONLY the {target_name} translation:\n\n{text}"
+        prompt = f"Translate the following English text to {target_name}. Return ONLY the {target_name} translation, no explanation:\n\n{text}"
         
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {
@@ -84,76 +87,19 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         
         if resp.status_code == 200:
             data = resp.json()
-            result = clean(data.get("content", ""))
-            if result and not is_bad_translation(text, result):
+            result = data.get("content", "")
+            result = clean(result)
+            
+            if is_bad_translation(text, result):
+                print(f"⚠️ Sunbird returned bad output: {result}")
+                return None
+            
+            if result:
                 return result
+        else:
+            print(f"Sunbird error: {resp.status_code} - {resp.text[:200]}")
     except Exception as e:
         print(f"Sunbird error: {e}")
-    return None
-
-def nllb_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """NLLB-200 via CTranslate2 - optimized inference for African languages"""
-    try:
-        import ctranslate2
-        import transformers
-        
-        if not hasattr(nllb_translate, "translator"):
-            print("🔄 Loading NLLB (CTranslate2)...")
-            start = time.time()
-            model_path = "facebook/nllb-200-distilled-600M"
-            nllb_translate.tokenizer = transformers.AutoTokenizer.from_pretrained(model_path)
-            nllb_translate.translator = ctranslate2.Translator(
-                "Tushe/nllb-200-600M-ct2-float16",
-                device="cpu",
-                compute_type="int8"
-            )
-            print(f"✅ NLLB loaded in {time.time()-start:.1f}s")
-        
-        lang_map = {
-            "english": "eng_Latn", "luganda": "lug_Latn", "swahili": "swh_Latn",
-            "acholi": "ach_Latn", "alur": "alz_Latn", "ateso": "teo_Latn",
-            "runyankole": "nyn_Latn", "rukiga": "cgg_Latn", "lugbara": "lgg_Latn",
-            "lango": "laj_Latn", "lusoga": "xog_Latn", "lugwere": "gwr_Latn",
-            "kinyarwanda": "kin_Latn", "kirundi": "run_Latn",
-            "amharic": "amh_Ethi", "somali": "som_Latn", "oromo": "gaz_Latn",
-            "tigrinya": "tir_Ethi", "yoruba": "yor_Latn", "hausa": "hau_Latn",
-            "igbo": "ibo_Latn", "zulu": "zul_Latn", "xhosa": "xho_Latn",
-            "shona": "sna_Latn", "chichewa": "nya_Latn", "afrikaans": "afr_Latn",
-            "french": "fra_Latn", "spanish": "spa_Latn", "german": "deu_Latn",
-            "portuguese": "por_Latn", "italian": "ita_Latn", "arabic": "arb_Arab",
-            "hindi": "hin_Deva", "chinese": "zho_Hans", "japanese": "jpn_Jpan",
-            "korean": "kor_Hang", "turkish": "tur_Latn", "russian": "rus_Cyrl",
-        }
-        
-        src_code = lang_map.get(source_lang, "eng_Latn")
-        tgt_code = lang_map.get(target_lang, "eng_Latn")
-        
-        nllb_translate.tokenizer.src_lang = src_code
-        source_tokens = nllb_translate.tokenizer.convert_ids_to_tokens(
-            nllb_translate.tokenizer.encode(text)
-        )
-        
-        results = nllb_translate.translator.translate_batch(
-            [source_tokens],
-            target_prefix=[[tgt_code]],
-            beam_size=4,
-            max_decoding_length=256,
-            repetition_penalty=1.2
-        )
-        
-        output_tokens = results[0].hypotheses[0]
-        if tgt_code in output_tokens:
-            output_tokens.remove(tgt_code)
-        
-        result = nllb_translate.tokenizer.decode(
-            nllb_translate.tokenizer.convert_tokens_to_ids(output_tokens)
-        )
-        result = clean(result)
-        
-        if result and not is_bad_translation(text, result):
-            return result
-    except Exception as e:
-        print(f"NLLB error: {e}")
     return None
 
 def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
@@ -187,7 +133,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         payload = {
             "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": f"You are a native {target_name} translator. Translate to {target_name}. Output ONLY the translation."},
+                {"role": "system", "content": f"You are a native {target_name} translator. Translate the user's text to {target_name}. Output ONLY the translation. No explanations, no notes, no original text."},
                 {"role": "user", "content": text}
             ],
             "temperature": 0.1,
@@ -198,7 +144,8 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         
         if resp.status_code == 200:
             data = resp.json()
-            result = clean(data["choices"][0]["message"]["content"])
+            result = data["choices"][0]["message"]["content"]
+            result = clean(result)
             if result and not is_bad_translation(text, result):
                 return result
     except Exception as e:
@@ -242,7 +189,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Priority: Sunbird → NLLB → Google → Groq"""
+    """Priority: Sunbird (Ugandan) → Google (major) → Groq (fallback) → error message"""
     if not text or not text.strip():
         return None
     
@@ -251,8 +198,15 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         if cache_key in _cache:
             return _cache[cache_key]
     
-    # 1. Sunbird for Ugandan languages
-    if target_lang in SUNBIRD_LANGS:
+    # Languages with no reliable translation engine
+    if target_lang in POOR_SUPPORT_LANGS:
+        msg = f"[{target_lang.capitalize()} translation not yet supported. Original: {text}]"
+        with _cache_lock:
+            _cache[cache_key] = msg
+        return msg
+    
+    # 1. Sunbird Sunflower for Ugandan languages
+    if source_lang in SUNBIRD_LANGS or target_lang in SUNBIRD_LANGS:
         start = time.time()
         result = sunbird_translate(text, target_lang, source_lang)
         if result:
@@ -260,18 +214,16 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
             print(f"⚡ Sunbird responded in {time.time()-start:.1f}s")
             return result
-    
-    # 2. NLLB for all African languages (fallback)
-    if target_lang in NLLB_LANGS or source_lang in NLLB_LANGS:
+        # Sunbird failed → Groq fallback
         start = time.time()
-        result = nllb_translate(text, target_lang, source_lang)
+        result = groq_translate(text, target_lang, source_lang)
         if result:
             with _cache_lock:
                 _cache[cache_key] = result
-            print(f"⚡ NLLB responded in {time.time()-start:.1f}s")
+            print(f"⚡ Groq (Sunbird fallback) responded in {time.time()-start:.1f}s")
             return result
     
-    # 3. Google for major languages
+    # 2. Google for major languages
     start = time.time()
     result = google_translate(text, target_lang, source_lang)
     if result:
@@ -280,7 +232,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 4. Groq final fallback
+    # 3. Groq final fallback
     start = time.time()
     result = groq_translate(text, target_lang, source_lang)
     if result:
