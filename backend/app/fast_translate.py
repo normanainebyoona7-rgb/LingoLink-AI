@@ -1,4 +1,4 @@
-"""Ultra-fast translation using Sunbird AI (Ugandan languages) + Groq + Google"""
+"""Ultra-fast translation with smart fallbacks for accuracy"""
 import requests
 import re
 import threading
@@ -18,13 +18,42 @@ _cache_lock = threading.Lock()
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
 
+def is_short_phrase(text: str) -> bool:
+    """Check if text is too short for NLLB-based models"""
+    return len(text.split()) < 3 or len(text) < 15
+
+def is_bad_translation(original: str, result: str) -> bool:
+    """Detect hallucinations, repetition loops, and untranslated output"""
+    if not result or len(result.strip()) < 1:
+        return True
+    
+    # If output contains the original English unchanged
+    if original.lower().strip() in result.lower():
+        return True
+    
+    # If same word repeats more than 2 times (NLLB loop bug)
+    words = result.lower().split()
+    for w in set(words):
+        if len(w) > 2 and words.count(w) > 2:
+            return True
+    
+    # If output is suspiciously similar to input
+    if result.lower().strip() == original.lower().strip():
+        return True
+    
+    return False
+
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Sunbird AI - BEST for Ugandan languages (Luganda, Acholi, Ateso, Runyankole, Lugbara)"""
+    """Sunbird AI - for Ugandan languages (skip on short phrases)"""
     if not SUNBIRD_API_KEY:
         return None
     
+    # Skip Sunbird for short phrases - it hallucinates
+    if is_short_phrase(text):
+        print("⚠️ Short phrase, skipping Sunbird (hallucination risk)")
+        return None
+    
     try:
-        # Sunbird language codes
         sunbird_codes = {
             "english": "eng", "luganda": "lug", "acholi": "ach",
             "ateso": "teo", "runyankole": "nyn", "rukiga": "nyn",
@@ -56,6 +85,12 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
             if data.get("status") == "success":
                 result = data.get("output", {}).get("translated_text", "")
                 result = clean(result)
+                
+                # Validate output
+                if is_bad_translation(text, result):
+                    print(f"⚠️ Sunbird returned bad output: {result}")
+                    return None
+                
                 if result:
                     return result
         else:
@@ -93,9 +128,9 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             "Content-Type": "application/json"
         }
         payload = {
-            "model": "llama-3.1-8b-instant",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": f"Translate to {target_name}. Output ONLY the translation. No explanations, no notes, no original text."},
+                {"role": "system", "content": f"You are a native {target_name} translator. Translate the user's text to {target_name}. Output ONLY the translation. No explanations, no notes, no original text, no greetings."},
                 {"role": "user", "content": text}
             ],
             "temperature": 0.1,
@@ -108,7 +143,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             data = resp.json()
             result = data["choices"][0]["message"]["content"]
             result = clean(result)
-            if result and result.lower() != text.lower():
+            if result and not is_bad_translation(text, result):
                 return result
     except Exception as e:
         print(f"Groq error: {e}")
@@ -151,7 +186,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Priority: Sunbird (Ugandan) → Google (major) → Groq (fallback)"""
+    """Priority: Short→Groq, Ugandan→Sunbird, Major→Google, Fallback→Groq"""
     if not text or not text.strip():
         return None
     
@@ -160,10 +195,19 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         if cache_key in _cache:
             return _cache[cache_key]
     
-    # Ugandan languages Sunbird supports
     sunbird_langs = {"luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara", "lusoga", "rutooro", "lumasaba"}
     
-    # 1. Sunbird AI for Ugandan languages (BEST accuracy)
+    # 1. Short phrases → Groq (Sunbird/NLLB hallucinates)
+    if is_short_phrase(text) and (source_lang in sunbird_langs or target_lang in sunbird_langs):
+        start = time.time()
+        result = groq_translate(text, target_lang, source_lang)
+        if result:
+            with _cache_lock:
+                _cache[cache_key] = result
+            print(f"⚡ Groq (short phrase) responded in {time.time()-start:.1f}s")
+            return result
+    
+    # 2. Sunbird AI for Ugandan languages (long phrases)
     if source_lang in sunbird_langs or target_lang in sunbird_langs:
         start = time.time()
         result = sunbird_translate(text, target_lang, source_lang)
@@ -172,8 +216,16 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
             print(f"⚡ Sunbird responded in {time.time()-start:.1f}s")
             return result
+        # Sunbird failed → Groq fallback
+        start = time.time()
+        result = groq_translate(text, target_lang, source_lang)
+        if result:
+            with _cache_lock:
+                _cache[cache_key] = result
+            print(f"⚡ Groq (Sunbird fallback) responded in {time.time()-start:.1f}s")
+            return result
     
-    # 2. Google for major languages (fast)
+    # 3. Google for major languages
     start = time.time()
     result = google_translate(text, target_lang, source_lang)
     if result:
@@ -182,7 +234,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 3. Groq fallback
+    # 4. Groq final fallback
     start = time.time()
     result = groq_translate(text, target_lang, source_lang)
     if result:
