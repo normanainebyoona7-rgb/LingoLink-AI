@@ -9,21 +9,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Configuration ---
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 
-# In-memory cache for instantaneous repeat translations
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
 
-# Languages that Sunbird Sunflower handles with high accuracy (Ugandan)
 SUNBIRD_LANGS = {
     "luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara",
     "lusoga", "rutooro", "lumasaba"
 }
 
-# African languages that Google doesn't support well but Groq (Llama 3.3) does
 GROQ_LANGS = {
     "alur", "lango", "lugwere", "dholuo", "kikuyu", "kirundi",
     "amharic", "somali", "oromo", "tigrinya", "yoruba", "hausa",
@@ -31,11 +27,9 @@ GROQ_LANGS = {
 }
 
 def clean(text: str) -> str:
-    """Remove extra whitespace and wrapping quotes."""
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
 
 def is_bad_translation(original: str, result: str) -> bool:
-    """Detect common LLM/NMT failures like repetition loops."""
     if not result or len(result.strip()) < 1:
         return True
     if original.lower().strip() in result.lower():
@@ -44,23 +38,25 @@ def is_bad_translation(original: str, result: str) -> bool:
     for w in set(words):
         if len(w) > 2 and words.count(w) > 2:
             return True
+    if result.lower().strip() == original.lower().strip():
+        return True
     return False
 
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """
-    Sunbird AI Sunflower - The gold standard for Ugandan languages.
-    Uses the /sunflower_inference endpoint for high-quality LLM translation.
-    """
+    """Sunbird AI Sunflower - gold standard for Ugandan languages"""
     if not SUNBIRD_API_KEY:
         return None
     
     try:
-        # Sunbird language codes
         sunbird_codes = {
-            "luganda": ("Luganda", "lug"), "acholi": ("Acholi", "ach"),
-            "ateso": ("Ateso", "teo"), "runyankole": ("Runyankole", "nyn"),
-            "rukiga": ("Rukiga", "cgg"), "lugbara": ("Lugbara", "lgg"),
-            "lusoga": ("Lusoga", "xog"), "rutooro": ("Rutooro", "ttj"),
+            "luganda": ("Luganda", "lug"),
+            "acholi": ("Acholi", "ach"),
+            "ateso": ("Ateso", "teo"),
+            "runyankole": ("Runyankole", "nyn"),
+            "rukiga": ("Rukiga", "cgg"),
+            "lugbara": ("Lugbara", "lgg"),
+            "lusoga": ("Lusoga", "xog"),
+            "rutooro": ("Rutooro", "ttj"),
             "lumasaba": ("Lumasaba", "myx"),
         }
         
@@ -69,8 +65,17 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         
         target_name, code = sunbird_codes[target_lang]
         
-        # Direct, forceful instruction for pure output
-        prompt = f"Translate the following English text to {target_name}. Output ONLY the translation, no explanations, no original text:\n\n{text}"
+        prompt = f"""You are a native {target_name} speaker. Translate the following English text into natural, fluent {target_name} as a native speaker would say it.
+
+Rules:
+- Translate MEANING, not word-for-word
+- Use natural {target_name} grammar and idioms
+- Do NOT translate literally
+- Output ONLY the {target_name} translation, nothing else
+
+English: {text}
+
+{target_name}:"""
         
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {
@@ -95,10 +100,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
     return None
 
 def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """
-    Groq (Llama 3.3 70B) - Ultra-fast LLM translation for all languages.
-    Handles low-resource languages like Alur better than Google.
-    """
+    """Groq (Llama 3.3 70B) - ultra-fast LLM translation"""
     if not GROQ_API_KEY:
         return None
     
@@ -121,11 +123,10 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-        # Use 70B for higher quality translation, but keep temperature low for accuracy
         payload = {
             "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": f"You are a professional translator. Translate the user's text to {target_name}. Output ONLY the translation. No explanations, no notes, no original text, no greetings."},
+                {"role": "system", "content": f"You are a native {target_name} speaker and professional translator. Translate the user's text into natural, fluent {target_name}.\n\nCritical rules:\n- Translate the MEANING, not word-for-word\n- Use natural {target_name} sentence structure and grammar\n- Use common {target_name} expressions and idioms\n- Do NOT translate literally or word-by-word\n- Output ONLY the {target_name} translation, nothing else"},
                 {"role": "user", "content": text}
             ],
             "temperature": 0.1,
@@ -146,7 +147,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google Translate - Instant for major languages."""
+    """Google Translate - instant for major languages"""
     try:
         lang_codes = {
             "english": "en", "french": "fr", "spanish": "es", "german": "de",
@@ -182,22 +183,16 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """
-    Smart routing for optimal speed and accuracy:
-    1. Sunbird (Best for Ugandan languages)
-    2. Google (Fastest for major languages)
-    3. Groq (Fallback for other African languages)
-    """
+    """Smart routing: Sunbird → Google → Groq"""
     if not text or not text.strip():
         return None
     
-    # 1. Cache Check (Instant)
     cache_key = f"{source_lang}:{target_lang}:{text[:100]}"
     with _cache_lock:
         if cache_key in _cache:
             return _cache[cache_key]
     
-    # 2. Route to Sunbird for Ugandan languages
+    # 1. Sunbird for Ugandan languages
     if target_lang in SUNBIRD_LANGS:
         start = time.time()
         result = sunbird_translate(text, target_lang, source_lang)
@@ -206,9 +201,8 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
             print(f"⚡ Sunbird responded in {time.time()-start:.1f}s")
             return result
-        # If Sunbird fails, fall through to Groq
     
-    # 3. Route to Google for major languages (Instant)
+    # 2. Google for major languages
     start = time.time()
     result = google_translate(text, target_lang, source_lang)
     if result:
@@ -217,7 +211,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 4. Route to Groq (Handles everything else, including Alur)
+    # 3. Groq for everything else
     start = time.time()
     result = groq_translate(text, target_lang, source_lang)
     if result:
