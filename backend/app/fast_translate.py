@@ -45,6 +45,7 @@ def is_bad_translation(original: str, result: str) -> bool:
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     """Sunbird AI Sunflower - gold standard for Ugandan languages"""
     if not SUNBIRD_API_KEY:
+        print("⚠️ Sunbird: No API key found")
         return None
     
     try:
@@ -61,21 +62,14 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         }
         
         if target_lang not in sunbird_codes:
+            print(f"⚠️ Sunbird: {target_lang} not supported")
             return None
         
         target_name, code = sunbird_codes[target_lang]
         
-        prompt = f"""You are a native {target_name} speaker. Translate the following English text into natural, fluent {target_name} as a native speaker would say it.
+        prompt = f"""You are a native {target_name} speaker. Translate the following text into natural, fluent {target_name}. Output ONLY the translation:
 
-Rules:
-- Translate MEANING, not word-for-word
-- Use natural {target_name} grammar and idioms
-- Do NOT translate literally
-- Output ONLY the {target_name} translation, nothing else
-
-English: {text}
-
-{target_name}:"""
+{text}"""
         
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {
@@ -88,15 +82,22 @@ English: {text}
             "temperature": 0.1
         }
         
+        print(f"🌐 Calling Sunbird for {target_lang}...")
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
+        print(f"🌐 Sunbird HTTP {resp.status_code}")
         
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data.get("content", ""))
+            print(f"🌐 Sunbird raw: {result[:100]}")
             if result and not is_bad_translation(text, result):
                 return result
+            else:
+                print(f"⚠️ Sunbird bad output rejected")
+        else:
+            print(f"❌ Sunbird error body: {resp.text[:200]}")
     except Exception as e:
-        print(f"Sunbird error: {e}")
+        print(f"❌ Sunbird exception: {e}")
     return None
 
 def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
@@ -126,7 +127,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         payload = {
             "model": "llama-3.3-70b-versatile",
             "messages": [
-                {"role": "system", "content": f"You are a native {target_name} speaker and professional translator. Translate the user's text into natural, fluent {target_name}.\n\nCritical rules:\n- Translate the MEANING, not word-for-word\n- Use natural {target_name} sentence structure and grammar\n- Use common {target_name} expressions and idioms\n- Do NOT translate literally or word-by-word\n- Output ONLY the {target_name} translation, nothing else"},
+                {"role": "system", "content": f"You are a native {target_name} speaker and professional translator. Translate the user's text into natural, fluent {target_name}.\n\nRules:\n- Translate the MEANING, not word-for-word\n- Use natural {target_name} sentence structure\n- Output ONLY the {target_name} translation"},
                 {"role": "user", "content": text}
             ],
             "temperature": 0.1,
@@ -140,14 +141,12 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             result = clean(data["choices"][0]["message"]["content"])
             if result and not is_bad_translation(text, result):
                 return result
-        elif resp.status_code == 429:
-            print("Groq rate limit hit, falling back...")
     except Exception as e:
         print(f"Groq error: {e}")
     return None
 
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google Translate - instant for major languages"""
+    """Google Translate free API - instant for major languages"""
     try:
         lang_codes = {
             "english": "en", "french": "fr", "spanish": "es", "german": "de",
@@ -183,7 +182,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Smart routing: Sunbird → Google → Groq"""
+    """Sunbird first for Ugandan, Google for major, Groq for rest"""
     if not text or not text.strip():
         return None
     
@@ -201,6 +200,14 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
             print(f"⚡ Sunbird responded in {time.time()-start:.1f}s")
             return result
+        # Sunbird failed → try Groq
+        start = time.time()
+        result = groq_translate(text, target_lang, source_lang)
+        if result:
+            with _cache_lock:
+                _cache[cache_key] = result
+            print(f"⚡ Groq (Sunbird fallback) responded in {time.time()-start:.1f}s")
+            return result
     
     # 2. Google for major languages
     start = time.time()
@@ -211,7 +218,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 3. Groq for everything else
+    # 3. Groq final fallback
     start = time.time()
     result = groq_translate(text, target_lang, source_lang)
     if result:
