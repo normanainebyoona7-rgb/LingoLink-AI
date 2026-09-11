@@ -127,24 +127,11 @@ export default function Translate({ token }: Props) {
     }
   };
 
-  const handleVoiceTranscribed = async (text: string) => {
+  const handleVoiceTranscribed = (text: string) => {
     setInputText(text);
-    // Detect language if source is auto, then translate with detected language
-    let detected = sourceLanguage;
-    if (sourceLanguage === 'auto') {
-      try {
-        const res = await fetch(`${API_URL}/translate/detect?text=${encodeURIComponent(text)}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          detected = data.detected_language;
-          setDetectedLanguage(detected);
-        }
-      } catch {}
-    }
-    // Force translation with correct source
-    translate(text, detected);
+    // Force translation with 'auto' source so backend detects language
+    translate(text, 'auto');
+    if (sourceLanguage === 'auto') detectLanguage(text);
   };
 
   const speakTranslation = async () => {
