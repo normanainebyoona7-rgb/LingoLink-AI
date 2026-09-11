@@ -14,7 +14,6 @@ SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
 
-# Ugandan languages Sunbird supports
 UGANDAN_LANGS = {
     "luganda", "acholi", "ateso", "runyankole", "rukiga", "lugbara",
     "lusoga", "rutooro", "lumasaba", "alur", "lango", "jopadhola", "lugwere"
@@ -23,9 +22,19 @@ UGANDAN_LANGS = {
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
 
+def is_bad_translation(original: str, result: str) -> bool:
+    """Detect hallucinations from casual LLMs"""
+    if not result or len(result.strip()) < 1:
+        return True
+    # If output is longer than 5x the input, likely hallucinated
+    if len(result) > len(original) * 6:
+        return True
+    return False
+
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Sunbird AI Sunflower for Ugandan languages"""
+    """Sunbird AI Sunflower - Ugandan languages"""
     if not SUNBIRD_API_KEY:
+        print("⚠️ Sunbird: No API key")
         return None
     
     try:
@@ -50,7 +59,15 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         
         target_name, code = sunbird_codes[target_lang]
         
-        prompt = f"Translate the following English text to {target_name}. Output ONLY the {target_name} translation, nothing else:\n\n{text}"
+        prompt = f"""You are a translation tool. Your ONLY job is to translate the English phrase below into {target_name}.
+
+Do NOT answer, comment, continue the conversation, or generate new sentences.
+If the phrase is a greeting, translate it as a greeting.
+Output ONLY the {target_name} translation of the exact words below. No explanations.
+
+English phrase: "{text}"
+
+{target_name} translation:"""
         
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {
@@ -63,15 +80,17 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
             "temperature": 0.1
         }
         
-        print(f"🌐 Sunbird {target_lang}...")
+        print(f"🌐 Sunbird {target_lang}: '{text[:60]}'")
         resp = requests.post(url, headers=headers, json=payload, timeout=20)
         
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data.get("content", ""))
-            print(f"🌐 Sunbird returned: {result[:100]}")
-            if result:
+            print(f"🌐 Sunbird returned: '{result[:120]}'")
+            if result and not is_bad_translation(text, result):
                 return result
+            else:
+                print(f"⚠️ Sunbird rejected (likely hallucination)")
         else:
             print(f"❌ Sunbird HTTP {resp.status_code}: {resp.text[:200]}")
     except Exception as e:
@@ -135,6 +154,8 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
             print(f"⚡ Sunbird responded in {time.time()-start:.1f}s")
             return result
+        # Fall through to Google if Sunbird hallucinated
+        print(f"🔄 Sunbird failed, falling back to Google")
     
     # 2. Everything else → Google
     start = time.time()
