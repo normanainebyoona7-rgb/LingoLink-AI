@@ -1,12 +1,15 @@
-"""Fast translation using Google Translate + NLLB-200 (lazy loading)"""
+"""Fast translation using Google Translate + Gemini (cloud-only)"""
 import requests
 import re
 import threading
 import time
+import os
 from typing import Optional, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
@@ -50,50 +53,49 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
         pass
     return None
 
-def nllb_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """NLLB-200 local model - LAZY LOAD (only loads when needed)"""
+def gemini_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
+    """Gemini 3.6 Flash for African languages (Luganda, Alur, Ateso, Rukiga, etc.)"""
+    if not GEMINI_API_KEY:
+        return None
+    
     try:
-        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-        import torch
+        lang_names = {
+            "english": "English", "luganda": "Luganda", "swahili": "Swahili",
+            "french": "French", "spanish": "Spanish", "german": "German",
+            "acholi": "Acholi", "alur": "Alur", "ateso": "Ateso",
+            "rukiga": "Rukiga", "runyankole": "Runyankole",
+            "kinyarwanda": "Kinyarwanda", "kirundi": "Kirundi",
+            "amharic": "Amharic", "somali": "Somali", "oromo": "Oromo",
+            "yoruba": "Yoruba", "hausa": "Hausa", "igbo": "Igbo",
+            "zulu": "Zulu", "xhosa": "Xhosa", "shona": "Shona",
+            "chichewa": "Chichewa", "afrikaans": "Afrikaans",
+        }
+        target_name = lang_names.get(target_lang, target_lang.capitalize())
         
-        # Load once, only when needed
-        if not hasattr(nllb_translate, "model"):
-            print("🔄 Loading NLLB (first time only)...")
-            nllb_translate.tokenizer = AutoTokenizer.from_pretrained("facebook/nllb-200-distilled-600M")
-            nllb_translate.model = AutoModelForSeq2SeqLM.from_pretrained("facebook/nllb-200-distilled-600M")
-            nllb_translate.model.eval()
-            print("✅ NLLB loaded")
+        prompt = f"Translate to {target_name}: {text}"
         
-        lang_map = {
-            "english": "eng_Latn", "luganda": "lug_Latn", "swahili": "swh_Latn",
-            "french": "fra_Latn", "spanish": "spa_Latn", "german": "deu_Latn",
-            "acholi": "ach_Latn", "alur": "alz_Latn", "ateso": "teo_Latn",
-            "kinyarwanda": "kin_Latn", "kirundi": "run_Latn",
-            "amharic": "amh_Ethi", "somali": "som_Latn", "oromo": "gaz_Latn",
-            "yoruba": "yor_Latn", "hausa": "hau_Latn", "igbo": "ibo_Latn",
-            "zulu": "zul_Latn", "xhosa": "xho_Latn", "shona": "sna_Latn",
-            "chichewa": "nya_Latn", "afrikaans": "afr_Latn",
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": 500, "temperature": 0.2}
         }
         
-        src_code = lang_map.get(source_lang, "eng_Latn")
-        tgt_code = lang_map.get(target_lang, "eng_Latn")
+        resp = requests.post(url, json=payload, timeout=30)
         
-        nllb_translate.tokenizer.src_lang = src_code
-        inputs = nllb_translate.tokenizer(text, return_tensors="pt")
-        
-        tgt_id = nllb_translate.tokenizer.convert_tokens_to_ids(tgt_code)
-        
-        with torch.no_grad():
-            outputs = nllb_translate.model.generate(**inputs, forced_bos_token_id=tgt_id, max_length=100)
-        
-        result = nllb_translate.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return clean(result)
+        if resp.status_code == 200:
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                result = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                result = clean(result)
+                if result and result.lower() != text.lower():
+                    return result
     except Exception as e:
-        print(f"NLLB error: {e}")
-        return None
+        print(f"Gemini error: {e}")
+    return None
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google first (fast), NLLB second (slow, only for African languages)"""
+    """Google first (fast), Gemini second (African languages)"""
     if not text or not text.strip():
         return None
     
@@ -102,7 +104,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         if cache_key in _cache:
             return _cache[cache_key]
     
-    # 1. Google (fast, no API key)
+    # 1. Google Translate (fast, major languages)
     start = time.time()
     result = google_translate(text, target_lang, source_lang)
     if result:
@@ -111,12 +113,12 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"⚡ Google responded in {time.time()-start:.1f}s")
         return result
     
-    # 2. NLLB (slow, African languages only)
-    result = nllb_translate(text, target_lang, source_lang)
+    # 2. Gemini (African languages)
+    result = gemini_translate(text, target_lang, source_lang)
     if result:
         with _cache_lock:
             _cache[cache_key] = result
-        print(f"🐢 NLLB responded in {time.time()-start:.1f}s")
+        print(f"⚡ Gemini responded in {time.time()-start:.1f}s")
         return result
     
     return None
