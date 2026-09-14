@@ -10,7 +10,7 @@ from app.routers.auth import get_current_user
 import app.models as models
 import app.schemas as schemas
 from dotenv import load_dotenv
-from app.fast_translate import fast_translate, google_translate
+from app.fast_translate import fast_translate, mymemory_translate
 
 load_dotenv()
 
@@ -39,7 +39,6 @@ LANGUAGES = {
     "lingala": "Lingala", "kikongo": "Kikongo", "bemba": "Bemba", "chichewa": "Chichewa",
     "zulu": "Zulu", "xhosa": "Xhosa", "afrikaans": "Afrikaans", "sesotho": "Sesotho",
     "setswana": "Setswana", "shona": "Shona",
-    "kabyle": "Kabyle", "tachelhit": "Tachelhit",
 }
 
 CODES = {
@@ -55,19 +54,13 @@ CODES = {
     "amharic": "am", "somali": "so", "yoruba": "yo", "hausa": "ha",
     "igbo": "ig", "shona": "sn", "chichewa": "ny", "afrikaans": "af",
     "zulu": "zu", "xhosa": "xh", "sesotho": "st", "setswana": "tn",
-    "fulfulde": "ff", "wolof": "wo", "bambara": "bm",
-    "lingala": "ln", "kikongo": "kg", "luba": "lu",
-    "kabyle": "kab", "tachelhit": "shi", "tamazight": "zgh",
-    "oromo": "om", "tigrinya": "ti", "kikuyu": "ki", "bemba": "bem",
     "rukiga": "cgg", "runyankole": "nyn",
-    "acholi": "ach", "alur": "alz", "ateso": "teo", "karamojong": "kdj",
-    "lango": "laj", "lugbara": "lgg", "adhola": "adh", "kumam": "kdi",
+    "acholi": "ach", "alur": "alz", "ateso": "teo",
+    "lango": "laj", "lugbara": "lgg",
     "lusoga": "xog", "lugwere": "gwr", "dholuo": "luo",
 }
 
 CODE_TO_LANG = {v: k for k, v in CODES.items()}
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 def get_cached(key):
     return _cache.get(key)
@@ -101,42 +94,22 @@ async def get_languages():
 
 @router.get("/detect")
 async def detect_language_endpoint(text: str):
-    if GEMINI_API_KEY:
-        try:
-            prompt = f"Language: {text[:500]}"
-            
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.05, "maxOutputTokens": 20}
-            }
-            resp = requests.post(url, json=payload, timeout=30)
-            if resp.status_code == 200:
-                data = resp.json()
-                detected = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip().lower()
-                detected = clean_translation(detected)
-                detected_lang = normalize_language(detected)
-                if detected_lang in LANGUAGES:
-                    return {"detected_language": detected_lang, "confidence": 0.95}
-        except:
-            pass
-    
-    return {"detected_language": "english", "confidence": 0.3}
+    return {"detected_language": "english", "confidence": 0.5}
 
 @router.post("/quick")
 async def quick_translate(
     request: schemas.TranslationRequest,
     current_user: models.User = Depends(get_current_user)
 ):
-    """Fast translation for live typing - Google only, no DB save"""
+    """Fast translation for live typing"""
     source_lang = normalize_language(request.source_language)
     target_lang = normalize_language(request.target_language)
-    result = google_translate(request.text, target_lang, source_lang)
+    result = mymemory_translate(request.text, target_lang, source_lang)
     return {
         "translated_text": result or request.text,
         "source_language": source_lang,
         "target_language": target_lang,
-        "provider": "google",
+        "provider": "mymemory",
         "success": result is not None
     }
 
@@ -158,8 +131,7 @@ async def translate_text(
 
         source_lang = normalize_language(request.source_language)
         if source_lang == "auto" or source_lang not in LANGUAGES:
-            detection = await detect_language_endpoint(request.text)
-            source_lang = detection["detected_language"]
+            source_lang = "english"
         
         target_lang = normalize_language(request.target_language)
         
@@ -232,8 +204,7 @@ async def delete_translation(translation_id: int, db: Session = Depends(get_db),
 async def get_providers():
     return {
         "providers": {
-            "sunbird": bool(os.getenv("SUNBIRD_API_KEY", "")),
-            "groq": bool(os.getenv("GROQ_API_KEY", "")),
-            "google": True,
+            "nllb": True,
+            "mymemory": True,
         }
     }
