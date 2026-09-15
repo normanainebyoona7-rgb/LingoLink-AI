@@ -1,4 +1,4 @@
-"""Fast translation with local dictionaries + pivot through English"""
+"""Fast translation - optimized for speed"""
 import requests
 import re
 import threading
@@ -21,7 +21,6 @@ UGANDAN_LANGS = {
     "lusoga", "rutooro", "lumasaba", "alur", "lango", "jopadhola", "lugwere"
 }
 
-# Google Translate language codes
 GOOGLE_CODES = {
     "english": "en", "french": "fr", "spanish": "es", "german": "de",
     "portuguese": "pt", "italian": "it", "dutch": "nl", "russian": "ru",
@@ -39,14 +38,13 @@ GOOGLE_CODES = {
     "marathi": "mr", "gujarati": "gu", "kannada": "kn", "malayalam": "ml",
     "punjabi": "pa", "nepali": "ne", "sinhala": "si", "khmer": "km",
     "lao": "lo", "burmese": "my", "malay": "ms", "tagalog": "tl",
-    "romanian": "ro", "bulgarian": "bg", "croatian": "hr", "serbian": "sr",
-    "slovak": "sk", "slovenian": "sl", "estonian": "et", "latvian": "lv",
-    "lithuanian": "lt", "icelandic": "is", "irish": "ga", "welsh": "cy",
-    "catalan": "ca", "basque": "eu", "galician": "gl", "maltese": "mt",
-    "albanian": "sq", "macedonian": "mk", "bosnian": "bs",
-    "belarusian": "be", "georgian": "ka", "armenian": "hy",
-    "azerbaijani": "az", "kazakh": "kk", "uzbek": "uz",
-    "mongolian": "mn", "tibetan": "bo",
+    "bulgarian": "bg", "croatian": "hr", "serbian": "sr", "slovak": "sk",
+    "slovenian": "sl", "estonian": "et", "latvian": "lv", "lithuanian": "lt",
+    "icelandic": "is", "irish": "ga", "welsh": "cy", "catalan": "ca",
+    "basque": "eu", "galician": "gl", "maltese": "mt", "albanian": "sq",
+    "macedonian": "mk", "bosnian": "bs", "belarusian": "be",
+    "georgian": "ka", "armenian": "hy", "azerbaijani": "az",
+    "kazakh": "kk", "uzbek": "uz", "mongolian": "mn", "tibetan": "bo",
 }
 
 
@@ -62,19 +60,15 @@ def is_bad_translation(original: str, result: str) -> bool:
     return False
 
 
-# ============== LOCAL DICTIONARY (FASTEST) ==============
+# ============== GOOGLE TRANSLATE (FAST) ==============
 
-def dictionary_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    result = lookup_local(text, target_lang, source_lang)
-    if result:
-        print(f"📖 Local dict hit: '{text[:40]}' → '{result[:50]}'")
-    return result
+# Global session for connection reuse (much faster)
+_session = requests.Session()
+_session.headers.update({"User-Agent": "Mozilla/5.0"})
 
-
-# ============== GOOGLE TRANSLATE (PRIMARY for international) ==============
 
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google Translate free API - best for international languages"""
+    """Google Translate free API - fast international"""
     try:
         tgt = GOOGLE_CODES.get(target_lang)
         if not tgt:
@@ -85,8 +79,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
             f"https://translate.googleapis.com/translate_a/single"
             f"?client=gtx&sl={src}&tl={tgt}&dt=t&q={requests.utils.quote(text[:1500])}"
         )
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = _session.get(url, timeout=6)
         
         if resp.status_code == 200:
             data = resp.json()
@@ -99,7 +92,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 
-# ============== MYMEMORY (BACKUP for international) ==============
+# ============== MYMEMORY (BACKUP) ==============
 
 def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     try:
@@ -109,7 +102,7 @@ def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -
             return None
         
         url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(text[:500])}&langpair={src}|{tgt}"
-        resp = requests.get(url, timeout=10)
+        resp = _session.get(url, timeout=6)
         if resp.status_code == 200:
             data = resp.json()
             result = data.get("responseData", {}).get("translatedText", "")
@@ -154,7 +147,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
             "target_language": code,
             "temperature": 0.1
         }
-        resp = requests.post(url, headers=headers, json=payload, timeout=20)
+        resp = _session.post(url, headers=headers, json=payload, timeout=15)
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data.get("content", ""))
@@ -183,15 +176,15 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": "llama-3.1-8b-instant",  # faster model
             "messages": [
                 {"role": "system", "content": f"You are a native {target_name} translator. Output ONLY the {target_name} translation."},
                 {"role": "user", "content": text}
             ],
             "temperature": 0.1,
-            "max_tokens": 2000
+            "max_tokens": 1000
         }
-        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        resp = _session.post(url, headers=headers, json=payload, timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data["choices"][0]["message"]["content"])
@@ -202,14 +195,14 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 
-# ============== MAIN ROUTER WITH PIVOT ==============
+# ============== MAIN ROUTER ==============
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     """
     Priority:
     1. Local dictionary (instant, exact match)
     2. Direct translation (source → target)
-    3. Pivot through English if direct fails
+    3. Pivot through English if needed
     """
     if not text or not text.strip():
         return None
@@ -220,10 +213,11 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             return _cache[cache_key]
 
     # 1. LOCAL DICTIONARY FIRST
-    result = dictionary_translate(text, target_lang, source_lang)
+    result = lookup_local(text, target_lang, source_lang)
     if result:
         with _cache_lock:
             _cache[cache_key] = result
+        print(f"📖 Local dict hit (instant)")
         return result
 
     # 2. DIRECT TRANSLATION
@@ -233,14 +227,11 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             _cache[cache_key] = result
         return result
 
-    # 3. PIVOT THROUGH ENGLISH
+    # 3. PIVOT THROUGH ENGLISH (only if source isn't auto and both differ from english)
     if source_lang != "english" and target_lang != "english" and source_lang != "auto":
-        print(f"🔄 Pivoting via English: {source_lang} → english → {target_lang}")
-        
         # Step 3a: source → English
         english_text = _try_direct(text, source_lang, "english")
         if english_text:
-            print(f"   → English: '{english_text[:60]}'")
             # Step 3b: English → target
             result = _try_direct(english_text, "english", target_lang)
             if result:
@@ -264,7 +255,7 @@ def _try_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
             return result
         return None
     
-    # International → Google first, MyMemory, Groq
+    # International → Google first (fast), MyMemory fallback
     result = google_translate(text, target_lang, source_lang)
     if result:
         return result

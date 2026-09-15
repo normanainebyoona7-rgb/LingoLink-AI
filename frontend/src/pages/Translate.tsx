@@ -12,38 +12,24 @@ export default function Translate({ token }: Props) {
   const [targetLanguage, setTargetLanguage] = useState('english');
   const [inputText, setInputText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
-  const [liveText, setLiveText] = useState('');
   const [detectedLanguage, setDetectedLanguage] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState('');
-  const liveDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const fullDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentRequestRef = useRef<number>(0);
-
-  const detectLanguage = async (text: string) => {
-    if (!text.trim()) return;
-    try {
-      const res = await fetch(`${API_URL}/translate/detect?text=${encodeURIComponent(text)}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDetectedLanguage(data.detected_language);
-      }
-    } catch {}
-  };
 
   const translate = async (text: string, sourceOverride?: string) => {
     if (!text.trim()) {
       setTranslatedText('');
-      setLiveText('');
+      setIsTranslating(false);
       return;
     }
     const requestId = ++currentRequestRef.current;
     setIsTranslating(true);
     setError('');
+    
     try {
       const res = await fetch(`${API_URL}/translate/text`, {
         method: 'POST',
@@ -57,11 +43,15 @@ export default function Translate({ token }: Props) {
           target_language: targetLanguage,
         }),
       });
+      
       if (requestId !== currentRequestRef.current) return;
+      
       if (res.ok) {
         const data = await res.json();
         setTranslatedText(data.translated_text);
-        setLiveText('');
+        if (data.source_language && data.source_language !== 'auto') {
+          setDetectedLanguage(data.source_language);
+        }
       } else {
         setError('Translation failed. Check backend.');
       }
@@ -74,65 +64,41 @@ export default function Translate({ token }: Props) {
     }
   };
 
-  const liveTranslate = async (text: string) => {
-    if (!text.trim()) {
-      setLiveText('');
-      return;
-    }
-    try {
-      const res = await fetch(`${API_URL}/translate/quick`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          text,
-          source_language: sourceLanguage,
-          target_language: targetLanguage,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setLiveText(data.translated_text);
-      }
-    } catch {}
-  };
-
   const handleTextChange = (text: string) => {
     setInputText(text);
 
-    if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current);
-    liveDebounceRef.current = setTimeout(() => {
-      liveTranslate(text);
-    }, 250);
-
-    if (fullDebounceRef.current) clearTimeout(fullDebounceRef.current);
-    fullDebounceRef.current = setTimeout(() => {
-      if (sourceLanguage === 'auto') detectLanguage(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    
+    if (!text.trim()) {
+      setTranslatedText('');
+      setIsTranslating(false);
+      setDetectedLanguage('');
+      return;
+    }
+    
+    // Fast debounce — 350ms after typing stops
+    debounceRef.current = setTimeout(() => {
       translate(text);
-    }, 800);
+    }, 350);
   };
 
   const handleSend = () => {
     if (!inputText.trim()) return;
-    if (sourceLanguage === 'auto') detectLanguage(inputText);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     translate(inputText);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Ctrl/Cmd + Enter = Send
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSend();
     }
-    // Plain Enter = new line (default behavior, don't prevent)
   };
 
   const handleVoiceTranscribed = (text: string) => {
     setInputText(text);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     translate(text, 'auto');
-    if (sourceLanguage === 'auto') detectLanguage(text);
   };
 
   const speakTranslation = async () => {
@@ -181,27 +147,25 @@ export default function Translate({ token }: Props) {
       const textTemp = inputText;
       setInputText(translatedText);
       setTranslatedText(textTemp);
-      setLiveText('');
     }
   };
 
   const clearAll = () => {
     setTranslatedText('');
     setInputText('');
-    setLiveText('');
     setDetectedLanguage('');
     setError('');
+    setIsTranslating(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    currentRequestRef.current++;
   };
 
   useEffect(() => {
     return () => {
-      if (liveDebounceRef.current) clearTimeout(liveDebounceRef.current);
-      if (fullDebounceRef.current) clearTimeout(fullDebounceRef.current);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       if (audioRef.current) audioRef.current.pause();
     };
   }, []);
-
-  const displayText = isTranslating && liveText ? liveText : translatedText;
 
   return (
     <div className="translate-page">
@@ -282,20 +246,20 @@ export default function Translate({ token }: Props) {
         <div className="output-panel fade-in-up">
           <div className="panel-header">
             <span className="panel-label">TRANSLATION</span>
-            {isTranslating && liveText && (
-              <span className="live-indicator">live</span>
+            {isTranslating && (
+              <span className="live-indicator">translating</span>
             )}
           </div>
           <div className="output-content">
-            {isTranslating && !liveText ? (
+            {isTranslating && !translatedText ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
                 <p className="loading-text">Translating...</p>
               </div>
-            ) : displayText ? (
-              <span>{displayText}</span>
+            ) : translatedText ? (
+              <span>{translatedText}</span>
             ) : (
-              <span className="placeholder-text">Translation will appear here...</span>
+              <span className="placeholder-text">Translation appears here...</span>
             )}
           </div>
           {translatedText && !isTranslating && (
