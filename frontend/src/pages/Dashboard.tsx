@@ -47,7 +47,7 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
       if (historyRes.ok) {
         const data = await historyRes.json();
         setHistory(data);
-        
+
         const langCount: Record<string, number> = {};
         data.forEach((item: any) => {
           if (item.target_language) {
@@ -55,7 +55,7 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
           }
         });
         setLanguageStats(langCount);
-        
+
         const today = new Date().toDateString();
         const daily = data.filter((item: any) => {
           const itemDate = new Date(item.created_at).toDateString();
@@ -124,68 +124,70 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
       </div>
 
       <div className="dash-charts">
-        <div className="chart-card">
+        <div className="dash-section">
           <h3>🌍 Language Distribution</h3>
-          <p className="chart-sub">Most translated languages</p>
+          <p className="dash-section-sub">Most translated languages</p>
           {topLanguages.length > 0 ? (
-            <div className="bar-chart">
+            <div className="dash-lang-list">
               {topLanguages.map(([lang, count]) => {
-                const percentage = totalLangTranslations > 0 
-                  ? Math.round((count / totalLangTranslations) * 100) 
+                const percentage = totalLangTranslations > 0
+                  ? Math.round((count / totalLangTranslations) * 100)
                   : 0;
                 return (
-                  <div key={lang} className="bar-row">
-                    <span className="bar-label">{lang}</span>
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ width: `${percentage}%` }}>
-                        <span className="bar-percent">{percentage}%</span>
-                      </div>
+                  <div key={lang} className="dash-lang-row">
+                    <span className="dash-lang-name">{lang}</span>
+                    <div className="dash-lang-bar-wrap">
+                      <div className="dash-lang-bar" style={{ width: `${percentage}%` }}></div>
                     </div>
-                    <span className="bar-count">{count}</span>
+                    <span className="dash-lang-pct">
+                      {percentage}%
+                      <span className="dash-lang-count">({count})</span>
+                    </span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="chart-empty">No translation data yet</p>
+            <p className="dash-section-sub" style={{ textAlign: 'center', marginTop: '30px' }}>No translation data yet</p>
           )}
         </div>
 
-        <div className="chart-card">
+        <div className="dash-section">
           <h3>📊 Activity Overview</h3>
-          <p className="chart-sub">Translation metrics summary</p>
-          <div className="activity-grid">
-            <div className="activity-item">
-              <span className="activity-value">{history.length || '—'}</span>
-              <span className="activity-label">Total Records</span>
+          <p className="dash-section-sub">Translation metrics summary</p>
+          <div className="dash-metrics-grid">
+            <div className="dash-metric">
+              <span className="dash-metric-value">{history.length || '—'}</span>
+              <span className="dash-metric-label">Total Records</span>
             </div>
-            <div className="activity-item">
-              <span className="activity-value">{Object.keys(languageStats).length || '—'}</span>
-              <span className="activity-label">Languages Used</span>
+            <div className="dash-metric">
+              <span className="dash-metric-value">{Object.keys(languageStats).length || '—'}</span>
+              <span className="dash-metric-label">Languages Used</span>
             </div>
-            <div className="activity-item">
-              <span className="activity-value">{metrics.premiumUsers || '—'}</span>
-              <span className="activity-label">Premium Users</span>
+            <div className="dash-metric">
+              <span className="dash-metric-value">{metrics.premiumUsers || '—'}</span>
+              <span className="dash-metric-label">Premium Users</span>
             </div>
-            <div className="activity-item">
-              <span className="activity-value">—</span>
-              <span className="activity-label">Active Sessions</span>
+            <div className="dash-metric">
+              <span className="dash-metric-value">—</span>
+              <span className="dash-metric-label">Active Sessions</span>
             </div>
           </div>
         </div>
       </div>
 
       {history.length > 0 && (
-        <div className="dash-recent">
+        <div className="dash-section">
           <h3>🕐 Recent Activity</h3>
-          <div className="recent-list">
+          <p className="dash-section-sub">Latest translations</p>
+          <div className="dash-activity-list">
             {history.slice(0, 5).map((item) => (
-              <div key={item.id} className="recent-item">
-                <div className="recent-info">
-                  <p className="recent-source">{item.source_text}</p>
-                  <p className="recent-target">{item.translated_text}</p>
-                </div>
-                <span className="recent-langs">{item.source_language} → {item.target_language}</span>
+              <div key={item.id} className="dash-activity-item">
+                <p className="dash-activity-source">{item.source_text}</p>
+                <p className="dash-activity-translated">{item.translated_text}</p>
+                <span className="dash-activity-meta">
+                  {item.source_language} → {item.target_language}
+                </span>
               </div>
             ))}
           </div>
