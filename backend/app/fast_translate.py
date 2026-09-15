@@ -1,4 +1,4 @@
-"""Fast translation - optimized for speed"""
+"""Fast translation with smart engine routing and validation"""
 import requests
 import re
 import threading
@@ -16,11 +16,14 @@ SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
 
-UGANDAN_LANGS = {
-    "luganda", "acholi", "ateso", "runyankole", "rukiga", "runyankore", "lugbara",
-    "lusoga", "rutooro", "lumasaba", "alur", "lango", "jopadhola", "lugwere"
+# Languages Sunbird handles well (Ugandan)
+SUNBIRD_TARGETS = {
+    "luganda", "acholi", "ateso", "runyankole", "runyankore", "rukiga",
+    "lugbara", "lusoga", "rutooro", "lumasaba", "alur", "lango",
+    "lugwere", "jopadhola"
 }
 
+# Google language codes
 GOOGLE_CODES = {
     "english": "en", "french": "fr", "spanish": "es", "german": "de",
     "portuguese": "pt", "italian": "it", "dutch": "nl", "russian": "ru",
@@ -47,6 +50,10 @@ GOOGLE_CODES = {
     "kazakh": "kk", "uzbek": "uz", "mongolian": "mn", "tibetan": "bo",
 }
 
+# Session for connection reuse
+_session = requests.Session()
+_session.headers.update({"User-Agent": "Mozilla/5.0"})
+
 
 def clean(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().strip('"').strip("'")
@@ -60,15 +67,10 @@ def is_bad_translation(original: str, result: str) -> bool:
     return False
 
 
-# ============== GOOGLE TRANSLATE (FAST) ==============
-
-# Global session for connection reuse (much faster)
-_session = requests.Session()
-_session.headers.update({"User-Agent": "Mozilla/5.0"})
-
+# ============== GOOGLE TRANSLATE ==============
 
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """Google Translate free API - fast international"""
+    """Google Translate free API with validation"""
     try:
         tgt = GOOGLE_CODES.get(target_lang)
         if not tgt:
@@ -85,14 +87,16 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
             data = resp.json()
             result = "".join([part[0] for part in data[0] if part and part[0]])
             result = clean(result)
+            # Reject truncated results (< 40% of input length for short texts)
             if result and result != text:
-                return result
+                if len(text) < 20 or len(result) >= len(text) * 0.4:
+                    return result
     except Exception as e:
         print(f"Google error: {e}")
     return None
 
 
-# ============== MYMEMORY (BACKUP) ==============
+# ============== MYMEMORY ==============
 
 def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     try:
@@ -113,7 +117,7 @@ def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -
     return None
 
 
-# ============== SUNBIRD (UGANDAN AI) ==============
+# ============== SUNBIRD ==============
 
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if not SUNBIRD_API_KEY:
@@ -158,7 +162,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
     return None
 
 
-# ============== GROQ (LLM FALLBACK) ==============
+# ============== GROQ ==============
 
 def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if not GROQ_API_KEY:
@@ -176,7 +180,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
         payload = {
-            "model": "llama-3.1-8b-instant",  # faster model
+            "model": "llama-3.1-8b-instant",
             "messages": [
                 {"role": "system", "content": f"You are a native {target_name} translator. Output ONLY the {target_name} translation."},
                 {"role": "user", "content": text}
@@ -198,12 +202,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
 # ============== MAIN ROUTER ==============
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
-    """
-    Priority:
-    1. Local dictionary (instant, exact match)
-    2. Direct translation (source → target)
-    3. Pivot through English if needed
-    """
+    """Smart routing with pivot through English if needed"""
     if not text or not text.strip():
         return None
 
@@ -217,23 +216,28 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     if result:
         with _cache_lock:
             _cache[cache_key] = result
-        print(f"📖 Local dict hit (instant)")
+        print(f"📖 Local dict hit")
         return result
 
     # 2. DIRECT TRANSLATION
-    result = _try_direct(text, source_lang, target_lang)
+    result = _translate_direct(text, source_lang, target_lang)
     if result:
         with _cache_lock:
             _cache[cache_key] = result
         return result
 
-    # 3. PIVOT THROUGH ENGLISH (only if source isn't auto and both differ from english)
+    # 3. PIVOT THROUGH ENGLISH
     if source_lang != "english" and target_lang != "english" and source_lang != "auto":
-        # Step 3a: source → English
-        english_text = _try_direct(text, source_lang, "english")
+        print(f"🔄 Pivot: {source_lang} → en → {target_lang}")
+        
+        # Step 1: source → English (Google first)
+        english_text = google_translate(text, "english", source_lang)
+        if not english_text:
+            english_text = groq_translate(text, "english", source_lang)
+        
         if english_text:
-            # Step 3b: English → target
-            result = _try_direct(english_text, "english", target_lang)
+            # Step 2: English → target
+            result = _translate_direct(english_text, "english", target_lang)
             if result:
                 with _cache_lock:
                     _cache[cache_key] = result
@@ -242,30 +246,30 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 
-def _try_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
-    """Try to translate directly - engine order depends on language type"""
+def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
+    """Direct translation based on target language"""
     
-    # Ugandan languages → Sunbird first, Groq fallback
-    if target_lang in UGANDAN_LANGS:
+    # Ugandan languages → Sunbird first, then Groq
+    if target_lang in SUNBIRD_TARGETS:
         result = sunbird_translate(text, target_lang, source_lang)
-        if result:
+        if result and len(result) >= 2:
             return result
         result = groq_translate(text, target_lang, source_lang)
-        if result:
+        if result and len(result) >= 2:
             return result
         return None
     
-    # International → Google first (fast), MyMemory fallback
+    # Everything else → Google first (fast, broad coverage)
     result = google_translate(text, target_lang, source_lang)
-    if result:
+    if result and len(result) >= 2:
         return result
     
     result = mymemory_translate(text, target_lang, source_lang)
-    if result:
+    if result and len(result) >= 2:
         return result
     
     result = groq_translate(text, target_lang, source_lang)
-    if result:
+    if result and len(result) >= 2:
         return result
     
     return None
