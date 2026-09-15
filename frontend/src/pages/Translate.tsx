@@ -121,15 +121,16 @@ export default function Translate({ token }: Props) {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl/Cmd + Enter = Send
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSend();
     }
+    // Plain Enter = new line (default behavior, don't prevent)
   };
 
   const handleVoiceTranscribed = (text: string) => {
     setInputText(text);
-    // Force translation with 'auto' source so backend detects language
     translate(text, 'auto');
     if (sourceLanguage === 'auto') detectLanguage(text);
   };
@@ -147,26 +148,29 @@ export default function Translate({ token }: Props) {
         if (audioRef.current) {
           audioRef.current.pause();
           audioRef.current.src = url;
+          audioRef.current.onended = () => setIsSpeaking(false);
           audioRef.current.play();
         } else {
           audioRef.current = new Audio(url);
+          audioRef.current.onended = () => setIsSpeaking(false);
           audioRef.current.play();
         }
       } else {
         setError('Audio generation failed.');
+        setIsSpeaking(false);
       }
     } catch {
       setError('Audio playback error.');
+      setIsSpeaking(false);
     }
-    setIsSpeaking(false);
   };
 
   const stopSpeaking = () => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      setIsSpeaking(false);
     }
+    setIsSpeaking(false);
   };
 
   const swapLanguages = () => {
@@ -205,20 +209,27 @@ export default function Translate({ token }: Props) {
         <SearchableDropdown
           value={sourceLanguage}
           onChange={setSourceLanguage}
-          placeholder="Source language"
+          placeholder="source language"
           includeAutoDetect
         />
-        <button className="swap-btn" onClick={swapLanguages} title="Swap languages">⇄</button>
+        <button className="swap-btn" onClick={swapLanguages} title="Swap languages" type="button">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="17 1 21 5 17 9" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+        </button>
         <SearchableDropdown
           value={targetLanguage}
           onChange={setTargetLanguage}
-          placeholder="Target language"
+          placeholder="target language"
         />
       </div>
 
       {detectedLanguage && sourceLanguage === 'auto' && (
         <div className="detected-info fade-in-up">
-          🔍 Detected: {LANGUAGES[detectedLanguage] || detectedLanguage}
+          Detected: {LANGUAGES[detectedLanguage] || detectedLanguage}
         </div>
       )}
 
@@ -226,24 +237,44 @@ export default function Translate({ token }: Props) {
         <div className="input-panel">
           <div className="panel-header">
             <span className="panel-label">INPUT</span>
-            <span className="char-count">{inputText.length}</span>
+            <span className="char-count">{inputText.length} chars</span>
           </div>
           <textarea
-            placeholder="Type or paste text here... (translates as you type)"
+            placeholder="Type or paste text here... (Ctrl+Enter to translate)"
             value={inputText}
             onChange={(e) => handleTextChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            spellCheck={false}
           />
           <div className="input-actions">
             <button
+              type="button"
               className="send-btn"
               onClick={handleSend}
               disabled={!inputText.trim() || isTranslating}
             >
-              {isTranslating ? '⏳ Translating...' : '➤ Send'}
+              {isTranslating ? (
+                <>
+                  <span className="btn-spinner"></span>
+                  Translating...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  Translate
+                </>
+              )}
             </button>
             {inputText && (
-              <button className="clear-btn" onClick={clearAll}>🗑️ Clear</button>
+              <button type="button" className="clear-btn" onClick={clearAll} title="Clear">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
             )}
           </div>
         </div>
@@ -252,7 +283,7 @@ export default function Translate({ token }: Props) {
           <div className="panel-header">
             <span className="panel-label">TRANSLATION</span>
             {isTranslating && liveText && (
-              <span className="live-indicator">⚡ live</span>
+              <span className="live-indicator">live</span>
             )}
           </div>
           <div className="output-content">
@@ -264,30 +295,46 @@ export default function Translate({ token }: Props) {
             ) : displayText ? (
               <span>{displayText}</span>
             ) : (
-              <span className="placeholder-text">Translation appears here...</span>
+              <span className="placeholder-text">Translation will appear here...</span>
             )}
           </div>
           {translatedText && !isTranslating && (
             <div className="output-actions">
-              <button onClick={speakTranslation} disabled={isSpeaking} title="Speak">
-                {isSpeaking ? '🔊...' : '🔊'}
-              </button>
-              {isSpeaking && (
-                <button onClick={stopSpeaking} title="Stop">⏹️</button>
-              )}
               <button
+                type="button"
+                onClick={isSpeaking ? stopSpeaking : speakTranslation}
+                className={`speak-btn ${isSpeaking ? 'speaking' : ''}`}
+                title={isSpeaking ? 'Stop' : 'Speak'}
+              >
+                {isSpeaking ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                  </svg>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => navigator.clipboard.writeText(translatedText)}
                 title="Copy"
+                className="icon-btn"
               >
-                📋
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
               </button>
-              <button onClick={clearAll} title="Clear">🗑️</button>
             </div>
           )}
         </div>
       </div>
 
-      {error && <p className="error-text">❌ {error}</p>}
+      {error && <p className="error-text">{error}</p>}
 
       <div className="mic-section">
         <HoldToSpeak

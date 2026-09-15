@@ -31,8 +31,12 @@ export default function SearchableDropdown({ value, onChange, placeholder, inclu
   const { darkMode } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const optionsRef = useRef<HTMLDivElement>(null);
 
+  // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
@@ -41,15 +45,73 @@ export default function SearchableDropdown({ value, onChange, placeholder, inclu
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filtered = Object.entries(LANGUAGES).filter(([code, name]) =>
-    name.toLowerCase().includes(search.toLowerCase()) || code.toLowerCase().includes(search.toLowerCase())
+  // Auto-focus search input when opening
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [isOpen]);
+
+  // Build filtered options
+  const allOptions = includeAutoDetect
+    ? [{ code: 'auto', name: 'Auto Detect' }, ...Object.entries(LANGUAGES).map(([code, name]) => ({ code, name }))]
+    : Object.entries(LANGUAGES).map(([code, name]) => ({ code, name }));
+
+  const filtered = allOptions.filter(({ code, name }) =>
+    name.toLowerCase().includes(search.toLowerCase()) ||
+    code.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Reset highlight when search changes
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [search]);
+
+  // Scroll highlighted option into view
+  useEffect(() => {
+    if (isOpen && optionsRef.current) {
+      const el = optionsRef.current.children[highlightedIndex] as HTMLElement;
+      if (el) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [highlightedIndex, isOpen]);
+
+  const selectOption = (code: string) => {
+    onChange(code);
+    setIsOpen(false);
+    setSearch('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (filtered[highlightedIndex]) {
+        selectOption(filtered[highlightedIndex].code);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsOpen(false);
+      setSearch('');
+    } else if (e.key === 'Tab') {
+      setIsOpen(false);
+      setSearch('');
+    }
+  };
 
   const displayName = value === 'auto' ? 'Auto Detect' : (LANGUAGES[value] || value);
 
   return (
     <div className="lang-select" ref={ref}>
       <button
+        type="button"
         className={`lang-select-btn ${isOpen ? 'active' : ''} ${darkMode ? 'dark' : 'light'}`}
         onClick={() => { setIsOpen(!isOpen); setSearch(''); }}
       >
@@ -69,35 +131,35 @@ export default function SearchableDropdown({ value, onChange, placeholder, inclu
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
+              ref={inputRef}
               type="text"
               placeholder={`Search ${placeholder}...`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              autoFocus
+              onKeyDown={handleKeyDown}
               className={darkMode ? 'dark' : 'light'}
             />
             {search && (
-              <button className="lang-select-clear" onClick={() => setSearch('')}>×</button>
+              <button
+                type="button"
+                className="lang-select-clear"
+                onClick={() => setSearch('')}
+                tabIndex={-1}
+              >
+                ×
+              </button>
             )}
           </div>
-          <div className="lang-select-options">
-            {includeAutoDetect && (
-              <div
-                className={`lang-select-option ${value === 'auto' ? 'selected' : ''}`}
-                onClick={() => { onChange('auto'); setIsOpen(false); }}
-              >
-                <span>🔍 Auto Detect</span>
-                {value === 'auto' && <span className="lang-select-check">✓</span>}
-              </div>
-            )}
-            {filtered.map(([code, name]) => (
+          <div className="lang-select-options" ref={optionsRef}>
+            {filtered.map(({ code, name }, idx) => (
               <div
                 key={code}
-                className={`lang-select-option ${value === code ? 'selected' : ''}`}
-                onClick={() => { onChange(code); setIsOpen(false); }}
+                className={`lang-select-option ${value === code ? 'selected' : ''} ${highlightedIndex === idx ? 'highlighted' : ''}`}
+                onClick={() => selectOption(code)}
+                onMouseEnter={() => setHighlightedIndex(idx)}
               >
-                <span>{name}</span>
-                <span className="lang-select-code">{code}</span>
+                <span>{code === 'auto' ? '🔍 Auto Detect' : name}</span>
+                {code !== 'auto' && <span className="lang-select-code">{code}</span>}
                 {value === code && <span className="lang-select-check">✓</span>}
               </div>
             ))}
