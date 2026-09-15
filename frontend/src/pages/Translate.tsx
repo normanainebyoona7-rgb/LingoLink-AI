@@ -253,9 +253,60 @@ export default function Translate({ token }: Props) {
         </div>
 
         <div className="output-panel fade-in-up">
-          <div className="panel-header">
+          <div className="panel-header output-header">
             <span className="panel-label">TRANSLATION</span>
             {isTranslating && <span className="live-indicator">translating</span>}
+            {translatedText && !isTranslating && (
+              <div className="header-actions">
+                <div className="gender-toggle">
+                  <button
+                    type="button"
+                    className={`gender-btn ${voiceGender === 'female' ? 'active' : ''}`}
+                    onClick={() => setVoiceGender('female')}
+                    title="Female voice"
+                  >
+                    👩
+                  </button>
+                  <button
+                    type="button"
+                    className={`gender-btn ${voiceGender === 'male' ? 'active' : ''}`}
+                    onClick={() => setVoiceGender('male')}
+                    title="Male voice"
+                  >
+                    👨
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={isSpeaking ? stopSpeaking : speakTranslation}
+                  className={`speak-btn ${isSpeaking ? 'speaking' : ''}`}
+                  title={isSpeaking ? 'Stop' : 'Speak'}
+                >
+                  {isSpeaking ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(translatedText)}
+                  title="Copy"
+                  className="icon-btn"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
           <div className="output-content">
             {isTranslating && !translatedText ? (
@@ -269,57 +320,6 @@ export default function Translate({ token }: Props) {
               <span className="placeholder-text">Translation appears here...</span>
             )}
           </div>
-          {translatedText && !isTranslating && (
-            <div className="output-actions">
-              <div className="gender-toggle">
-                <button
-                  type="button"
-                  className={`gender-btn ${voiceGender === 'female' ? 'active' : ''}`}
-                  onClick={() => setVoiceGender('female')}
-                  title="Female voice"
-                >
-                  👩
-                </button>
-                <button
-                  type="button"
-                  className={`gender-btn ${voiceGender === 'male' ? 'active' : ''}`}
-                  onClick={() => setVoiceGender('male')}
-                  title="Male voice"
-                >
-                  👨
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={isSpeaking ? stopSpeaking : speakTranslation}
-                className={`speak-btn ${isSpeaking ? 'speaking' : ''}`}
-                title={isSpeaking ? 'Stop' : 'Speak'}
-              >
-                {isSpeaking ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                  </svg>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => navigator.clipboard.writeText(translatedText)}
-                title="Copy"
-                className="icon-btn"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 

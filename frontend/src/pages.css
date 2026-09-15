@@ -219,20 +219,6 @@
 .clear-btn { width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(200, 122, 92, 0.85); border: none; border-radius: 10px; color: white; cursor: pointer; transition: all 0.2s; }
 .clear-btn:hover { background: var(--terracotta); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(200, 122, 92, 0.5); }
 
-.output-actions { display: flex; gap: 8px; padding: 10px 4px 4px; border-top: 1px solid; margin-top: 8px; align-items: center; }
-.app-dark .output-actions { border-color: rgba(212, 160, 74, 0.15); }
-.app-light .output-actions { border-color: #e8dfcc; }
-
-.output-actions button, .icon-btn, .speak-btn { width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1.5px solid; cursor: pointer; transition: all 0.22s ease; background: transparent; }
-.app-dark .output-actions button, .app-dark .icon-btn, .app-dark .speak-btn { background: rgba(212, 160, 74, 0.1); border-color: rgba(212, 160, 74, 0.35); color: var(--bright-amber); }
-.app-light .output-actions button, .app-light .icon-btn, .app-light .speak-btn { background: var(--parchment); border-color: var(--border-light); color: var(--deep-gold); }
-
-.output-actions button:hover, .icon-btn:hover, .speak-btn:hover { background: var(--warm-gold); border-color: var(--bright-amber); color: #1a1208; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(212, 160, 74, 0.45); }
-.output-actions button:active, .icon-btn:active, .speak-btn:active { transform: translateY(0); }
-
-.speak-btn.speaking { background: linear-gradient(135deg, #ff416c, #c0392b) !important; border-color: #ff416c !important; color: white !important; animation: speakPulse 1.2s ease-in-out infinite; }
-@keyframes speakPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 65, 108, 0.6); } 50% { box-shadow: 0 0 0 8px rgba(255, 65, 108, 0); } }
-
 .error-text { color: var(--terracotta); font-size: 13px; text-align: center; padding: 10px; margin-top: 10px; background: rgba(200, 122, 92, 0.12); border-radius: 8px; border: 1px solid rgba(200, 122, 92, 0.3); }
 
 .mic-section { margin-top: 20px; padding: 16px; border-radius: 14px; display: flex; justify-content: center; }
@@ -253,7 +239,93 @@
 @keyframes pageIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
-/* ============ VOICE ============ */
+/* ============ OUTPUT PANEL HEADER ACTIONS ============ */
+.output-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.output-header .panel-label {
+  margin-right: auto;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gender-toggle {
+  display: inline-flex;
+  gap: 1px;
+  border-radius: 6px;
+  padding: 2px;
+  align-items: center;
+}
+.app-dark .gender-toggle { background: rgba(212, 160, 74, 0.1); }
+.app-light .gender-toggle { background: #efe5d3; }
+
+.gender-btn {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+  height: 26px;
+}
+.gender-btn.active {
+  background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold));
+  box-shadow: 0 1px 4px rgba(212, 160, 74, 0.4);
+}
+.gender-btn:not(.active):hover {
+  background: rgba(212, 160, 74, 0.2);
+}
+
+.output-header .speak-btn,
+.output-header .icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1.5px solid;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  background: transparent;
+}
+.app-dark .output-header .speak-btn,
+.app-dark .output-header .icon-btn {
+  background: rgba(212, 160, 74, 0.1);
+  border-color: rgba(212, 160, 74, 0.35);
+  color: var(--bright-amber);
+}
+.app-light .output-header .speak-btn,
+.app-light .output-header .icon-btn {
+  background: var(--parchment);
+  border-color: var(--border-light);
+  color: var(--deep-gold);
+}
+.output-header .speak-btn:hover,
+.output-header .icon-btn:hover {
+  background: var(--warm-gold);
+  border-color: var(--bright-amber);
+  color: #1a1208;
+}
+.output-header .speak-btn.speaking {
+  background: linear-gradient(135deg, #ff416c, #c0392b) !important;
+  border-color: #ff416c !important;
+  color: white !important;
+  animation: speakPulse 1.2s ease-in-out infinite;
+}
+@keyframes speakPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 65, 108, 0.6); } 50% { box-shadow: 0 0 0 8px rgba(255, 65, 108, 0); } }
+
+/* ============ VOICE PAGE ============ */
 .voice-root { max-width: 800px; margin: 0 auto; }
 .voice-header { text-align: center; margin-bottom: 25px; }
 .voice-header h2 { font-size: 22px; margin-bottom: 5px; }
@@ -321,15 +393,7 @@
 .app-dark .voice-convo-original { color: var(--text-dim); }
 .app-light .voice-convo-original { color: var(--text-muted); }
 
-/* ============ SLIDING TOGGLE ============ */
-.slider-toggle { position: relative; width: 50px; height: 26px; border: none; border-radius: 13px; cursor: pointer; transition: all 0.3s ease; flex-shrink: 0; }
-.slider-toggle.on { background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold)); }
-.slider-toggle.off { background: #888; }
-.slider-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.3s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
-.slider-toggle.on .slider-knob { transform: translateX(24px); }
-.slider-toggle.off .slider-knob { transform: translateX(0); }
-
-/* ============ VOICE SETTINGS (Gender + Speed) ============ */
+/* ============ VOICE SETTINGS PANEL (Voice.tsx) ============ */
 .voice-settings-panel {
   display: flex;
   flex-direction: column;
@@ -406,37 +470,13 @@
   text-align: right;
 }
 
-/* ============ GENDER TOGGLE IN OUTPUT ACTIONS ============ */
-.gender-toggle {
-  display: inline-flex;
-  gap: 2px;
-  border-radius: 8px;
-  padding: 2px;
-  margin-right: 6px;
-  height: 44px;
-  align-items: center;
-}
-.app-dark .gender-toggle { background: rgba(212, 160, 74, 0.1); }
-.app-light .gender-toggle { background: #efe5d3; }
-
-.gender-btn {
-  background: transparent;
-  border: none;
-  font-size: 16px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  line-height: 1;
-  height: 36px;
-}
-.gender-btn.active {
-  background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold));
-  box-shadow: 0 2px 8px rgba(212, 160, 74, 0.4);
-}
-.gender-btn:not(.active):hover {
-  background: rgba(212, 160, 74, 0.2);
-}
+/* ============ SLIDING TOGGLE ============ */
+.slider-toggle { position: relative; width: 50px; height: 26px; border: none; border-radius: 13px; cursor: pointer; transition: all 0.3s ease; flex-shrink: 0; }
+.slider-toggle.on { background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold)); }
+.slider-toggle.off { background: #888; }
+.slider-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.3s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
+.slider-toggle.on .slider-knob { transform: translateX(24px); }
+.slider-toggle.off .slider-knob { transform: translateX(0); }
 
 /* ============ AI CALL CENTER ============ */
 .cc-root { max-width: 900px; margin: 0 auto; }
@@ -563,9 +603,9 @@
 .video-error { color: var(--terracotta); font-size: 12px; margin: 8px 0; }
 .video-success { color: var(--bright-amber); font-size: 12px; margin: 8px 0; }
 
-/* ============ DASHBOARD ============ */
+/* ============ DASHBOARD (Savanna Gold) ============ */
 .dash-root { max-width: 1200px; margin: 0 auto; }
-.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+.dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; }
 .dash-header h2 { font-size: 22px; margin-bottom: 4px; }
 .dash-header p { font-size: 13px; }
 .app-dark .dash-header h2 { color: var(--text-dark); }

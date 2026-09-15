@@ -4,7 +4,6 @@ import './landing.css';
 import './auth.css';
 import './pages.css';
 import './admin.css';
-import './dashboard.css';
 import { API_URL } from './config';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
@@ -75,7 +74,7 @@ function App() {
     if (savedToken && savedUser) { setToken(savedToken); setUsername(savedUser); setIsLoggedIn(true); }
     if (savedDark !== null) setDarkMode(savedDark === 'true');
     if (savedAdmin !== null) setIsAdmin(savedAdmin === 'true');
-    
+
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
     };
@@ -198,7 +197,7 @@ function App() {
         ) : (
           <div className={`auth-full ${darkMode ? 'auth-dark' : 'auth-light'}`}>
             <div className="auth-box">
-              <div className="auth-logo">🌐</div>
+              <div className="auth-logo">🌍</div>
               <h1>{authPage === 'login' ? 'Welcome Back' : authPage === 'register' ? 'Create Account' : 'Forgot Password'}</h1>
               <p>
                 {authPage === 'login' ? 'Sign in to continue translating' :
@@ -266,16 +265,16 @@ function App() {
 
         <aside className={`sb-sidebar ${darkMode ? 'sb-dark' : 'sb-light'} ${isMobile ? (mobileSidebarOpen ? 'mobile-open' : 'mobile-closed') : ''}`}>
           <div className="sb-brand">
-            <span className="sb-brand-icon">🌐</span>
+            <span className="sb-brand-icon">🌍</span>
             {(!sidebarCollapsed || isMobile) && <span className="sb-brand-text">LingoLink AI</span>}
           </div>
-          
+
           <div className="sb-home-section">
             <button className="sb-home-btn" onClick={goHome}>
               🏠 {(!sidebarCollapsed || isMobile) && <span>Home</span>}
             </button>
           </div>
-          
+
           <nav className="sb-menu">
             {sidebarItems.map((item) => (
               <button key={item.id} className={`sb-item ${activeTab === item.id ? 'sb-active' : ''}`}
@@ -285,7 +284,7 @@ function App() {
               </button>
             ))}
           </nav>
-          
+
           <div className="sb-footer">
             <div className="sb-user">
               <span>👤</span>
