@@ -219,7 +219,7 @@
 .clear-btn { width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: rgba(200, 122, 92, 0.85); border: none; border-radius: 10px; color: white; cursor: pointer; transition: all 0.2s; }
 .clear-btn:hover { background: var(--terracotta); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(200, 122, 92, 0.5); }
 
-.output-actions { display: flex; gap: 8px; padding: 10px 4px 4px; border-top: 1px solid; margin-top: 8px; }
+.output-actions { display: flex; gap: 8px; padding: 10px 4px 4px; border-top: 1px solid; margin-top: 8px; align-items: center; }
 .app-dark .output-actions { border-color: rgba(212, 160, 74, 0.15); }
 .app-light .output-actions { border-color: #e8dfcc; }
 
@@ -328,6 +328,115 @@
 .slider-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.3s ease; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); }
 .slider-toggle.on .slider-knob { transform: translateX(24px); }
 .slider-toggle.off .slider-knob { transform: translateX(0); }
+
+/* ============ VOICE SETTINGS (Gender + Speed) ============ */
+.voice-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.app-dark .voice-settings-panel { background: var(--night-amber); border: 1px solid rgba(212, 160, 74, 0.12); }
+.app-light .voice-settings-panel { background: var(--parchment); border: 1px solid var(--border-light); box-shadow: 0 2px 10px rgba(26, 18, 8, 0.06); }
+
+.voice-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.voice-settings-label {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 60px;
+}
+.app-dark .voice-settings-label { color: var(--text-dark); }
+.app-light .voice-settings-label { color: var(--text-light); }
+
+.voice-settings-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.voice-gender-btn {
+  padding: 8px 16px;
+  border: 1.5px solid;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  background: transparent;
+}
+.app-dark .voice-gender-btn { border-color: rgba(212, 160, 74, 0.35); color: var(--text-dim); }
+.app-light .voice-gender-btn { border-color: var(--border-light); color: var(--text-muted); }
+
+.voice-gender-btn.active {
+  background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold));
+  border-color: var(--bright-amber);
+  color: #1a1208;
+  box-shadow: 0 3px 12px rgba(212, 160, 74, 0.4);
+}
+
+.voice-gender-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.voice-gender-btn:not(:disabled):not(.active):hover {
+  border-color: var(--bright-amber);
+  color: var(--bright-amber);
+}
+
+.voice-speed-slider {
+  flex: 1;
+  max-width: 200px;
+  accent-color: var(--bright-amber);
+  cursor: pointer;
+}
+
+.voice-speed-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bright-amber);
+  min-width: 38px;
+  text-align: right;
+}
+
+/* ============ GENDER TOGGLE IN OUTPUT ACTIONS ============ */
+.gender-toggle {
+  display: inline-flex;
+  gap: 2px;
+  border-radius: 8px;
+  padding: 2px;
+  margin-right: 6px;
+  height: 44px;
+  align-items: center;
+}
+.app-dark .gender-toggle { background: rgba(212, 160, 74, 0.1); }
+.app-light .gender-toggle { background: #efe5d3; }
+
+.gender-btn {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+  height: 36px;
+}
+.gender-btn.active {
+  background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold));
+  box-shadow: 0 2px 8px rgba(212, 160, 74, 0.4);
+}
+.gender-btn:not(.active):hover {
+  background: rgba(212, 160, 74, 0.2);
+}
 
 /* ============ AI CALL CENTER ============ */
 .cc-root { max-width: 900px; margin: 0 auto; }
@@ -528,7 +637,6 @@
 
 .dash-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 
-/* Language distribution bars */
 .dash-lang-list { display: flex; flex-direction: column; gap: 14px; }
 .dash-lang-row { display: grid; grid-template-columns: 90px 1fr 60px; gap: 12px; align-items: center; }
 .dash-lang-name { font-size: 13px; font-weight: 600; text-transform: capitalize; }
@@ -544,7 +652,6 @@
 .app-light .dash-lang-pct { color: var(--deep-gold); }
 .dash-lang-count { font-size: 11px; opacity: 0.65; margin-left: 4px; font-weight: 500; }
 
-/* Activity overview grid */
 .dash-metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .dash-metric { padding: 16px 18px; border-radius: 10px; border: 1px solid; display: flex; flex-direction: column; gap: 4px; }
 .app-dark .dash-metric { background: rgba(212, 160, 74, 0.06); border-color: rgba(212, 160, 74, 0.15); }
@@ -556,7 +663,6 @@
 .app-dark .dash-metric-label { color: var(--text-dim); }
 .app-light .dash-metric-label { color: var(--text-muted); }
 
-/* Recent activity list */
 .dash-activity-list { display: flex; flex-direction: column; gap: 10px; }
 .dash-activity-item { padding: 14px 16px; border-radius: 10px; border-left: 3px solid var(--warm-gold); transition: all 0.2s ease; }
 .app-dark .dash-activity-item { background: rgba(212, 160, 74, 0.05); }
@@ -574,7 +680,7 @@
 .app-dark .dash-activity-meta { color: var(--text-dim); }
 .app-light .dash-activity-meta { color: var(--text-muted); }
 
-/* ============ DASHBOARD QUICK ACTIONS — REDESIGNED ============ */
+/* ============ DASHBOARD QUICK ACTIONS ============ */
 .dash-quick-section { margin-top: 8px; }
 
 .dash-quick-section h3 {
@@ -930,6 +1036,7 @@
   .input-actions, .output-actions { flex-wrap: wrap; }
   .send-btn { width: 100%; }
   .voice-lang-row { flex-direction: column; }
+  .voice-settings-row { flex-wrap: wrap; }
   .history-item-body { grid-template-columns: 1fr; }
   .translate-page { max-width: 100%; padding: 0; }
   .lang-select { width: 100%; }

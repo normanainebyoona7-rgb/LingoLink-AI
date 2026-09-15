@@ -1,12 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
+import VoiceSettings from '../components/VoiceSettings';
 
 interface Props {
   token: string;
 }
+
+type Gender = 'male' | 'female';
 
 export default function Voice({ token }: Props) {
   const { darkMode } = useTheme();
@@ -19,6 +22,8 @@ export default function Voice({ token }: Props) {
   const [conversation, setConversation] = useState<{ speaker: string; text: string; translated: string; language: string }[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [voiceGender, setVoiceGender] = useState<Gender>('female');
+  const [voiceSpeed, setVoiceSpeed] = useState(1.0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleTranscribed = async (text: string) => {
@@ -45,7 +50,7 @@ export default function Voice({ token }: Props) {
       if (res.ok) {
         const data = await res.json();
         setTranslatedText(data.translated_text);
-        
+
         setConversation(prev => [...prev, {
           speaker: 'You',
           text: text,
@@ -53,7 +58,7 @@ export default function Voice({ token }: Props) {
           language: data.source_language || sourceLanguage,
         }]);
 
-        if (autoSpeak) {
+        if (autoSpeak && voiceEnabled) {
           speakTranslation(data.translated_text);
         }
       }
@@ -67,21 +72,41 @@ export default function Voice({ token }: Props) {
   const speakTranslation = async (text: string) => {
     if (!text) return;
     try {
-      const res = await fetch(`${API_URL}/tts/speak?text=${encodeURIComponent(text)}&language=${targetLanguage}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetch(`${API_URL}/tts/speak`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text,
+          language: targetLanguage,
+          gender: voiceGender,
+          speed: voiceSpeed,
+        }),
       });
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        if (audioRef.current) {
-          audioRef.current.src = url;
-          audioRef.current.play();
-          setIsSpeaking(true);
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
         }
+        audioRef.current.src = url;
+        audioRef.current.onended = () => setIsSpeaking(false);
+        audioRef.current.play();
+        setIsSpeaking(true);
       }
     } catch (err) {
       console.error('TTS failed:', err);
     }
+  };
+
+  const stopSpeaking = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsSpeaking(false);
   };
 
   const swapLanguages = () => {
@@ -131,6 +156,12 @@ export default function Voice({ token }: Props) {
         />
       </div>
 
+      <VoiceSettings
+        language={targetLanguage}
+        onVoiceChange={setVoiceGender}
+        onSpeedChange={setVoiceSpeed}
+      />
+
       <div className="voice-mic-section">
         <HoldToSpeak token={token} onTranscribed={handleTranscribed} />
       </div>
@@ -143,16 +174,20 @@ export default function Voice({ token }: Props) {
         <div className="voice-arrow">↓</div>
         <div className="voice-target-box">
           <span className="voice-box-label">TRANSLATION:</span>
-          <p className="voice-box-text">{isTranslating ? '⏳ Translating...' : translatedText || 'Translation appears here...'}</p>
+          <p className="voice-box-text">
+            {isTranslating ? '⏳ Translating...' : translatedText || 'Translation appears here...'}
+          </p>
           {translatedText && !isTranslating && (
-            <button className="voice-speak-btn" onClick={() => speakTranslation(translatedText)}>
+            <button
+              className="voice-speak-btn"
+              onClick={isSpeaking ? stopSpeaking : () => speakTranslation(translatedText)}
+            >
               {isSpeaking ? '🔊 Playing...' : '🔊 Hear Translation'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Settings with Sliding Toggles */}
       <div className="voice-settings">
         <div className="voice-setting-row">
           <div>
@@ -191,11 +226,7 @@ export default function Voice({ token }: Props) {
         </div>
       )}
 
-      <audio
-        ref={audioRef}
-        onEnded={() => setIsSpeaking(false)}
-        style={{ display: 'none' }}
-      />
+      <audio ref={audioRef} style={{ display: 'none' }} />
     </div>
   );
 }

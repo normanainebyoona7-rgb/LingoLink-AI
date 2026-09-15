@@ -7,6 +7,8 @@ interface Props {
   token: string;
 }
 
+type Gender = 'male' | 'female';
+
 export default function Translate({ token }: Props) {
   const [sourceLanguage, setSourceLanguage] = useState('auto');
   const [targetLanguage, setTargetLanguage] = useState('english');
@@ -15,6 +17,7 @@ export default function Translate({ token }: Props) {
   const [detectedLanguage, setDetectedLanguage] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceGender, setVoiceGender] = useState<Gender>('female');
   const [error, setError] = useState('');
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -29,7 +32,7 @@ export default function Translate({ token }: Props) {
     const requestId = ++currentRequestRef.current;
     setIsTranslating(true);
     setError('');
-    
+
     try {
       const res = await fetch(`${API_URL}/translate/text`, {
         method: 'POST',
@@ -43,9 +46,9 @@ export default function Translate({ token }: Props) {
           target_language: targetLanguage,
         }),
       });
-      
+
       if (requestId !== currentRequestRef.current) return;
-      
+
       if (res.ok) {
         const data = await res.json();
         setTranslatedText(data.translated_text);
@@ -66,17 +69,13 @@ export default function Translate({ token }: Props) {
 
   const handleTextChange = (text: string) => {
     setInputText(text);
-
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    
     if (!text.trim()) {
       setTranslatedText('');
       setIsTranslating(false);
       setDetectedLanguage('');
       return;
     }
-    
-    // Fast debounce — 350ms after typing stops
     debounceRef.current = setTimeout(() => {
       translate(text);
     }, 350);
@@ -105,8 +104,18 @@ export default function Translate({ token }: Props) {
     if (!translatedText) return;
     setIsSpeaking(true);
     try {
-      const res = await fetch(`${API_URL}/tts/speak?text=${encodeURIComponent(translatedText)}&language=${targetLanguage}`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+      const res = await fetch(`${API_URL}/tts/speak`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: translatedText,
+          language: targetLanguage,
+          gender: voiceGender,
+          speed: 1.0,
+        }),
       });
       if (res.ok) {
         const blob = await res.blob();
@@ -246,9 +255,7 @@ export default function Translate({ token }: Props) {
         <div className="output-panel fade-in-up">
           <div className="panel-header">
             <span className="panel-label">TRANSLATION</span>
-            {isTranslating && (
-              <span className="live-indicator">translating</span>
-            )}
+            {isTranslating && <span className="live-indicator">translating</span>}
           </div>
           <div className="output-content">
             {isTranslating && !translatedText ? (
@@ -264,6 +271,24 @@ export default function Translate({ token }: Props) {
           </div>
           {translatedText && !isTranslating && (
             <div className="output-actions">
+              <div className="gender-toggle">
+                <button
+                  type="button"
+                  className={`gender-btn ${voiceGender === 'female' ? 'active' : ''}`}
+                  onClick={() => setVoiceGender('female')}
+                  title="Female voice"
+                >
+                  👩
+                </button>
+                <button
+                  type="button"
+                  className={`gender-btn ${voiceGender === 'male' ? 'active' : ''}`}
+                  onClick={() => setVoiceGender('male')}
+                  title="Male voice"
+                >
+                  👨
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={isSpeaking ? stopSpeaking : speakTranslation}
