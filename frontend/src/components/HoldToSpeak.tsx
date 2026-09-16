@@ -4,10 +4,11 @@ import { useTheme } from '../App';
 
 interface Props {
   token: string;
+  language?: string;
   onTranscribed: (text: string) => void;
 }
 
-export default function HoldToSpeak({ token, onTranscribed }: Props) {
+export default function HoldToSpeak({ token, language = 'auto', onTranscribed }: Props) {
   const { darkMode } = useTheme();
   const [isHolding, setIsHolding] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,16 +21,11 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTouchDeviceRef = useRef(false);
 
-  // Check initial permission state
   useEffect(() => {
     checkPermission();
     return () => {
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current);
-      }
-      if (isRecordingRef.current && mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
+      if (recordingTimeoutRef.current) clearTimeout(recordingTimeoutRef.current);
+      if (isRecordingRef.current && mediaRecorderRef.current) mediaRecorderRef.current.stop();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
         streamRef.current = null;
@@ -42,12 +38,10 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
       if (navigator.permissions && navigator.permissions.query) {
         const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
         setPermissionState(result.state);
-        result.onchange = () => {
-          setPermissionState(result.state);
-        };
+        result.onchange = () => setPermissionState(result.state);
       }
     } catch (err) {
-      console.log('Permissions API not supported, will try direct access');
+      console.log('Permissions API not supported');
     }
   };
 
@@ -59,18 +53,14 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
   }, []);
 
   const startRecording = useCallback(async () => {
-    if (isRecordingRef.current || isProcessing) {
-      return;
-    }
+    if (isRecordingRef.current || isProcessing) return;
 
     setError('');
     setIsProcessing(false);
     setShowPermissionModal(false);
-    
+
     try {
-      console.log('Requesting microphone access...');
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -79,102 +69,88 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
           sampleRate: 44100,
         }
       });
-      
-      console.log('Microphone access granted');
+
       isRecordingRef.current = true;
       streamRef.current = stream;
       setPermissionState('granted');
-      
+
       const mimeTypes = [
-        'audio/webm',
-        'audio/webm;codecs=opus',
-        'audio/mp4',
-        'audio/mp4;codecs=mp4a.40.2',
-        'audio/ogg',
-        'audio/ogg;codecs=opus',
-        'audio/wav',
-        ''
+        'audio/webm;codecs=opus', 'audio/webm',
+        'audio/mp4;codecs=mp4a.40.2', 'audio/mp4',
+        'audio/ogg;codecs=opus', 'audio/ogg', ''
       ];
-      
+
       let selectedMimeType = '';
-      for (const mimeType of mimeTypes) {
-        if (mimeType === '' || MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
+      for (const m of mimeTypes) {
+        if (m === '' || MediaRecorder.isTypeSupported(m)) {
+          selectedMimeType = m;
           break;
         }
       }
-      
-      console.log('Using MIME type:', selectedMimeType || 'browser default');
-      
-      const recorder = selectedMimeType 
+
+      const recorder = selectedMimeType
         ? new MediaRecorder(stream, { mimeType: selectedMimeType })
         : new MediaRecorder(stream);
-      
+
       const chunks: Blob[] = [];
-      recorder.ondataavailable = (e) => { 
-        if (e.data.size > 0) chunks.push(e.data); 
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
       };
-      
+
       recorder.onstop = async () => {
-        console.log('Recording stopped');
         isRecordingRef.current = false;
         setIsHolding(false);
         setIsProcessing(true);
         cleanupStream();
-        
+
         if (chunks.length === 0) {
           setError('No audio recorded. Try again.');
           setIsProcessing(false);
           return;
         }
-        
+
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-        console.log('Audio blob size:', blob.size, 'bytes');
         await transcribeAudio(blob);
         setIsProcessing(false);
       };
 
-      recorder.onerror = (event) => {
-        console.error('Recorder error:', event);
+      recorder.onerror = () => {
         isRecordingRef.current = false;
         setIsHolding(false);
         cleanupStream();
         setError('Recording error. Please try again.');
         setIsProcessing(false);
       };
-      
+
       mediaRecorderRef.current = recorder;
       recorder.start(100);
-      console.log('Recording started');
       setIsHolding(true);
-      
+
     } catch (err: any) {
-      console.error('Microphone access error:', err.name, err.message);
       isRecordingRef.current = false;
       setIsHolding(false);
       cleanupStream();
-      
+
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError') {
         setPermissionState('denied');
         setShowPermissionModal(true);
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setError('No microphone found. Please connect a microphone.');
+        setError('No microphone found.');
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        setError('Microphone is busy. Close other apps using it.');
+        setError('Microphone is busy. Close other apps.');
       } else if (err.name === 'NotSupportedError') {
-        setError('Your browser does not support audio recording. Try Chrome or Firefox.');
+        setError('Your browser does not support audio recording.');
       } else {
-        setError('Microphone access denied: ' + (err.message || err.name));
+        setError('Microphone error: ' + (err.message || err.name));
       }
     }
-  }, [token, isProcessing, cleanupStream]);
+  }, [isProcessing, cleanupStream]);
 
   const stopRecording = useCallback(() => {
     if (recordingTimeoutRef.current) {
       clearTimeout(recordingTimeoutRef.current);
       recordingTimeoutRef.current = null;
     }
-
     if (isRecordingRef.current && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     } else if (isRecordingRef.current) {
@@ -189,27 +165,30 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
   const transcribeAudio = async (blob: Blob) => {
     try {
       const formData = new FormData();
-      const ext = blob.type.includes('webm') ? 'webm' : blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : 'wav';
+      const ext = blob.type.includes('webm') ? 'webm'
+                : blob.type.includes('mp4') ? 'm4a'
+                : blob.type.includes('ogg') ? 'ogg' : 'wav';
       formData.append('file', blob, `audio.${ext}`);
-      
-      console.log('Sending audio to server...');
+      formData.append('language', language);
+
+      console.log(`📡 Sending audio (lang=${language})...`);
+
       const res = await fetch(`${API_URL}/speech/transcribe`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         const text = data.text || data.transcribed_text || '';
-        console.log('Transcribed text:', text);
+        console.log('✅ Transcribed:', text);
         if (text.trim()) {
           onTranscribed(text);
         } else {
           setError('No speech detected. Speak clearly.');
         }
       } else {
-        console.error('Server error:', res.status);
         setError('Transcription failed. Check backend.');
       }
     } catch (err) {
@@ -223,32 +202,25 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
     if (isTouchDeviceRef.current) return;
     startRecording();
   };
-
   const handleMouseUp = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isTouchDeviceRef.current) return;
     stopRecording();
   };
-
-  const handleMouseLeave = (e: React.MouseEvent) => {
-    if (isHolding && !isTouchDeviceRef.current) {
-      stopRecording();
-    }
+  const handleMouseLeave = () => {
+    if (isHolding && !isTouchDeviceRef.current) stopRecording();
   };
-
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     isTouchDeviceRef.current = true;
     startRecording();
   };
-
   const handleTouchEnd = (e: React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     stopRecording();
   };
-
   const handleContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -257,17 +229,12 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
   const requestPermission = async () => {
     setShowPermissionModal(false);
     setError('');
-    
     try {
-      console.log('Manually requesting permission...');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
       setPermissionState('granted');
-      setError('✅ Microphone access granted! Try again.');
-      
       setTimeout(() => startRecording(), 500);
     } catch (err: any) {
-      console.error('Permission request failed:', err);
       setPermissionState('denied');
       setShowPermissionModal(true);
     }
@@ -300,12 +267,12 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
           {isProcessing ? 'Processing...' : isHolding ? 'Release to Translate' : 'Hold to Speak'}
         </span>
       </button>
-      
+
       {error && <p className="hts-error">❌ {error}</p>}
       {!error && !isHolding && !isProcessing && permissionState !== 'granted' && (
         <p className={`hts-hint ${darkMode ? 'dark' : 'light'}`}>
-          {permissionState === 'denied' 
-            ? 'Microphone is blocked. Tap to request access.' 
+          {permissionState === 'denied'
+            ? 'Microphone blocked. Tap to request access.'
             : 'Hold the button, speak clearly, then release'}
         </p>
       )}
@@ -316,11 +283,11 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
             <div className="permission-icon">🎤</div>
             <h3>Microphone Access Required</h3>
             <p>LingoLink AI needs access to your microphone to record and translate your speech.</p>
-            
+
             <div className="permission-steps">
               <div className="permission-step">
                 <span className="step-number">1</span>
-                <span>Click the <strong>"Request Permission"</strong> button below</span>
+                <span>Click <strong>"Request Permission"</strong> below</span>
               </div>
               <div className="permission-step">
                 <span className="step-number">2</span>
@@ -328,7 +295,7 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
               </div>
               <div className="permission-step">
                 <span className="step-number">3</span>
-                <span>If nothing happens, click the 🔒 lock icon in address bar</span>
+                <span>If nothing happens, click the lock icon in the address bar</span>
               </div>
               <div className="permission-step">
                 <span className="step-number">4</span>
@@ -350,10 +317,7 @@ export default function HoldToSpeak({ token, onTranscribed }: Props) {
               <button className="permission-close-btn" onClick={() => setShowPermissionModal(false)}>
                 Close
               </button>
-              <button 
-                className="permission-retry-btn" 
-                onClick={requestPermission}
-              >
+              <button className="permission-retry-btn" onClick={requestPermission}>
                 🎤 Request Permission
               </button>
             </div>

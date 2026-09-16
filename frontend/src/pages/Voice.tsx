@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -13,8 +13,8 @@ type Gender = 'male' | 'female';
 
 export default function Voice({ token }: Props) {
   const { darkMode } = useTheme();
-  const [sourceLanguage, setSourceLanguage] = useState('auto');
-  const [targetLanguage, setTargetLanguage] = useState('english');
+  const [sourceLanguage, setSourceLanguage] = useState('english');
+  const [targetLanguage, setTargetLanguage] = useState('luganda');
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
@@ -53,14 +53,16 @@ export default function Voice({ token }: Props) {
 
         setConversation(prev => [...prev, {
           speaker: 'You',
-          text: text,
+          text,
           translated: data.translated_text,
-          language: data.source_language || sourceLanguage,
+          language: sourceLanguage,
         }]);
 
         if (autoSpeak && voiceEnabled) {
           speakTranslation(data.translated_text);
         }
+      } else {
+        console.error('Translation failed:', res.status);
       }
     } catch (err) {
       console.error('Translation failed:', err);
@@ -88,9 +90,7 @@ export default function Voice({ token }: Props) {
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        if (!audioRef.current) {
-          audioRef.current = new Audio();
-        }
+        if (!audioRef.current) audioRef.current = new Audio();
         audioRef.current.src = url;
         audioRef.current.onended = () => setIsSpeaking(false);
         audioRef.current.play();
@@ -110,11 +110,9 @@ export default function Voice({ token }: Props) {
   };
 
   const swapLanguages = () => {
-    if (sourceLanguage !== 'auto') {
-      const temp = sourceLanguage;
-      setSourceLanguage(targetLanguage);
-      setTargetLanguage(temp);
-    }
+    const temp = sourceLanguage;
+    setSourceLanguage(targetLanguage);
+    setTargetLanguage(temp);
   };
 
   const clearConversation = () => {
@@ -146,7 +144,6 @@ export default function Voice({ token }: Props) {
           value={sourceLanguage}
           onChange={setSourceLanguage}
           placeholder="source language"
-          includeAutoDetect
         />
         <button className="voice-swap-btn" onClick={swapLanguages}>⇄</button>
         <SearchableDropdown
@@ -163,7 +160,11 @@ export default function Voice({ token }: Props) {
       />
 
       <div className="voice-mic-section">
-        <HoldToSpeak token={token} onTranscribed={handleTranscribed} />
+        <HoldToSpeak
+          token={token}
+          language={sourceLanguage}
+          onTranscribed={handleTranscribed}
+        />
       </div>
 
       <div className="voice-current">

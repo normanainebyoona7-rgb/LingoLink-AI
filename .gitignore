@@ -13,6 +13,7 @@ mobile/.flutter-plugins-dependencies
 backend/nllb_model/
 backend/nllb_tokenizer_fixed/
 backend/models/
+backend/sunbird_whisper_model/
 
 # Environment
 backend/.env

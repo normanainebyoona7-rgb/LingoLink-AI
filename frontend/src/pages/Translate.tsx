@@ -97,7 +97,7 @@ export default function Translate({ token }: Props) {
   const handleVoiceTranscribed = (text: string) => {
     setInputText(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    translate(text, 'auto');
+    translate(text, sourceLanguage === 'auto' ? 'auto' : sourceLanguage);
   };
 
   const speakTranslation = async () => {
@@ -328,6 +328,7 @@ export default function Translate({ token }: Props) {
       <div className="mic-section">
         <HoldToSpeak
           token={token}
+          language={sourceLanguage}
           onTranscribed={handleVoiceTranscribed}
         />
       </div>
