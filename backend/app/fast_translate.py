@@ -16,6 +16,9 @@ SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 # Cloud mode detection — Google's free endpoint returns wrong results from cloud IPs
 IS_CLOUD = os.getenv("RENDER", "") == "true" or os.getenv("IS_CLOUD", "") == "true"
 
+# Groq model — current production model (llama-3.3-70b deprecated)
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+
 _cache: Dict[str, str] = {}
 _cache_lock = threading.Lock()
 
@@ -86,24 +89,19 @@ def is_bad_translation(original: str, result: str) -> bool:
     orig_clean = original.lower().strip()
     res_clean = result.lower().strip()
 
-    # Identical
     if res_clean == orig_clean:
         return True
 
-    # For short texts (1-3 words), identical normalized = bad
     if len(orig_clean) < 20:
-        # Remove punctuation and compare
         orig_alpha = re.sub(r'[^\w\s]', '', orig_clean)
         res_alpha = re.sub(r'[^\w\s]', '', res_clean)
         if orig_alpha == res_alpha:
             return True
 
-    # Word overlap check for longer texts
     orig_words = set(re.findall(r'\w+', orig_clean))
     res_words = set(re.findall(r'\w+', res_clean))
     if orig_words and res_words:
         overlap = len(orig_words & res_words) / max(len(orig_words), 1)
-        # If 70%+ of original words appear unchanged in result, it's probably not translated
         if overlap >= 0.7 and len(orig_words) >= 2:
             return True
 
@@ -219,7 +217,6 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
 
-        # Strong, explicit prompt to prevent echo-back
         system_prompt = (
             f"You are a professional translator. Translate the user's text into {target_name}. "
             f"Output ONLY the {target_name} translation — no explanations, no notes, no original text, no quotes. "
@@ -228,7 +225,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         )
 
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": GROQ_MODEL,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Translate to {target_name}: {text}"}
@@ -280,7 +277,6 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     if source_lang != "english" and target_lang != "english" and source_lang != "auto":
         print(f"🔄 Pivot: {source_lang} → en → {target_lang}")
 
-        # Step 1: source → English — MyMemory first on cloud, Google first locally
         english_text = None
         if not IS_CLOUD:
             english_text = google_translate(text, "english", source_lang)
@@ -290,7 +286,6 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             english_text = groq_translate(text, "english", source_lang)
 
         if english_text:
-            # Step 2: English → target
             result = _translate_direct(english_text, "english", target_lang)
             if result:
                 with _cache_lock:
@@ -315,17 +310,14 @@ def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional
 
     # International languages
     if not IS_CLOUD:
-        # Local: Google first (fast, reliable from residential IPs)
         result = google_translate(text, target_lang, source_lang)
         if result and len(result) >= 2 and not is_bad_translation(text, result):
             return result
 
-    # MyMemory (works from cloud sometimes)
     result = mymemory_translate(text, target_lang, source_lang)
     if result and len(result) >= 2 and not is_bad_translation(text, result):
         return result
 
-    # Groq 70B — most reliable from cloud
     result = groq_translate(text, target_lang, source_lang)
     if result and len(result) >= 2 and not is_bad_translation(text, result):
         return result
