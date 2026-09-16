@@ -1,398 +1,154 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ============================================
+   LingoLink AI - Base Stylesheet
+   (Tailwind removed — base resets only)
+   ============================================ */
 
-@layer base {
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ============ SCROLLBARS ============ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 160, 74, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 160, 74, 0.5);
+}
+
+/* ============ GLOBAL ELEMENT BEHAVIOR ============ */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #f4c26c;
+  outline-offset: 2px;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img,
+video,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection on buttons */
+button,
+.sb-item,
+.sb-home-btn,
+.sb-theme-btn,
+.sb-logout,
+.sb-collapse,
+.sb-theme-toggle {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ============ MOBILE BASE ============ */
+@media (max-width: 768px) {
   body {
-    @apply font-sans bg-gray-50 text-gray-900 antialiased;
-    overflow: hidden;
-    height: 100vh;
+    font-size: 15px;
   }
-  
-  ::-webkit-scrollbar {
-    width: 8px;
+
+  /* Prevent iOS zoom on input focus */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
-  
-  ::-webkit-scrollbar-track {
-    @apply bg-gray-100;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-primary-500 rounded-full;
+
+  /* No hover states on touch (they stick) */
+  button:hover {
+    transform: none;
   }
 }
 
-@layer components {
-  /* ==================== LANDING ==================== */
-  .landing-page {
-    @apply h-screen overflow-y-auto bg-white;
+/* ============ SAFE AREA HELPERS ============ */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============ PRINT ============ */
+@media print {
+  .sb-sidebar,
+  .sb-topbar,
+  .mobile-overlay {
+    display: none !important;
+  }
+
+  .sb-content {
+    padding: 0 !important;
+    overflow: visible !important;
   }
-  
-  .landing-nav {
-    @apply flex justify-between items-center px-6 md:px-12 py-4 bg-white shadow-sm sticky top-0 z-50;
-  }
-  
-  .landing-logo {
-    @apply text-xl md:text-2xl font-bold bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent;
-  }
-  
-  .landing-nav-links {
-    @apply flex items-center gap-6;
-  }
-  
-  .landing-nav-links a {
-    @apply text-gray-600 hover:text-primary-500 text-sm transition-colors;
-  }
-  
-  .nav-login-btn {
-    @apply px-6 py-2 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-lg font-semibold hover:shadow-glow transition-all;
-  }
-  
-  .landing-hero {
-    @apply flex flex-col md:flex-row items-center justify-between px-6 md:px-12 py-16 bg-gradient-to-br from-indigo-50 to-purple-50 min-h-[500px];
-  }
-  
-  .hero-content {
-    @apply max-w-xl;
-  }
-  
-  .hero-title {
-    @apply text-3xl md:text-5xl font-bold leading-tight mb-4;
-  }
-  
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary-500 to-secondary-500 bg-clip-text text-transparent;
-  }
-  
-  .hero-subtitle {
-    @apply text-gray-600 mb-8 text-base md:text-lg leading-relaxed;
-  }
-  
-  .hero-buttons {
-    @apply flex gap-4 mb-8;
-  }
-  
-  .hero-primary {
-    @apply px-8 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl font-bold text-base hover:shadow-glow-lg transition-all hover:-translate-y-1;
-  }
-  
-  .hero-secondary {
-    @apply px-8 py-3 bg-white border-2 border-primary-500 text-primary-500 rounded-xl font-bold text-base hover:bg-indigo-50 transition-all;
-  }
-  
-  .hero-stats {
-    @apply flex gap-8 flex-wrap;
-  }
-  
-  .hero-stat span {
-    @apply block text-2xl font-bold text-primary-500;
-  }
-  
-  .hero-stat {
-    @apply text-xs text-gray-500 text-center;
-  }
-  
-  .hero-visual {
-    @apply flex justify-center;
-  }
-  
-  .visual-card {
-    @apply bg-white rounded-2xl p-8 shadow-xl w-full max-w-sm;
-  }
-  
-  .visual-card-header {
-    @apply text-center text-xs tracking-widest text-primary-500 font-bold mb-4;
-  }
-  
-  .visual-source {
-    @apply text-gray-700 mb-2;
-  }
-  
-  .visual-arrow {
-    @apply text-2xl text-primary-500 my-2;
-  }
-  
-  .visual-target {
-    @apply text-lg font-bold text-primary-500 mb-3;
-  }
-  
-  .visual-lang {
-    @apply text-xs text-gray-400;
-  }
-  
-  .landing-features {
-    @apply px-6 md:px-12 py-16;
-  }
-  
-  .section-title {
-    @apply text-center text-2xl md:text-3xl font-bold mb-10;
-  }
-  
-  .features-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
-  }
-  
-  .feature-card {
-    @apply bg-white p-6 rounded-xl shadow-sm hover:shadow-lg transition-all hover:-translate-y-1;
-  }
-  
-  .feature-icon {
-    @apply text-3xl mb-3;
-  }
-  
-  .feature-card h3 {
-    @apply font-semibold mb-2 text-base;
-  }
-  
-  .feature-card p {
-    @apply text-gray-500 text-sm leading-relaxed;
-  }
-  
-  .landing-languages {
-    @apply px-6 md:px-12 py-16 bg-gray-50;
-  }
-  
-  .lang-cloud {
-    @apply flex flex-wrap gap-3 justify-center;
-  }
-  
-  .lang-chip {
-    @apply px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-600 cursor-pointer hover:bg-gradient-to-r hover:from-primary-500 hover:to-secondary-500 hover:text-white hover:border-transparent transition-all;
-  }
-  
-  .landing-cta {
-    @apply text-center px-6 py-16;
-  }
-  
-  .landing-footer {
-    @apply text-center py-6 bg-dark-800 text-gray-500 text-xs;
-  }
-  
-  /* ==================== LOGIN ==================== */
-  .login-screen {
-    @apply flex justify-center items-center min-h-screen bg-gradient-to-br from-primary-500 to-secondary-500;
-  }
-  
-  .login-card {
-    @apply bg-white rounded-2xl p-8 w-full max-w-md text-center shadow-2xl;
-  }
-  
-  .login-logo {
-    @apply text-5xl mb-3;
-  }
-  
-  .login-card h1 {
-    @apply text-2xl font-bold text-gray-900 mb-1;
-  }
-  
-  .login-card p {
-    @apply text-gray-500 mb-6 text-sm;
-  }
-  
-  .login-card input {
-    @apply w-full px-4 py-3 mb-3 border-2 border-gray-200 rounded-xl text-base focus:outline-none focus:border-primary-500 transition-colors;
-  }
-  
-  .login-btn {
-    @apply w-full py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl font-bold cursor-pointer hover:-translate-y-0.5 transition-all;
-  }
-  
-  .back-btn {
-    @apply w-full py-2 bg-transparent text-primary-500 cursor-pointer text-sm mt-3;
-  }
-  
-  /* ==================== APP SHELL ==================== */
-  .app-shell {
-    @apply flex h-screen transition-all;
-  }
-  
-  .sidebar {
-    @apply w-[220px] min-w-[220px] bg-dark-800 flex flex-col transition-all;
-  }
-  
-  .app-shell.collapsed .sidebar {
-    @apply w-[60px] min-w-[60px];
-  }
-  
-  .sidebar-brand {
-    @apply flex items-center gap-2 px-4 py-5 border-b border-white/10;
-  }
-  
-  .brand-icon { @apply text-2xl; }
-  .brand-text { @apply text-white font-bold text-base whitespace-nowrap; }
-  
-  .sidebar-menu {
-    @apply flex-1 py-4 px-2 flex flex-col gap-1 overflow-y-auto;
-  }
-  
-  .menu-item {
-    @apply flex items-center gap-3 px-4 py-3 bg-transparent text-gray-400 text-sm rounded-lg cursor-pointer transition-all whitespace-nowrap hover:bg-white/10 hover:text-white;
-  }
-  
-  .menu-item.active {
-    @apply bg-gradient-to-r from-primary-500 to-secondary-500 text-white font-semibold;
-  }
-  
-  .menu-icon { @apply text-lg min-w-[20px] text-center; }
-  
-  .app-shell.collapsed .menu-label,
-  .app-shell.collapsed .username,
-  .app-shell.collapsed .brand-text { @apply hidden; }
-  
-  .sidebar-footer {
-    @apply p-4 border-t border-white/10;
-  }
-  
-  .user-info { @apply flex items-center gap-2 mb-2; }
-  .avatar { @apply text-xl; }
-  .username { @apply text-white text-sm; }
-  
-  .logout-btn {
-    @apply w-full py-2 bg-red-500/15 text-red-400 rounded-lg cursor-pointer text-xs whitespace-nowrap;
-  }
-  
-  /* ==================== MAIN AREA ==================== */
-  .main-area { @apply flex-1 flex flex-col overflow-hidden; }
-  
-  .topbar {
-    @apply flex items-center gap-4 px-5 py-4 bg-white border-b border-gray-200;
-  }
-  
-  .collapse-btn { @apply bg-transparent text-xl cursor-pointer text-gray-700; }
-  .page-title { @apply text-lg font-bold flex-1; }
-  .topbar-right { @apply flex items-center gap-2; }
-  .status-dot { @apply text-green-500 text-xs; }
-  .status-text { @apply text-xs text-gray-500; }
-  
-  .content-area { @apply flex-1 p-6 overflow-y-auto; }
-  
-  /* ==================== DASHBOARD ==================== */
-  .dashboard-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6;
-  }
-  
-  .stat-card {
-    @apply p-6 rounded-xl text-white transition-all hover:-translate-y-1;
-  }
-  
-  .gradient-purple { @apply bg-gradient-to-br from-primary-500 to-secondary-500; }
-  .gradient-blue { @apply bg-gradient-to-br from-cyan-600 to-cyan-400; }
-  .gradient-green { @apply bg-gradient-to-br from-emerald-600 to-emerald-400; }
-  .gradient-orange { @apply bg-gradient-to-br from-orange-500 to-amber-400; }
-  
-  .stat-number { @apply text-4xl font-bold mb-1; }
-  .stat-card span { @apply text-xs opacity-80; }
-  
-  .quick-actions { @apply flex gap-3 flex-wrap; }
-  
-  .quick-action {
-    @apply px-5 py-3 bg-gray-100 rounded-lg cursor-pointer text-sm hover:bg-gradient-to-r hover:from-primary-500 hover:to-secondary-500 hover:text-white transition-all;
-  }
-  
-  /* ==================== SEARCHABLE DROPDOWN ==================== */
-  .lang-dropdown { @apply relative flex-1; }
-  
-  .lang-dropdown-trigger {
-    @apply flex items-center justify-between px-4 py-3 bg-white border-2 border-gray-200 rounded-xl cursor-pointer text-sm;
-  }
-  
-  .lang-dropdown-trigger:hover { @apply border-primary-500; }
-  
-  .lang-selected { @apply text-gray-800; }
-  .lang-arrow { @apply text-gray-400 text-xs; }
-  
-  .lang-dropdown-menu {
-    @apply absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl z-50 max-h-80 overflow-hidden;
-  }
-  
-  .lang-search-box {
-    @apply p-3 border-b border-gray-200;
-  }
-  
-  .lang-search-box input {
-    @apply w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary-500;
-  }
-  
-  .lang-options {
-    @apply max-h-60 overflow-y-auto;
-  }
-  
-  .lang-option {
-    @apply flex items-center justify-between px-4 py-2.5 cursor-pointer text-sm hover:bg-indigo-50 transition-colors;
-  }
-  
-  .lang-option.selected {
-    @apply bg-primary-50 text-primary-600 font-semibold;
-  }
-  
-  .lang-code {
-    @apply text-xs text-gray-400 ml-auto mr-2;
-  }
-  
-  .lang-check { @apply text-primary-500 font-bold; }
-  
-  .lang-no-results {
-    @apply p-4 text-center text-gray-400 text-sm;
-  }
-  
-  /* ==================== TRANSLATE ==================== */
-  .lang-row { @apply flex items-center gap-3 mb-4; }
-  
-  .swap-btn {
-    @apply px-4 py-3 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-xl text-lg cursor-pointer hover:rotate-180 transition-all;
-  }
-  
-  .detected-info {
-    @apply mb-3 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-xs inline-block;
-  }
-  
-  .text-panels { @apply grid grid-cols-1 md:grid-cols-2 gap-4 mb-5; }
-  
-  .text-panels textarea {
-    @apply min-h-[300px] p-4 border-2 border-gray-200 rounded-xl text-base bg-white resize-y leading-relaxed focus:outline-none focus:border-primary-500;
-  }
-  
-  .output-panel {
-    @apply min-h-[300px] p-4 bg-gray-50 border-2 border-gray-200 rounded-xl text-base leading-relaxed text-gray-700 relative;
-  }
-  
-  .output-actions {
-    @apply absolute bottom-3 left-3 flex gap-2 items-center flex-wrap;
-  }
-  
-  .output-actions button {
-    @apply px-3 py-1.5 bg-white border border-gray-200 rounded-lg cursor-pointer text-sm hover:bg-gray-100;
-  }
-  
-  .provider-tag { @apply text-xs text-gray-400; }
-  
-  .mic-section { @apply text-center mt-5; }
-  .mic-instruction { @apply text-sm text-gray-500 mb-3; }
-  
-  .hold-mic-btn {
-    @apply px-8 py-4 bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-full text-base font-bold cursor-pointer hover:shadow-glow transition-all;
-  }
-  
-  .hold-mic-btn.holding {
-    @apply bg-gradient-to-r from-red-500 to-red-600 animate-pulse;
-  }
-  
-  .error-text { @apply text-red-500 text-sm mt-3; }
-  
-  /* ==================== HISTORY ==================== */
-  .history-item {
-    @apply bg-white p-4 rounded-xl mb-3 shadow-sm;
-  }
-  
-  .history-item .source { @apply font-semibold text-gray-800 mb-1; }
-  .history-item .target { @apply text-primary-500 mb-1; }
-  .history-item .langs { @apply text-xs text-gray-400; }
-  
-  .empty-state { @apply text-center text-gray-400 py-10; }
 }

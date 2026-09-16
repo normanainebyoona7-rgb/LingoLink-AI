@@ -26,29 +26,33 @@
   --border-light: #d9cfbe;
 }
 
-body {
+html, body {
   font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
-  overflow: hidden;
   height: 100vh;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  position: fixed;
+  width: 100%;
 }
 
 .app-root {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   position: relative;
 }
 
-/* ============ APP BACKGROUNDS (SOLID, CLEAN) ============ */
-.app-dark {
-  background: #1a1208;
-}
-
-.app-light {
-  background: #f5ede0;
-}
+/* ============ APP BACKGROUNDS ============ */
+.app-dark { background: #1a1208; }
+.app-light { background: #f5ede0; }
 
 /* ============ SIDEBAR ============ */
 .sb-sidebar {
@@ -57,6 +61,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   z-index: 100;
   transition: width 0.3s ease, transform 0.3s ease;
@@ -144,6 +149,7 @@ body {
   background: rgba(212, 160, 74, 0.2);
   border-color: var(--bright-amber);
   color: var(--bright-amber);
+  transform: translateY(-1px);
 }
 
 /* ============ MENU ============ */
@@ -156,6 +162,7 @@ body {
   gap: 2px;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sb-menu::-webkit-scrollbar { width: 4px; }
@@ -181,6 +188,7 @@ body {
   width: 100%;
   flex-shrink: 0;
   position: relative;
+  color: inherit;
 }
 
 .sb-item.sb-active {
@@ -199,6 +207,8 @@ body {
   background: var(--bright-amber);
   border-radius: 0 3px 3px 0;
 }
+
+.sb-item:active { transform: scale(0.98); }
 
 .sb-icon { font-size: 16px; min-width: 20px; text-align: center; }
 
@@ -304,6 +314,11 @@ body {
   z-index: 110;
   border-radius: 8px;
   transition: all 0.2s ease;
+  min-width: 40px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-dark .sb-collapse { color: var(--text-dim); }
@@ -314,11 +329,16 @@ body {
   color: var(--bright-amber);
 }
 
+.sb-collapse:active { transform: scale(0.94); }
+
 .sb-title {
   font-size: 16px;
   font-weight: 700;
   flex: 1;
   letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-dark .sb-title { color: var(--text-dark); }
@@ -334,11 +354,14 @@ body {
   padding: 6px;
   border-radius: 50%;
   transition: all 0.25s ease;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.sb-theme-toggle:hover {
-  background: rgba(212, 160, 74, 0.12);
-}
+.sb-theme-toggle:hover { background: rgba(212, 160, 74, 0.12); }
 
 .sb-dot {
   color: var(--bright-amber);
@@ -362,6 +385,8 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .app-dark .sb-content { background: #1a1208; }
@@ -380,13 +405,14 @@ body {
 
 /* ============ PAGE TRANSITIONS ============ */
 .sb-content > * {
-  animation: pageIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: pageIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  max-width: 100%;
 }
 
 @keyframes pageIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -401,9 +427,12 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(26, 18, 8, 0.7);
+  background: rgba(26, 18, 8, 0.65);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 99;
-  animation: fadeIn 0.25s ease;
+  animation: fadeIn 0.22s ease;
+  cursor: pointer;
 }
 
 @keyframes fadeIn {
@@ -418,24 +447,105 @@ body {
     top: 0;
     left: 0;
     bottom: 0;
-    width: 260px;
-    min-width: 260px;
-    max-width: 80vw;
+    width: 270px;
+    min-width: 270px;
+    max-width: 82vw;
     height: 100vh;
+    height: 100dvh;
     z-index: 100;
-    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.45);
     overflow-y: auto;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .sb-sidebar.mobile-closed { transform: translateX(-100%); }
   .sb-sidebar.mobile-open { transform: translateX(0); }
 
   .sb-menu { flex: none; overflow-y: visible; }
-  .sb-content { padding: 15px 12px; }
-  .sb-topbar { padding: 12px 14px; }
-  .sb-title { font-size: 14px; }
+
+  /* Bigger tap targets */
+  .sb-item {
+    padding: 14px 16px;
+    font-size: 14px;
+    min-height: 48px;
+  }
+
+  .sb-home-btn,
+  .sb-theme-btn,
+  .sb-logout {
+    padding: 12px 14px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .sb-brand { padding: 16px 18px; }
+  .sb-brand-text { font-size: 16px; }
+
+  /* Content spacing */
+  .sb-content {
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .sb-content > * {
+    animation-duration: 0.28s;
+  }
+
+  /* Topbar */
+  .sb-topbar {
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    gap: 8px;
+  }
+
+  .sb-title { font-size: 15px; }
   .sb-status { display: none; }
   .sb-dot { display: none; }
+
+  .sb-collapse,
+  .sb-theme-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    font-size: 20px;
+  }
+
+  /* Prevent horizontal overflow globally */
+  .sb-content,
+  .sb-content * {
+    max-width: 100%;
+  }
+
+  /* Better form fields on mobile — prevent iOS zoom */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Remove hover effects on touch devices (they stick) */
+  .sb-item:hover,
+  .sb-home-btn:hover,
+  .sb-theme-btn:hover,
+  .sb-logout:hover,
+  .sb-collapse:hover,
+  .sb-theme-toggle:hover {
+    background: inherit;
+  }
+
+  .sb-item.sb-active:hover {
+    background: #4a3520;
+  }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
