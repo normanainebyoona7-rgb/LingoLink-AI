@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, SessionLocal
 import app.models as models
-from app.routers import translation, speech, tts, auth, video, admin, oauth
+from app.routers import translation, speech, tts, auth, video, admin, oauth, debug
 import bcrypt
 
 models.Base.metadata.create_all(bind=engine)
@@ -33,7 +33,6 @@ def create_default_users():
                 db.add(user)
                 print(f"✅ Created user: {u['username']}")
             else:
-                # Reset password to be sure
                 existing.hashed_password = hash_password(u["password"])
                 print(f"🔄 Reset password for: {u['username']}")
         db.commit()
@@ -66,6 +65,7 @@ app.include_router(auth.router)
 app.include_router(video.router)
 app.include_router(admin.router)
 app.include_router(oauth.router)
+app.include_router(debug.router)
 
 @app.get("/")
 async def root():
