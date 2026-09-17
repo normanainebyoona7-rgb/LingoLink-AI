@@ -1,4 +1,4 @@
-"""Speech transcription — faster-whisper (Sunbird) locally, Groq on cloud"""
+"""Speech transcription — Sunbird faster-whisper (local) + Groq Whisper (cloud)"""
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 import tempfile
@@ -20,8 +20,14 @@ IS_CLOUD = os.getenv("RENDER", "") == "true" or os.getenv("IS_CLOUD", "") == "tr
 
 SUNBIRD_REPO = "Sunbird/faster-whisper-51-african-languages"
 
-# Sunbird language codes (from the model card's language_map)
-# Maps our app language names to Sunbird's 3-letter code
+# Ugandan/African languages Sunbird handles best
+SUNBIRD_LANGS = {
+    "luganda", "acholi", "ateso", "runyankole", "runyankore", "rukiga",
+    "lugbara", "lusoga", "rutooro", "lumasaba", "alur", "lango",
+    "lugwere", "jopadhola", "swahili", "kinyarwanda"
+}
+
+# Map our app names to Sunbird codes
 NAME_TO_SUNBIRD = {
     "luganda": "lug", "acholi": "ach", "ateso": "teo",
     "runyankole": "nyn", "runyankore": "nyn", "rukiga": "cgg",
@@ -37,16 +43,31 @@ NAME_TO_SUNBIRD = {
     "kabyle": "kab", "malagasy": "mlg", "ndebele": "nbl",
 }
 
+# ISO code → app name (for language detection mapping)
+ISO_TO_NAME = {
+    "en": "english", "fr": "french", "es": "spanish", "de": "german",
+    "pt": "portuguese", "it": "italian", "nl": "dutch", "ru": "russian",
+    "ar": "arabic", "hi": "hindi", "zh": "chinese", "ja": "japanese",
+    "ko": "korean", "tr": "turkish", "vi": "vietnamese", "th": "thai",
+    "id": "indonesian", "he": "hebrew", "el": "greek",
+    "pl": "polish", "sv": "swedish", "da": "danish", "fi": "finnish",
+    "no": "norwegian", "cs": "czech", "ro": "romanian",
+    "hu": "hungarian", "uk": "ukrainian", "fa": "persian",
+    "sw": "swahili", "rw": "kinyarwanda",
+    "am": "amharic", "so": "somali", "yo": "yoruba", "ha": "hausa",
+    "ig": "igbo", "zu": "zulu", "xh": "xhosa", "af": "afrikaans",
+    "sn": "shona", "ny": "chichewa",
+}
+
 _whisper_model = None
 _lang_map = None
 
 
 def get_lang_map():
-    """Load Sunbird's language_map.json (maps lug→sd, ach→su, etc.)"""
+    """Load Sunbird's language_map.json"""
     global _lang_map
     if _lang_map is not None:
         return _lang_map
-
     try:
         from huggingface_hub import hf_hub_download
         path = hf_hub_download(SUNBIRD_REPO, "language_map.json")
@@ -60,11 +81,10 @@ def get_lang_map():
 
 
 def get_whisper_model():
-    """Load Sunbird faster-whisper model once, lazily"""
+    """Load Sunbird faster-whisper model once"""
     global _whisper_model
     if _whisper_model is not None:
         return _whisper_model
-
     try:
         from faster_whisper import WhisperModel
         print("🔊 Loading Sunbird faster-whisper model (CPU, int8)...")
@@ -80,20 +100,77 @@ def get_whisper_model():
         return None
 
 
-def transcribe_local(audio_path: str, language: str = None) -> dict:
-    """Transcribe using local Sunbird faster-whisper (all African languages)"""
+# ============================================================
+# Language detection
+# ============================================================
+
+def detect_language(audio_path: str) -> str:
+    """
+    Detect spoken language using Whisper's built-in detector.
+    Returns app-friendly language name (e.g. "english", "luganda").
+    Falls back to "auto" if detection fails.
+    """
+    model = get_whisper_model()
+    if not model:
+        return "auto"
+    try:
+        # Use a small slice of the audio to speed up detection
+        _, info = model.transcribe(
+            audio_path,
+            task="transcribe",
+            beam_size=1,
+            vad_filter=True,
+            condition_on_previous_text=False,
+            language=None,
+        )
+        # info.language is the ISO code whisper picked (e.g. "en", "sd")
+        iso = (info.language or "").lower()
+        if not iso:
+            return "auto"
+
+        # Map ISO → app name for common languages
+        if iso in ISO_TO_NAME:
+            return ISO_TO_NAME[iso]
+
+        # Whisper uses weird slots for Sunbird African languages
+        # Sunbird codes: lug→sd, ach→su, teo→bs, nyn→si, cgg→as, lgg→yi, xog→eu, ttj→ne, myx→ka, alz→?, laj→?
+        SUNBIRD_ISO_REVERSE = {
+            "sd": "luganda",
+            "su": "acholi",
+            "bs": "ateso",
+            "si": "runyankole",
+            "as": "rukiga",
+            "yi": "lugbara",
+            "eu": "lusoga",
+            "ne": "rutooro",
+            "ka": "lumasaba",
+        }
+        if iso in SUNBIRD_ISO_REVERSE:
+            return SUNBIRD_ISO_REVERSE[iso]
+
+        return "auto"
+    except Exception as e:
+        print(f"⚠️ Language detection failed: {e}")
+        return "auto"
+
+
+# ============================================================
+# Sunbird (local) transcription
+# ============================================================
+
+def transcribe_sunbird(audio_path: str, language: str = None) -> dict:
+    """Transcribe using Sunbird faster-whisper (Ugandan + African languages)"""
     model = get_whisper_model()
     if not model:
         raise HTTPException(status_code=500, detail="Local whisper model unavailable")
 
-    # Resolve language code
     lang_code = None
-    if language and language != "auto":
+    if language and language not in ("auto", None):
         lang_map = get_lang_map()
         sunbird_code = NAME_TO_SUNBIRD.get(language.lower())
         if lang_map and sunbird_code:
             lang_code = lang_map.get(sunbird_code)
-            print(f"🎯 Language: {language} → sunbird={sunbird_code} → whisper={lang_code}")
+            print(f"🎯 Sunbird: {language} → sunbird={sunbird_code} → whisper={lang_code}")
 
     try:
         segments, info = model.transcribe(
@@ -106,17 +183,19 @@ def transcribe_local(audio_path: str, language: str = None) -> dict:
             condition_on_previous_text=False,
         )
         text = " ".join([seg.text.strip() for seg in segments]).strip()
-        return {
-            "text": text,
-            "language": language or (info.language if info else "auto"),
-        }
+        detected = language or (info.language if info else "auto")
+        return {"text": text, "language": detected}
     except Exception as e:
-        print(f"❌ Local whisper error: {e}")
+        print(f"❌ Sunbird error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def transcribe_with_groq(audio_path: str, language: str = None) -> dict:
-    """Groq Whisper Large v3 — used on Render (cloud)"""
+# ============================================================
+# Groq (cloud) transcription — 99 languages
+# ============================================================
+
+def transcribe_groq(audio_path: str, language: str = None) -> dict:
+    """Transcribe using Groq Whisper Large v3 (99 languages)"""
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not set")
 
@@ -124,49 +203,89 @@ def transcribe_with_groq(audio_path: str, language: str = None) -> dict:
         url = "https://api.groq.com/openai/v1/audio/transcriptions"
         headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
 
-        groq_lang_codes = {
-            "english": "en", "french": "fr", "spanish": "es", "german": "de",
-            "portuguese": "pt", "italian": "it", "dutch": "nl", "russian": "ru",
-            "arabic": "ar", "hindi": "hi", "chinese": "zh", "japanese": "ja",
-            "korean": "ko", "turkish": "tr", "swahili": "sw",
-        }
-
         with open(audio_path, "rb") as f:
             files = {"file": (os.path.basename(audio_path), f, "audio/webm")}
             data = {
                 "model": "whisper-large-v3",
-                "response_format": "json",
+                "response_format": "verbose_json",
                 "temperature": "0.0",
             }
-            if language and language != "auto":
-                code = groq_lang_codes.get(language.lower())
-                if code:
-                    data["language"] = code
+            # If specific language requested, pass it
+            if language and language not in ("auto", None):
+                # Convert app name to ISO for Groq
+                iso_map = {v: k for k, v in ISO_TO_NAME.items()}
+                iso = iso_map.get(language.lower())
+                if iso:
+                    data["language"] = iso
+                    print(f"🎯 Groq: {language} → iso={iso}")
 
             resp = requests.post(url, headers=headers, files=files, data=data, timeout=60)
 
         if resp.status_code == 200:
             result = resp.json()
-            return {"text": result.get("text", "").strip(), "language": language or "auto"}
+            text = result.get("text", "").strip()
+            detected_iso = result.get("language", "").lower()
+            detected_name = ISO_TO_NAME.get(detected_iso, language or "auto")
+            return {"text": text, "language": detected_name}
         else:
-            print(f"❌ Groq Whisper error: {resp.status_code} - {resp.text[:300]}")
-            raise HTTPException(status_code=500, detail=f"Groq Whisper failed: {resp.status_code}")
+            print(f"❌ Groq error: {resp.status_code} - {resp.text[:200]}")
+            raise HTTPException(status_code=500, detail=f"Groq failed: {resp.status_code}")
     except requests.exceptions.Timeout:
-        raise HTTPException(status_code=500, detail="Groq Whisper timed out")
+        raise HTTPException(status_code=500, detail="Groq timed out")
 
 
-def transcribe_audio_file(audio_path: str, language: str = None) -> dict:
-    """Route to local whisper or Groq based on environment"""
-    if IS_CLOUD:
-        return transcribe_with_groq(audio_path, language)
-    return transcribe_local(audio_path, language)
+# ============================================================
+# Smart router
+# ============================================================
 
+def transcribe_smart(audio_path: str, requested_language: str = None, auto_detect: bool = True) -> dict:
+    """
+    Smart transcription router:
+    1. Detect language (if auto_detect=true, or if requested is auto)
+    2. Route Ugandan → Sunbird | International → Groq
+    3. Fall back to Sunbird if Groq fails and no API key
+    """
+    detected = None
+
+    # Step 1: Determine language
+    if auto_detect or not requested_language or requested_language == "auto":
+        detected = detect_language(audio_path)
+        print(f"🔍 Detected language: {detected}")
+    else:
+        detected = requested_language.lower()
+
+    # Step 2: Route
+    is_ugandan = detected in SUNBIRD_LANGS
+
+    if is_ugandan:
+        print(f"🇺🇬 Routing {detected} to Sunbird local model")
+        result = transcribe_sunbird(audio_path, detected)
+        return result
+
+    # International → Groq first
+    if GROQ_API_KEY:
+        try:
+            print(f"🌍 Routing {detected} to Groq Whisper Large v3")
+            result = transcribe_groq(audio_path, detected)
+            if result.get("text"):
+                return result
+        except HTTPException as e:
+            print(f"⚠️ Groq failed, falling back to Sunbird: {e.detail}")
+
+    # Fallback: Sunbird anyway
+    print(f"⚠️ Falling back to Sunbird for {detected}")
+    return transcribe_sunbird(audio_path, detected)
+
+
+# ============================================================
+# Endpoints
+# ============================================================
 
 @router.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
     language: str = Form("auto"),
-    auto_detect: str = Form("false"),
+    auto_detect: str = Form("true"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -177,28 +296,118 @@ async def transcribe_audio(
             tmp.write(content)
             tmp_path = tmp.name
 
-        engine = "Groq" if IS_CLOUD else "Sunbird-local"
-        is_auto = auto_detect.lower() == "true"
-        print(f"🎤 Transcribing {len(content)} bytes via {engine} (lang={language}, auto={is_auto})...")
+        wants_auto = auto_detect.lower() == "true" or language == "auto"
+        print(f"🎤 Transcribing {len(content)} bytes (lang={language}, auto={wants_auto})...")
 
-        if is_auto:
-            # Force auto-detection: pass None so Whisper decides
-            result = transcribe_audio_file(tmp_path, None)
-            detected = result.get("language", "auto")
-        else:
-            result = transcribe_audio_file(tmp_path, language)
-            detected = result.get("language", language)
-
+        result = transcribe_smart(tmp_path, language, auto_detect=wants_auto)
         os.unlink(tmp_path)
 
-        print(f"✅ Transcribed [{detected}]: {result['text'][:100]}")
+        print(f"✅ [{result['language']}] {result['text'][:100]}")
 
         return {
             "text": result["text"],
-            "language": detected,
+            "language": result["language"],
         }
     except HTTPException:
         raise
     except Exception as e:
         print(f"❌ Transcription error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/translate-voice")
+async def translate_voice(
+    file: UploadFile = File(...),
+    source_language: str = "auto",
+    target_language: str = "en",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    try:
+        suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        wants_auto = source_language == "auto"
+        result = transcribe_smart(tmp_path, source_language, auto_detect=wants_auto)
+        os.unlink(tmp_path)
+
+        full_text = result["text"]
+        detected = result.get("language", source_language)
+        translated = ""
+
+        if full_text.strip():
+            translated = fast_translate(full_text, target_language, detected) or full_text
+
+        db_translation = models.Translation(
+            user_id=current_user.id,
+            source_text=full_text,
+            translated_text=translated,
+            source_language=detected,
+            target_language=target_language,
+            translation_type="voice",
+        )
+        db.add(db_translation)
+        db.commit()
+
+        return {
+            "original_text": full_text,
+            "translated_text": translated,
+            "source_language": detected,
+            "target_language": target_language,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/voice-to-voice")
+async def voice_to_voice(
+    file: UploadFile = File(...),
+    source_language: str = "auto",
+    target_language: str = "en",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    try:
+        suffix = os.path.splitext(file.filename or "audio.webm")[1] or ".webm"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        wants_auto = source_language == "auto"
+        result = transcribe_smart(tmp_path, source_language, auto_detect=wants_auto)
+        os.unlink(tmp_path)
+
+        full_text = result["text"]
+        detected = result.get("language", source_language)
+        translated = ""
+
+        if full_text.strip():
+            translated = fast_translate(full_text, target_language, detected) or full_text
+
+        db_translation = models.Translation(
+            user_id=current_user.id,
+            source_text=full_text,
+            translated_text=translated,
+            source_language=detected,
+            target_language=target_language,
+            translation_type="voice",
+        )
+        db.add(db_translation)
+        db.commit()
+
+        return {
+            "original_text": full_text,
+            "translated_text": translated,
+            "source_language": detected,
+            "target_language": target_language,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
