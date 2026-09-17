@@ -866,10 +866,38 @@
 .app-light .history-header p { color: var(--text-muted); }
 
 .history-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.history-refresh, .history-clear-all { padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 12px; border: 1px solid; }
+
+/* Refresh / Clear / Export buttons */
+.history-refresh,
+.history-clear-all,
+.history-export {
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  border: 1px solid;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
 .app-dark .history-refresh { background: var(--night-amber); border-color: rgba(212, 160, 74, 0.2); color: var(--text-dim); }
 .app-light .history-refresh { background: var(--parchment); border-color: var(--border-light); color: var(--text-light); }
 .history-clear-all { background: var(--terracotta); border-color: var(--terracotta); color: white; }
+.history-clear-all:hover { background: #a55a3f; }
+
+/* Export PDF button (gold gradient) */
+.history-export {
+  background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold));
+  border-color: var(--bright-amber);
+  color: #1a1208;
+}
+.history-export:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(212, 160, 74, 0.4);
+}
+.history-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .history-toolbar { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
 .history-search { flex: 1 1 200px; }
@@ -915,6 +943,21 @@
 .app-light .history-source p { color: var(--text-light); }
 .app-light .history-target p { color: var(--deep-gold); }
 .history-arrow { font-size: 18px; color: var(--bright-amber); }
+
+.history-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+.history-stat-item { padding: 14px 10px; border-radius: 10px; text-align: center; }
+.app-dark .history-stat-item { background: var(--night-amber); border: 1px solid rgba(212, 160, 74, 0.12); }
+.app-light .history-stat-item { background: var(--parchment); box-shadow: 0 2px 5px rgba(26, 18, 8, 0.05); }
+.history-stat-value { display: block; font-size: 22px; font-weight: 800; color: var(--bright-amber); margin-bottom: 4px; }
+.app-light .history-stat-value { color: var(--deep-gold); }
+.history-stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
+.app-dark .history-stat-label { color: var(--text-dim); }
+.app-light .history-stat-label { color: var(--text-muted); }
 
 /* ============ SETTINGS ============ */
 .settings-root { max-width: 900px; margin: 0 auto; padding: 20px; }
@@ -1079,6 +1122,7 @@
   .voice-lang-row { flex-direction: column; }
   .voice-settings-row { flex-wrap: wrap; }
   .history-item-body { grid-template-columns: 1fr; }
+  .history-arrow { transform: rotate(90deg); text-align: center; }
   .translate-page { max-width: 100%; padding: 0; }
   .lang-select { width: 100%; }
   .lang-select-btn { width: 100%; font-size: 13px; padding: 12px 14px; }
@@ -1101,121 +1145,33 @@
 
 /* ============ VERY NARROW PHONES (<= 480px) ============ */
 @media (max-width: 480px) {
-  /* Translate page: stack header-actions below the label on tiny screens */
-  .output-header {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .output-header .panel-label {
-    flex: 1 1 100%;
-    margin-right: 0;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: flex-end;
-    gap: 4px;
-  }
-
-  .gender-toggle {
-    padding: 1px;
-  }
-
-  .gender-btn {
-    height: 24px;
-    padding: 2px 5px;
-    font-size: 12px;
-  }
-
+  .output-header { flex-wrap: wrap; gap: 6px; }
+  .output-header .panel-label { flex: 1 1 100%; margin-right: 0; }
+  .header-actions { width: 100%; justify-content: flex-end; gap: 4px; }
+  .gender-toggle { padding: 1px; }
+  .gender-btn { height: 24px; padding: 2px 5px; font-size: 12px; }
   .output-header .speak-btn,
-  .output-header .icon-btn {
-    width: 28px;
-    height: 28px;
-  }
-
+  .output-header .icon-btn { width: 28px; height: 28px; }
   .output-header .speak-btn svg,
-  .output-header .icon-btn svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  /* Lang row: tighter on tiny screens */
-  .lang-row {
-    gap: 6px;
-  }
-
-  .swap-btn {
-    width: 38px;
-    height: 38px;
-  }
-
-  /* Panels: less padding, less min-height */
-  .input-panel,
-  .output-panel {
-    padding: 10px;
-  }
-
-  .input-panel textarea,
-  .output-content {
-    min-height: 140px;
-    padding: 10px;
-    font-size: 14px;
-  }
-
-  /* Voice page */
-  .voice-current {
-    gap: 8px;
-  }
-
-  .voice-source-box,
-  .voice-target-box {
-    padding: 12px;
-    min-height: 90px;
-  }
-
-  /* Dashboard */
-  .dash-cards,
-  .dash-quick-grid {
-    gap: 10px;
-  }
-
-  .dash-card {
-    padding: 16px 12px;
-  }
-
+  .output-header .icon-btn svg { width: 14px; height: 14px; }
+  .lang-row { gap: 6px; }
+  .swap-btn { width: 38px; height: 38px; }
+  .input-panel, .output-panel { padding: 10px; }
+  .input-panel textarea, .output-content { min-height: 140px; padding: 10px; font-size: 14px; }
+  .voice-current { gap: 8px; }
+  .voice-source-box, .voice-target-box { padding: 12px; min-height: 90px; }
+  .dash-cards, .dash-quick-grid { gap: 10px; }
+  .dash-card { padding: 16px 12px; }
   .dc-value { font-size: 26px; }
-
-  .dash-quick-card {
-    padding: 12px;
-    grid-template-columns: 38px 1fr auto;
-    gap: 10px;
-  }
-
-  .dash-quick-icon {
-    width: 38px;
-    height: 38px;
-    font-size: 18px;
-  }
-
-  /* History */
-  .history-item-body {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .history-arrow {
-    transform: rotate(90deg);
-    justify-self: center;
-  }
-
-  /* Mic section tighter */
-  .mic-section {
-    margin-top: 14px;
-    padding: 10px;
-  }
-
-  /* Font-size reductions */
+  .dash-quick-card { padding: 12px; grid-template-columns: 38px 1fr auto; gap: 10px; }
+  .dash-quick-icon { width: 38px; height: 38px; font-size: 18px; }
+  .history-item-body { gap: 8px; }
+  .history-arrow { transform: rotate(90deg); text-align: center; }
+  .history-stats { gap: 8px; }
+  .history-stat-item { padding: 12px 8px; }
+  .history-stat-value { font-size: 18px; }
+  .history-stat-label { font-size: 9px; }
+  .mic-section { margin-top: 14px; padding: 10px; }
   .panel-label { font-size: 10px; }
   .voice-header h2 { font-size: 20px; }
   .dash-header h2 { font-size: 20px; }
