@@ -1,11 +1,15 @@
-"""Local Ugandan dictionaries loaded from extracted JSON files"""
+"""Local Ugandan dictionaries: curated phrases + large extracted corpora"""
 import json
 import os
 from typing import Optional
 
+from app.common_phrases import PHRASES as COMMON_PHRASES, REVERSE as COMMON_REVERSE
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# ============ Load Acholi ============
+# ============================================================
+# Load Acholi JSON (72k entries, Bible-based)
+# ============================================================
 ACHOLI_ENG_TO_ACH = {}
 ACHOLI_ACH_TO_ENG = {}
 try:
@@ -21,88 +25,125 @@ try:
 except Exception as e:
     print(f'❌ Acholi load error: {e}')
 
-# ============ Load Runyankore ============
-# Format: {runyankore_word: english_definition}
+# ============================================================
+# Load Runyankole JSON (8k entries, word dictionary)
+# ============================================================
 RUNYANKORE_DICT = {}
-RUNYANKORE_REVERSE = {}  # English keyword -> Runyankore word
+RUNYANKORE_REVERSE = {}
 try:
     path = os.path.join(BASE, 'runyankore_dict.json')
     if os.path.exists(path):
         with open(path, 'r', encoding='utf-8') as f:
             RUNYANKORE_DICT = json.load(f)
-        
-        # Build reverse map: first English word of definition → Runyankore word
+
         for runy_word, eng_defn in RUNYANKORE_DICT.items():
             if not eng_defn:
                 continue
-            # Take the first word(s) of the definition as a lookup key
-            # e.g. "these: used to refer to..." → "these"
             first_part = eng_defn.split(':')[0].split('.')[0].strip().lower()
-            # Also strip leading "to " for verbs
             key = first_part
             if key.startswith('to '):
                 key = key[3:]
             key = key.strip()
             if key and key not in RUNYANKORE_REVERSE:
                 RUNYANKORE_REVERSE[key] = runy_word
-        
-        print(f'✅ Runyankore loaded: {len(RUNYANKORE_DICT)} runy→eng, {len(RUNYANKORE_REVERSE)} eng→runy')
+
+        print(f'✅ Runyankole loaded: {len(RUNYANKORE_DICT)} runy→eng, {len(RUNYANKORE_REVERSE)} eng→runy')
     else:
         print(f'⚠️ runyankore_dict.json not found at {path}')
 except Exception as e:
-    print(f'❌ Runyankore load error: {e}')
+    print(f'❌ Runyankole load error: {e}')
 
+
+# ============================================================
+# Lookup helpers
+# ============================================================
 
 def normalize_key(text: str) -> str:
-    """Normalize text for lookup: lowercase, strip whitespace only"""
-    return text.lower().strip()
+    """Normalize text for lookup: lowercase, strip whitespace and trailing punctuation"""
+    return text.lower().strip().rstrip('.!?,')
 
 
-def lookup_local(text: str, target_lang: str, source_lang: str = 'english') -> Optional[str]:
-    """
-    Universal local dictionary lookup.
-    Returns translation if found, None otherwise.
-    """
-    if not text:
-        return None
-    
+def _lookup_common(text: str, target_lang: str, source_lang: str) -> Optional[str]:
+    """Check curated common_phrases first (fastest + most accurate for daily speech)"""
     key = normalize_key(text)
-    
+    if not key:
+        return None
+
+    # English → Native (common phrases)
+    if source_lang == 'english' and target_lang in COMMON_PHRASES:
+        result = COMMON_PHRASES[target_lang].get(key)
+        if result:
+            return result
+
+    # Native → English (common phrases)
+    if target_lang == 'english' and source_lang in COMMON_REVERSE:
+        result = COMMON_REVERSE[source_lang].get(key)
+        if result:
+            return result
+
+    return None
+
+
+def _lookup_big_dict(text: str, target_lang: str, source_lang: str) -> Optional[str]:
+    """Fall back to the large JSON dicts (Bible corpus + word dict)"""
+    key = normalize_key(text)
+
     # Acholi: English → Acholi
     if source_lang == 'english' and target_lang == 'acholi':
         result = ACHOLI_ENG_TO_ACH.get(key)
         if result:
             return result
-    
+
     # Acholi: Acholi → English
     if source_lang == 'acholi' and target_lang == 'english':
         result = ACHOLI_ACH_TO_ENG.get(key)
         if result:
             return result
-    
-    # Runyankore/Rukiga: Runyankore → English (from dict key)
-    if source_lang in ('runyankore', 'rukiga', 'runyankole') and target_lang == 'english':
+
+    # Runyankole: native → English
+    if source_lang in ('runyankole', 'runyankore', 'rukiga') and target_lang == 'english':
         result = RUNYANKORE_DICT.get(key)
         if result:
-            # The value is the English definition - clean it
-            # Remove trailing details after first period
-            result = result.split('.')[0].strip()
-            return result
-    
-    # Runyankore/Rukiga: English → Runyankore (from reverse map)
-    if source_lang == 'english' and target_lang in ('runyankore', 'rukiga', 'runyankole'):
+            return result.split('.')[0].strip()
+
+    # Runyankole: English → native
+    if source_lang == 'english' and target_lang in ('runyankole', 'runyankore', 'rukiga'):
         result = RUNYANKORE_REVERSE.get(key)
         if result:
             return result
-    
+
+    return None
+
+
+def lookup_local(text: str, target_lang: str, source_lang: str = 'english') -> Optional[str]:
+    """
+    Universal local dictionary lookup.
+    Order: curated common phrases → large JSON dicts → None.
+    """
+    if not text:
+        return None
+
+    # 1. Curated everyday phrases (instant, exact)
+    result = _lookup_common(text, target_lang, source_lang)
+    if result:
+        return result
+
+    # 2. Big JSON dicts (Acholi 72k, Runyankole 8k)
+    result = _lookup_big_dict(text, target_lang, source_lang)
+    if result:
+        return result
+
     return None
 
 
 def get_dictionary_stats() -> dict:
     """Return stats on loaded dictionaries"""
-    return {
+    stats = {
         'acholi_eng_to_ach': len(ACHOLI_ENG_TO_ACH),
         'acholi_ach_to_eng': len(ACHOLI_ACH_TO_ENG),
         'runyankore': len(RUNYANKORE_DICT),
         'runyankore_reverse': len(RUNYANKORE_REVERSE),
     }
+    for lang, phrases in COMMON_PHRASES.items():
+        stats[f'common_{lang}'] = len(phrases)
+    return stats
