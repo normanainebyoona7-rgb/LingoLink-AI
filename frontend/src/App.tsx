@@ -11,6 +11,7 @@ import Translate from './pages/Translate';
 import History from './pages/History';
 import Voice from './pages/Voice';
 import TwoWay from './pages/TwoWay';
+import LiveTranslation from './pages/LiveTranslation';
 import Video from './pages/Video';
 import CallCenter from './pages/CallCenter';
 import Admin from './pages/Admin';
@@ -47,7 +48,7 @@ export const LANGUAGES: Record<string, string> = {
   kabyle: 'Kabyle', tachelhit: 'Tachelhit',
 };
 
-type Tab = 'dashboard' | 'translate' | 'history' | 'voice' | 'twoway' | 'video' | 'callcenter' | 'admin' | 'settings';
+type Tab = 'dashboard' | 'translate' | 'history' | 'voice' | 'twoway' | 'live' | 'video' | 'callcenter' | 'admin' | 'settings';
 type AuthPage = 'landing' | 'login' | 'register' | 'forgot';
 
 function App() {
@@ -252,6 +253,7 @@ function App() {
     { id: 'history' as Tab, icon: '📜', label: 'History' },
     { id: 'voice' as Tab, icon: '🎤', label: 'Voice' },
     { id: 'twoway' as Tab, icon: '💬', label: 'Two-Way' },
+    { id: 'live' as Tab, icon: '🎙️', label: 'Live' },
     { id: 'video' as Tab, icon: '🎬', label: 'Video Studio' },
     { id: 'callcenter' as Tab, icon: '📞', label: 'Call Center' },
     ...(isAdmin ? [{ id: 'admin' as Tab, icon: '⚙️', label: 'Admin' }] : []),
@@ -318,6 +320,7 @@ function App() {
             {activeTab === 'history' && <History token={token} />}
             {activeTab === 'voice' && <Voice token={token} />}
             {activeTab === 'twoway' && <TwoWay token={token} />}
+            {activeTab === 'live' && <LiveTranslation token={token} />}
             {activeTab === 'video' && <Video token={token} />}
             {activeTab === 'callcenter' && <CallCenter token={token} />}
             {activeTab === 'admin' && isAdmin && <Admin token={token} />}

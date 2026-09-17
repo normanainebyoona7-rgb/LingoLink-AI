@@ -166,6 +166,7 @@ def transcribe_audio_file(audio_path: str, language: str = None) -> dict:
 async def transcribe_audio(
     file: UploadFile = File(...),
     language: str = Form("auto"),
+    auto_detect: str = Form("false"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -177,16 +178,24 @@ async def transcribe_audio(
             tmp_path = tmp.name
 
         engine = "Groq" if IS_CLOUD else "Sunbird-local"
-        print(f"🎤 Transcribing {len(content)} bytes via {engine} (lang={language})...")
+        is_auto = auto_detect.lower() == "true"
+        print(f"🎤 Transcribing {len(content)} bytes via {engine} (lang={language}, auto={is_auto})...")
 
-        result = transcribe_audio_file(tmp_path, language)
+        if is_auto:
+            # Force auto-detection: pass None so Whisper decides
+            result = transcribe_audio_file(tmp_path, None)
+            detected = result.get("language", "auto")
+        else:
+            result = transcribe_audio_file(tmp_path, language)
+            detected = result.get("language", language)
+
         os.unlink(tmp_path)
 
-        print(f"✅ Transcribed: {result['text'][:100]}")
+        print(f"✅ Transcribed [{detected}]: {result['text'][:100]}")
 
         return {
             "text": result["text"],
-            "language": result["language"],
+            "language": detected,
         }
     except HTTPException:
         raise
