@@ -20,10 +20,10 @@ interface LiveSegment {
 const STORAGE_KEY = 'lingolink_live_transcript';
 
 // VAD config
-const SILENCE_THRESHOLD = 0.02;      // Volume below this = silence
-const SILENCE_DURATION_MS = 900;     // Silence duration to end a chunk
-const MIN_CHUNK_MS = 1500;           // Ignore chunks shorter than this
-const MAX_CHUNK_MS = 15000;          // Force-send long chunks
+const SILENCE_THRESHOLD = 0.02;
+const SILENCE_DURATION_MS = 900;
+const MIN_CHUNK_MS = 1500;
+const MAX_CHUNK_MS = 15000;
 
 export default function LiveTranslation({ token }: Props) {
   const { darkMode } = useTheme();
@@ -49,7 +49,6 @@ export default function LiveTranslation({ token }: Props) {
   const recordingStartRef = useRef<number>(0);
   const lastSoundTimeRef = useRef<number>(0);
 
-  // Load transcript
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -97,7 +96,6 @@ export default function LiveTranslation({ token }: Props) {
       setIsRecording(true);
       stopRef.current = false;
 
-      // Set up analyser for volume detection
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       const source = audioContext.createMediaStreamSource(stream);
@@ -106,7 +104,6 @@ export default function LiveTranslation({ token }: Props) {
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // Start a chunk when sound is detected
       const checkVolume = () => {
         if (stopRef.current || !analyserRef.current) return;
 
@@ -122,7 +119,6 @@ export default function LiveTranslation({ token }: Props) {
           lastSoundTimeRef.current = now;
         }
 
-        // If we're currently recording and there's been enough silence, stop the chunk
         if (
           mediaRecorderRef.current &&
           mediaRecorderRef.current.state === 'recording' &&
@@ -131,7 +127,6 @@ export default function LiveTranslation({ token }: Props) {
           mediaRecorderRef.current.stop();
         }
 
-        // If we're NOT recording and there's sound, start a new chunk
         if (
           (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') &&
           isSound
@@ -167,7 +162,6 @@ export default function LiveTranslation({ token }: Props) {
         recorder.onstop = async () => {
           const duration = Date.now() - recordingStartRef.current;
 
-          // Only process if long enough
           if (chunks.length > 0 && duration >= MIN_CHUNK_MS) {
             const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
             if (blob.size > 5000) {
@@ -181,7 +175,6 @@ export default function LiveTranslation({ token }: Props) {
         lastSoundTimeRef.current = Date.now();
         recorder.start();
 
-        // Force-stop if too long
         setTimeout(() => {
           if (recorder.state === 'recording') recorder.stop();
         }, MAX_CHUNK_MS);
@@ -234,15 +227,15 @@ export default function LiveTranslation({ token }: Props) {
       const originalText = (tData.text || '').trim();
       const detectedLang = (tData.language || 'auto').toLowerCase();
 
-      // Skip empty (backend already filters hallucinations)
       if (!originalText || originalText.length < 2) {
         setProcessing(false);
         return;
       }
 
-      // Translate
+      // ---- ALWAYS call /translate/text ----
+      // Even if detectedLang is 'auto' or the same as target, let the backend decide.
       let translatedText = originalText;
-      if (detectedLang !== targetLang && detectedLang !== 'auto') {
+      try {
         const trRes = await fetch(`${API_URL}/translate/text`, {
           method: 'POST',
           headers: {
@@ -251,19 +244,24 @@ export default function LiveTranslation({ token }: Props) {
           },
           body: JSON.stringify({
             text: originalText,
-            source_language: detectedLang,
+            source_language: detectedLang === 'auto' ? 'auto' : detectedLang,
             target_language: targetLang,
           }),
         });
 
         if (trRes.ok) {
           const trData = await trRes.json();
-          translatedText = trData.translated_text || originalText;
+          const result = (trData.translated_text || '').trim();
+          if (result && result !== originalText) {
+            translatedText = result;
+          }
         }
+      } catch (err) {
+        console.error('Translation call failed:', err);
       }
 
-      // If translation === original, mark it unavailable
-      const isEchoed = translatedText.trim().toLowerCase() === originalText.trim().toLowerCase();
+      // Echo check — strict (exact match)
+      const isEchoed = translatedText.trim() === originalText.trim();
 
       const segment: LiveSegment = {
         id: idCounterRef.current++,
