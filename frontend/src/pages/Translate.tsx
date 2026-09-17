@@ -22,8 +22,9 @@ export default function Translate({ token }: Props) {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentRequestRef = useRef<number>(0);
+  const fromVoiceRef = useRef<boolean>(false);
 
-  const translate = async (text: string, sourceOverride?: string) => {
+  const translate = async (text: string, sourceOverride?: string, speakAfter = false) => {
     if (!text.trim()) {
       setTranslatedText('');
       setIsTranslating(false);
@@ -54,6 +55,10 @@ export default function Translate({ token }: Props) {
         setTranslatedText(data.translated_text);
         if (data.source_language && data.source_language !== 'auto') {
           setDetectedLanguage(data.source_language);
+        }
+        // Auto-speak when input came from voice (matches Voice page behavior)
+        if (speakAfter && data.translated_text) {
+          speakText(data.translated_text);
         }
       } else {
         setError('Translation failed. Check backend.');
@@ -97,12 +102,13 @@ export default function Translate({ token }: Props) {
   const handleVoiceTranscribed = (text: string) => {
     setInputText(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    translate(text, sourceLanguage === 'auto' ? 'auto' : sourceLanguage);
+    fromVoiceRef.current = true;
+    // Auto-speak after translation — matches Voice page behavior
+    translate(text, sourceLanguage === 'auto' ? 'auto' : sourceLanguage, true);
   };
 
-  const speakTranslation = async () => {
-    if (!translatedText) return;
-    setIsSpeaking(true);
+  const speakText = async (text: string) => {
+    if (!text) return;
     try {
       const res = await fetch(`${API_URL}/tts/speak`, {
         method: 'POST',
@@ -111,7 +117,7 @@ export default function Translate({ token }: Props) {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          text: translatedText,
+          text,
           language: targetLanguage,
           gender: voiceGender,
           speed: 1.0,
@@ -120,24 +126,22 @@ export default function Translate({ token }: Props) {
       if (res.ok) {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = url;
-          audioRef.current.onended = () => setIsSpeaking(false);
-          audioRef.current.play();
-        } else {
-          audioRef.current = new Audio(url);
-          audioRef.current.onended = () => setIsSpeaking(false);
-          audioRef.current.play();
-        }
-      } else {
-        setError('Audio generation failed.');
-        setIsSpeaking(false);
+        if (!audioRef.current) audioRef.current = new Audio();
+        audioRef.current.pause();
+        audioRef.current.src = url;
+        audioRef.current.onended = () => setIsSpeaking(false);
+        audioRef.current.play();
+        setIsSpeaking(true);
       }
-    } catch {
-      setError('Audio playback error.');
-      setIsSpeaking(false);
+    } catch (err) {
+      console.error('TTS failed:', err);
     }
+  };
+
+  const speakTranslation = async () => {
+    if (!translatedText) return;
+    setIsSpeaking(true);
+    speakText(translatedText);
   };
 
   const stopSpeaking = () => {
@@ -213,7 +217,7 @@ export default function Translate({ token }: Props) {
             <span className="char-count">{inputText.length} chars</span>
           </div>
           <textarea
-            placeholder="Type or paste text here... (Ctrl+Enter to translate)"
+            placeholder="Type, paste, or use the mic below... (Ctrl+Enter to translate)"
             value={inputText}
             onChange={(e) => handleTextChange(e.target.value)}
             onKeyDown={handleKeyDown}
