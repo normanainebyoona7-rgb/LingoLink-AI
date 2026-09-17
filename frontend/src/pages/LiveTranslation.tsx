@@ -18,7 +18,12 @@ interface LiveSegment {
 }
 
 const STORAGE_KEY = 'lingolink_live_transcript';
-const CHUNK_MS = 5000; // 5 seconds per chunk
+
+// VAD config
+const SILENCE_THRESHOLD = 0.02;      // Volume below this = silence
+const SILENCE_DURATION_MS = 900;     // Silence duration to end a chunk
+const MIN_CHUNK_MS = 1500;           // Ignore chunks shorter than this
+const MAX_CHUNK_MS = 15000;          // Force-send long chunks
 
 export default function LiveTranslation({ token }: Props) {
   const { darkMode } = useTheme();
@@ -31,15 +36,20 @@ export default function LiveTranslation({ token }: Props) {
   const [processing, setProcessing] = useState(false);
   const [segments, setSegments] = useState<LiveSegment[]>([]);
   const [error, setError] = useState('');
+  const [volume, setVolume] = useState(0);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopRef = useRef(false);
   const idCounterRef = useRef(1);
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
+  const recordingStartRef = useRef<number>(0);
+  const lastSoundTimeRef = useRef<number>(0);
 
-  // Load transcript from localStorage
+  // Load transcript
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -52,32 +62,27 @@ export default function LiveTranslation({ token }: Props) {
     } catch {}
   }, []);
 
-  // Save transcript
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(segments));
     } catch {}
   }, [segments]);
 
-  // Auto-scroll
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [segments]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopRef.current = true;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-      }
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (audioContextRef.current) audioContextRef.current.close();
     };
   }, []);
 
-  // ---- Start continuous recording ----
+  // ---- Recording loop with VAD ----
   const startRecording = async () => {
     setError('');
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -92,9 +97,53 @@ export default function LiveTranslation({ token }: Props) {
       setIsRecording(true);
       stopRef.current = false;
 
-      // Loop: record 5s → process → record next 5s
-      const recordChunk = () => {
-        if (stopRef.current || !streamRef.current) return;
+      // Set up analyser for volume detection
+      const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      // Start a chunk when sound is detected
+      const checkVolume = () => {
+        if (stopRef.current || !analyserRef.current) return;
+
+        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255;
+        setVolume(avg);
+
+        const now = Date.now();
+        const isSound = avg > SILENCE_THRESHOLD;
+
+        if (isSound) {
+          lastSoundTimeRef.current = now;
+        }
+
+        // If we're currently recording and there's been enough silence, stop the chunk
+        if (
+          mediaRecorderRef.current &&
+          mediaRecorderRef.current.state === 'recording' &&
+          now - lastSoundTimeRef.current > SILENCE_DURATION_MS
+        ) {
+          mediaRecorderRef.current.stop();
+        }
+
+        // If we're NOT recording and there's sound, start a new chunk
+        if (
+          (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') &&
+          isSound
+        ) {
+          startChunk();
+        }
+
+        requestAnimationFrame(checkVolume);
+      };
+
+      const startChunk = () => {
+        if (!streamRef.current || stopRef.current) return;
 
         const mimeTypes = [
           'audio/webm;codecs=opus', 'audio/webm',
@@ -116,27 +165,29 @@ export default function LiveTranslation({ token }: Props) {
         };
 
         recorder.onstop = async () => {
-          if (chunks.length > 0) {
+          const duration = Date.now() - recordingStartRef.current;
+
+          // Only process if long enough
+          if (chunks.length > 0 && duration >= MIN_CHUNK_MS) {
             const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-            // Skip if blob is too small (< 5 KB = silence or nothing)
             if (blob.size > 5000) {
               await processChunk(blob);
             }
           }
-          // Continue with next chunk
-          if (!stopRef.current) recordChunk();
         };
 
         mediaRecorderRef.current = recorder;
+        recordingStartRef.current = Date.now();
+        lastSoundTimeRef.current = Date.now();
         recorder.start();
 
-        // Auto-stop after CHUNK_MS
+        // Force-stop if too long
         setTimeout(() => {
           if (recorder.state === 'recording') recorder.stop();
-        }, CHUNK_MS);
+        }, MAX_CHUNK_MS);
       };
 
-      recordChunk();
+      checkVolume();
     } catch (err: any) {
       console.error('Mic error:', err);
       setError('Microphone access denied or unavailable');
@@ -144,7 +195,6 @@ export default function LiveTranslation({ token }: Props) {
     }
   };
 
-  // ---- Stop recording ----
   const stopRecording = () => {
     stopRef.current = true;
     setIsRecording(false);
@@ -155,13 +205,15 @@ export default function LiveTranslation({ token }: Props) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
   };
 
-  // ---- Process a single chunk: transcribe → translate → speak ----
   const processChunk = async (blob: Blob) => {
     setProcessing(true);
     try {
-      // 1) Transcribe with auto-detect
       const formData = new FormData();
       const ext = blob.type.includes('webm') ? 'webm'
                 : blob.type.includes('mp4') ? 'm4a'
@@ -176,26 +228,19 @@ export default function LiveTranslation({ token }: Props) {
         body: formData,
       });
 
-      if (!tRes.ok) {
-        setProcessing(false);
-        return;
-      }
+      if (!tRes.ok) { setProcessing(false); return; }
 
       const tData = await tRes.json();
       const originalText = (tData.text || '').trim();
       const detectedLang = (tData.language || 'auto').toLowerCase();
 
+      // Skip empty (backend already filters hallucinations)
       if (!originalText || originalText.length < 2) {
         setProcessing(false);
         return;
       }
 
-      // Skip very short/common filler
-      if (originalText.toLowerCase() === 'you' || originalText.toLowerCase() === 'thank you.') {
-        // still process, but you could add a filter here
-      }
-
-      // 2) Translate to target language
+      // Translate
       let translatedText = originalText;
       if (detectedLang !== targetLang && detectedLang !== 'auto') {
         const trRes = await fetch(`${API_URL}/translate/text`, {
@@ -217,18 +262,20 @@ export default function LiveTranslation({ token }: Props) {
         }
       }
 
+      // If translation === original, mark it unavailable
+      const isEchoed = translatedText.trim().toLowerCase() === originalText.trim().toLowerCase();
+
       const segment: LiveSegment = {
         id: idCounterRef.current++,
         detectedLang,
         originalText,
-        translatedText,
+        translatedText: isEchoed ? '' : translatedText,
         timestamp: Date.now(),
       };
 
       setSegments((prev) => [...prev, segment]);
 
-      // 3) Auto-speak
-      if (autoSpeak && translatedText) {
+      if (autoSpeak && translatedText && !isEchoed) {
         speak(translatedText, targetLang);
       }
     } catch (err) {
@@ -270,10 +317,9 @@ export default function LiveTranslation({ token }: Props) {
 
       <div className="live-header">
         <h2>🎙️ Live Translation</h2>
-        <p>Auto-detects language and translates continuously</p>
+        <p>Auto-detects language and translates on natural pauses</p>
       </div>
 
-      {/* Controls */}
       <div className="live-controls">
         <div className="live-control-row">
           <span className="live-control-label">Show everything in</span>
@@ -315,7 +361,6 @@ export default function LiveTranslation({ token }: Props) {
         </div>
       </div>
 
-      {/* Record button */}
       <div className="live-record-section">
         {!isRecording ? (
           <button className="live-record-btn" onClick={startRecording}>
@@ -329,15 +374,22 @@ export default function LiveTranslation({ token }: Props) {
           </button>
         )}
         {isRecording && (
-          <p className="live-status">
-            {processing ? '⏳ Processing chunk…' : '🎧 Listening…'}
-          </p>
+          <>
+            <div className="live-volume-bar">
+              <div
+                className="live-volume-fill"
+                style={{ width: `${Math.min(100, volume * 300)}%` }}
+              />
+            </div>
+            <p className="live-status">
+              {processing ? '⏳ Processing…' : volume > 0.02 ? '🎧 Hearing you…' : '🤫 Listening for speech…'}
+            </p>
+          </>
         )}
       </div>
 
       {error && <p className="live-error">❌ {error}</p>}
 
-      {/* Transcript */}
       <div className="live-transcript">
         <div className="live-transcript-header">
           <h3>💬 Live Transcript</h3>
@@ -365,8 +417,12 @@ export default function LiveTranslation({ token }: Props) {
                   </span>
                 </div>
                 <p className="live-segment-original">{seg.originalText}</p>
-                {seg.translatedText && seg.translatedText !== seg.originalText && (
+                {seg.translatedText ? (
                   <p className="live-segment-translated">→ {seg.translatedText}</p>
+                ) : (
+                  <p className="live-segment-no-translation">
+                    (translation unavailable)
+                  </p>
                 )}
               </div>
             ))}
