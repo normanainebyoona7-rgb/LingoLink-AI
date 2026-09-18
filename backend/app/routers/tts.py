@@ -13,18 +13,20 @@ router = APIRouter(prefix="/tts", tags=["tts"])
 
 SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 
-# ---------- Sunbird language codes + default voice ----------
-# Voices from /tasks/voice/speakers (48 total, best-picked here)
-SUNBIRD_TTS = {
-    "luganda":    {"code": "lug", "voice": "salt_lug_0001"},
-    "acholi":     {"code": "ach", "voice": "salt_ach_0001"},
-    "ateso":      {"code": "teo", "voice": "salt_teo_0001"},
-    "runyankole": {"code": "nyn", "voice": "salt_nyn_0001"},
-    "runyankore": {"code": "nyn", "voice": "salt_nyn_0001"},
-    "rukiga":     {"code": "nyn", "voice": "salt_nyn_0001"},   # shared with Runyankole
-    "swahili":    {"code": "swa", "voice": "waxal_swa_0006"},
-    "english":    {"code": "eng", "voice": "salt_eng_0001"},
-    # Add more when Sunbird supports them
+# ---------- Sunbird voices (gender-aware) ----------
+# Pattern: salt_* = female, waxal_* = male
+# Where only one gender exists, both entries point to the available voice
+SUNBIRD_VOICES = {
+    "luganda":    {"female": "salt_lug_0001",  "male": "waxal_lug_0002",  "code": "lug"},
+    "acholi":     {"female": "salt_ach_0001",  "male": "waxal_ach_0001",  "code": "ach"},
+    "ateso":      {"female": "salt_teo_0001",  "male": "salt_teo_0001",   "code": "teo"},
+    "runyankole": {"female": "salt_nyn_0001",  "male": "waxal_nyn_0003",  "code": "nyn"},
+    "runyankore": {"female": "salt_nyn_0001",  "male": "waxal_nyn_0003",  "code": "nyn"},
+    "rukiga":     {"female": "salt_nyn_0001",  "male": "waxal_nyn_0003",  "code": "nyn"},
+    "swahili":    {"female": "waxal_swa_0006", "male": "waxal_swa_0006",  "code": "swa"},
+    "english":    {"female": "salt_eng_0001",  "male": "salt_eng_0001",   "code": "eng"},
+    # Additional if needed
+    "kinyarwanda":{"female": "bateesa_kin_0001","male": "bateesa_kin_0001","code": "kin"},
 }
 
 # ---------- Edge-TTS voices for everything else ----------
@@ -53,17 +55,19 @@ class TTSRequest(BaseModel):
     speed: float = 1.0
 
 
-def sunbird_tts(text: str, language: str) -> Optional[bytes]:
+def sunbird_tts(text: str, language: str, gender: str = "female") -> Optional[bytes]:
     """Call Sunbird TTS API — new endpoint /tasks/audio/speech"""
     if not SUNBIRD_API_KEY:
         return None
 
-    entry = SUNBIRD_TTS.get(language.lower())
+    entry = SUNBIRD_VOICES.get(language.lower())
     if not entry:
         return None
 
     code = entry["code"]
-    voice = entry["voice"]
+    voice = entry.get(gender) or entry.get("female") or entry.get("male")
+    if not voice:
+        return None
 
     try:
         url = "https://api.sunbird.ai/tasks/audio/speech"
@@ -77,7 +81,7 @@ def sunbird_tts(text: str, language: str) -> Optional[bytes]:
             "voice": voice,
         }
 
-        print(f"🗣️ Sunbird TTS: lang={code}, voice={voice}, text={text[:50]}")
+        print(f"🗣️ Sunbird TTS: lang={code}, voice={voice}, gender={gender}, text={text[:50]}")
 
         resp = requests.post(url, headers=headers, json=payload, timeout=90)
         print(f"   Sunbird status: {resp.status_code}")
@@ -86,7 +90,6 @@ def sunbird_tts(text: str, language: str) -> Optional[bytes]:
             data = resp.json()
             audio_url = data.get("audio_url")
             if audio_url:
-                # Download the signed URL immediately (expires in ~30 min)
                 audio_resp = requests.get(audio_url, timeout=30)
                 if audio_resp.status_code == 200:
                     print(f"   ✅ Downloaded {len(audio_resp.content)} bytes from Sunbird")
@@ -127,30 +130,26 @@ async def speak(req: TTSRequest):
     gender = req.gender.lower()
 
     # 1. Ugandan languages → Sunbird
-    if lang in SUNBIRD_TTS and SUNBIRD_API_KEY:
-        audio = sunbird_tts(text, lang)
+    if lang in SUNBIRD_VOICES and SUNBIRD_API_KEY:
+        audio = sunbird_tts(text, lang, gender)
         if audio:
             return StreamingResponse(
                 io.BytesIO(audio),
                 media_type="audio/wav",
                 headers={"Content-Disposition": "inline; filename=tts.wav"}
             )
-        # Fall through to Edge-TTS if Sunbird fails
         print(f"⚠️ Sunbird failed for {lang}, falling back to Edge-TTS")
 
     # 2. International → Edge-TTS
     voice_entry = EDGE_VOICES.get(lang)
-    if not voice_entry or "..." in voice_entry.get(gender, ""):
-        # Default to English voice for unknown
+    if not voice_entry:
         if lang == "english":
             voice_entry = {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"}
         else:
-            # Any unknown language — use English
             voice_entry = {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"}
 
     voice = voice_entry.get(gender) or voice_entry.get("female") or "en-US-JennyNeural"
 
-    # Speed adjustment
     rate_pct = int((req.speed - 1.0) * 100)
     rate_str = f"{rate_pct:+d}%"
 
@@ -169,10 +168,7 @@ async def speak(req: TTSRequest):
 async def list_voices():
     """List available voices"""
     return {
-        "sunbird_ugandan": {
-            lang: {"code": v["code"], "voice": v["voice"]}
-            for lang, v in SUNBIRD_TTS.items()
-        },
+        "sunbird_ugandan": SUNBIRD_VOICES,
         "edge_international": EDGE_VOICES,
     }
 

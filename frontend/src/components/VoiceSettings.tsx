@@ -6,6 +6,14 @@ interface VoiceSettingsProps {
   onSpeedChange: (speed: number) => void;
 }
 
+// Languages where both genders are available
+const LANGS_WITH_BOTH = new Set([
+  'luganda', 'acholi', 'runyankole', 'runyankore', 'rukiga',
+  'english', 'french', 'spanish', 'german', 'portuguese', 'italian',
+  'dutch', 'russian', 'arabic', 'hindi', 'chinese', 'japanese',
+  'korean', 'turkish', 'swahili',
+]);
+
 const VoiceSettings: React.FC<VoiceSettingsProps> = ({
   language,
   onVoiceChange,
@@ -20,20 +28,16 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
 
   useEffect(() => {
     const lang = language.toLowerCase();
-    if (lang === 'swahili') {
-      setAvailable({ male: true, female: false });
-      setGender('male');
-      onVoiceChange('male');
-    } else if (
-      ['luganda', 'acholi', 'ateso', 'runyankole', 'runyankore', 'lugbara'].includes(lang)
-    ) {
+    if (LANGS_WITH_BOTH.has(lang)) {
+      setAvailable({ male: true, female: true });
+      // Keep current selection
+    } else {
+      // Unknown language — force female and disable male
       setAvailable({ male: false, female: true });
       setGender('female');
       onVoiceChange('female');
-    } else {
-      setAvailable({ male: true, female: true });
     }
-  }, [language]);
+  }, [language, onVoiceChange]);
 
   const handleGender = (g: 'male' | 'female') => {
     setGender(g);
