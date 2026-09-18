@@ -1,6 +1,7 @@
 /* ============================================
    LingoLink AI - Admin Panel
-   Theme: Savanna Gold (matches pages.css)
+   Theme: Savanna Gold
+   Motion: Warm & Natural
    ============================================ */
 
 .admin-panel-root {
@@ -53,17 +54,21 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  transition: all 0.2s;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   white-space: nowrap;
   flex-shrink: 0;
+  transition:
+    color var(--dur-hover) var(--ease-soft),
+    border-color var(--dur-hover) var(--ease-soft);
 }
 
 .app-dark .admin-panel-tab { color: var(--text-dim); }
 .app-light .admin-panel-tab { color: var(--text-muted); }
 
 .admin-panel-tab:hover { color: var(--warm-gold); }
+.landing-light .admin-panel-tab:hover,
+.app-light .admin-panel-tab:hover { color: var(--deep-gold); }
 
 .admin-panel-tab.active {
   color: var(--bright-amber);
@@ -72,6 +77,8 @@
 }
 
 .app-light .admin-panel-tab.active { color: var(--deep-gold); border-bottom-color: var(--deep-gold); }
+
+.admin-panel-tab:active { transform: scale(0.98); transition-duration: 60ms; }
 
 /* ============ METRICS GRID ============ */
 .admin-metrics-grid {
@@ -86,16 +93,21 @@
   border-radius: 14px;
   color: #ffffff;
   text-align: center;
-  transition: transform 0.22s ease;
   min-height: 110px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  transition:
+    transform var(--dur-hover) var(--ease-warm),
+    box-shadow var(--dur-hover) var(--ease-soft);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.admin-metric-card:hover { transform: translateY(-3px); }
+.admin-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
 
-/* Savanna Gold gradients */
 .admin-metric-card.purple { background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold)); }
 .admin-metric-card.blue   { background: linear-gradient(135deg, var(--bright-amber), var(--warm-gold)); }
 .admin-metric-card.green  { background: linear-gradient(135deg, var(--olive), #6b5c2a); }
@@ -213,7 +225,10 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
+  transition: transform var(--dur-hover) var(--ease-warm);
 }
+
+.admin-pie-legend-item:hover { transform: translateX(2px); }
 
 .admin-pie-dot {
   width: 12px;
@@ -294,9 +309,9 @@
   align-items: center;
   justify-content: flex-end;
   padding-right: 10px;
-  transition: width 0.5s ease;
   min-width: 40px;
   background: linear-gradient(90deg, var(--warm-gold), var(--bright-amber));
+  transition: width 0.7s var(--ease-warm);
 }
 
 .admin-bar-percent {
@@ -354,9 +369,9 @@
 .admin-growth-fill {
   height: 100%;
   border-radius: 11px;
-  transition: width 0.5s ease;
   min-width: 30px;
   background: linear-gradient(90deg, var(--warm-gold), var(--bright-amber));
+  transition: width 0.7s var(--ease-warm);
 }
 
 .admin-growth-value {
@@ -386,6 +401,9 @@
   width: 100%;
   max-width: 280px;
   flex: 1 1 200px;
+  transition:
+    border-color var(--dur-hover) var(--ease-soft),
+    box-shadow var(--dur-hover) var(--ease-soft);
 }
 
 .app-dark .admin-search-input {
@@ -403,7 +421,7 @@
 .admin-search-input:focus {
   outline: none;
   border-color: var(--bright-amber);
-  box-shadow: 0 0 0 3px rgba(212, 160, 74, 0.18);
+  box-shadow: 0 0 0 3px rgba(212, 160, 74, 0.15);
 }
 
 /* ============ BUTTONS ============ */
@@ -416,11 +434,21 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.22s ease;
   white-space: nowrap;
+  transition:
+    transform var(--dur-hover) var(--ease-warm),
+    box-shadow var(--dur-hover) var(--ease-soft);
 }
 
-.admin-add-user-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(212, 160, 74, 0.4); }
+.admin-add-user-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(212, 160, 74, 0.35);
+}
+
+.admin-add-user-btn:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 60ms;
+}
 
 .admin-refresh-btn {
   padding: 10px 18px;
@@ -428,7 +456,10 @@
   cursor: pointer;
   font-size: 12px;
   border: 1px solid;
-  transition: all 0.2s;
+  transition:
+    background var(--dur-hover) var(--ease-soft),
+    border-color var(--dur-hover) var(--ease-soft),
+    color var(--dur-hover) var(--ease-soft);
 }
 
 .app-dark .admin-refresh-btn {
@@ -442,6 +473,8 @@
   border-color: var(--border-light);
   color: var(--deep-gold);
 }
+
+.admin-refresh-btn:hover { background: rgba(212, 160, 74, 0.18); }
 
 .admin-add-form {
   display: flex;
@@ -462,6 +495,7 @@
   border: 1px solid;
   flex: 1 1 160px;
   min-width: 0;
+  transition: border-color var(--dur-hover) var(--ease-soft), box-shadow var(--dur-hover) var(--ease-soft);
 }
 
 .app-dark .admin-add-form input {
@@ -476,6 +510,12 @@
   color: var(--text-light);
 }
 
+.admin-add-form input:focus {
+  outline: none;
+  border-color: var(--bright-amber);
+  box-shadow: 0 0 0 3px rgba(212, 160, 74, 0.15);
+}
+
 .admin-save-btn {
   padding: 10px 18px;
   background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold));
@@ -485,7 +525,10 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition: transform var(--dur-hover) var(--ease-warm), box-shadow var(--dur-hover) var(--ease-soft);
 }
+.admin-save-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(212, 160, 74, 0.35); }
+.admin-save-btn:active { transform: translateY(0) scale(0.98); transition-duration: 60ms; }
 
 .admin-cancel-btn {
   padding: 10px 14px;
@@ -495,7 +538,10 @@
   color: #ffffff;
   font-size: 12px;
   cursor: pointer;
+  transition: background var(--dur-hover) var(--ease-soft), transform var(--dur-hover) var(--ease-warm);
 }
+.admin-cancel-btn:hover { background: #a55a3f; }
+.admin-cancel-btn:active { transform: scale(0.98); transition-duration: 60ms; }
 
 .admin-remove-btn {
   padding: 6px 12px;
@@ -506,7 +552,10 @@
   font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
+  transition: background var(--dur-hover) var(--ease-soft), transform var(--dur-hover) var(--ease-warm);
 }
+.admin-remove-btn:hover { background: #a55a3f; }
+.admin-remove-btn:active { transform: scale(0.97); transition-duration: 60ms; }
 
 /* ============ USERS ============ */
 .admin-users-list {
@@ -522,10 +571,18 @@
   padding: 14px;
   border-radius: 10px;
   border: 1px solid;
+  transition:
+    border-color var(--dur-hover) var(--ease-soft),
+    transform var(--dur-hover) var(--ease-warm);
 }
 
 .app-dark .admin-user-row { background: var(--night-amber); border-color: rgba(212, 160, 74, 0.12); }
 .app-light .admin-user-row { background: var(--parchment); border-color: var(--border-light); }
+
+.admin-user-row:hover {
+  transform: translateX(2px);
+  border-color: rgba(212, 160, 74, 0.25);
+}
 
 .admin-user-avatar { font-size: 22px; flex-shrink: 0; }
 
@@ -603,10 +660,18 @@
   padding: 12px 14px;
   border-radius: 8px;
   border: 1px solid;
+  transition:
+    border-color var(--dur-hover) var(--ease-soft),
+    transform var(--dur-hover) var(--ease-warm);
 }
 
 .app-dark .admin-language-row { background: var(--night-amber); border-color: rgba(212, 160, 74, 0.12); }
 .app-light .admin-language-row { background: var(--parchment); border-color: var(--border-light); }
+
+.admin-language-row:hover {
+  transform: translateX(2px);
+  border-color: rgba(212, 160, 74, 0.25);
+}
 
 .admin-language-name {
   flex: 1;
@@ -660,36 +725,6 @@
 .app-dark .admin-setting-label { color: var(--text-dark); }
 .app-light .admin-setting-label { color: var(--text-light); }
 
-/* ============ SLIDING TOGGLE ============ */
-.slider-toggle {
-  position: relative;
-  width: 50px;
-  height: 26px;
-  border: none;
-  border-radius: 13px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.slider-toggle.on { background: linear-gradient(135deg, var(--warm-gold), var(--deep-gold)); }
-.slider-toggle.off { background: #888888; }
-
-.slider-knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
-  transition: transform 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.slider-toggle.on .slider-knob { transform: translateX(24px); }
-.slider-toggle.off .slider-knob { transform: translateX(0); }
-
 /* ============ ERROR ============ */
 .admin-error {
   padding: 12px 18px;
@@ -699,6 +734,12 @@
   font-size: 13px;
   margin-bottom: 15px;
   border: 1px solid rgba(200, 122, 92, 0.3);
+  animation: adminErrorIn var(--dur-mid) var(--ease-out);
+}
+
+@keyframes adminErrorIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ============ MOBILE ============ */
@@ -706,109 +747,67 @@
   .admin-panel-header h2 { font-size: 20px; }
   .admin-panel-header p { font-size: 12px; }
 
-  .admin-panel-tabs {
-    gap: 4px;
-    margin-bottom: 18px;
-  }
-
-  .admin-panel-tab {
-    padding: 10px 14px;
-    font-size: 12px;
-  }
+  .admin-panel-tabs { gap: 4px; margin-bottom: 18px; }
+  .admin-panel-tab { padding: 10px 14px; font-size: 12px; }
 
   .admin-metrics-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
-  .admin-metric-card {
-    padding: 16px 12px;
-    min-height: 95px;
-  }
-
+  .admin-metric-card { padding: 16px 12px; min-height: 95px; }
   .admin-metric-icon { font-size: 20px; margin-bottom: 4px; }
   .admin-metric-card h3 { font-size: 10px; }
   .admin-metric-value { font-size: 20px; }
 
-  .admin-chart-card {
-    padding: 16px;
-    margin-bottom: 14px;
-  }
-
+  .admin-chart-card { padding: 16px; margin-bottom: 14px; }
   .admin-chart-card h3 { font-size: 14px; margin-bottom: 14px; }
 
-  .admin-pie-chart-container {
-    flex-direction: column;
-    gap: 18px;
-  }
-
+  .admin-pie-chart-container { flex-direction: column; gap: 18px; }
   .admin-pie-chart { width: 150px; height: 150px; }
   .admin-pie-hole { width: 75px; height: 75px; }
   .admin-pie-total { font-size: 20px; }
   .admin-pie-legend { min-width: 0; width: 100%; }
 
   .admin-bar-label,
-  .admin-growth-label {
-    min-width: 65px;
-    font-size: 11px;
-  }
+  .admin-growth-label { min-width: 65px; font-size: 11px; }
 
-  .admin-toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .admin-search-input {
-    max-width: 100%;
-    width: 100%;
-  }
-
-  .admin-add-form {
-    flex-direction: column;
-  }
-
+  .admin-toolbar { flex-direction: column; align-items: stretch; }
+  .admin-search-input { max-width: 100%; width: 100%; }
+  .admin-add-form { flex-direction: column; }
   .admin-add-form input,
   .admin-save-btn,
-  .admin-cancel-btn {
-    width: 100%;
-  }
+  .admin-cancel-btn { width: 100%; }
 
-  .admin-user-row {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px;
-  }
-
+  .admin-user-row { flex-wrap: wrap; gap: 8px; padding: 12px; }
   .admin-user-avatar { font-size: 20px; }
-
-  .admin-user-info {
-    flex: 1 1 100%;
-    order: 2;
-  }
-
+  .admin-user-info { flex: 1 1 100%; order: 2; }
   .admin-user-plan,
-  .admin-user-translations {
-    order: 3;
-  }
+  .admin-user-translations { order: 3; }
+  .admin-remove-btn { order: 1; margin-left: auto; }
 
-  .admin-remove-btn {
-    order: 1;
-    margin-left: auto;
-  }
+  .admin-language-row { flex-wrap: wrap; }
 
-  .admin-language-row {
-    flex-wrap: wrap;
-  }
-
-  .admin-setting-row {
-    padding: 14px;
-    font-size: 13px;
-  }
-
+  .admin-setting-row { padding: 14px; font-size: 13px; }
   .admin-setting-label { font-size: 13px; }
+
+  /* Disable hover translations on touch */
+  .admin-metric-card:hover,
+  .admin-user-row:hover,
+  .admin-language-row:hover,
+  .admin-pie-legend-item:hover { transform: none; }
 }
 
 @media (max-width: 380px) {
   .admin-metrics-grid { grid-template-columns: 1fr; }
   .admin-panel-tab { padding: 9px 12px; font-size: 11px; }
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
