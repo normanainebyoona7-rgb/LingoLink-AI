@@ -1,4 +1,4 @@
-"""Fast translation with dictionary-first lookup, language detection, and universal English pivot"""
+"""Fast translation with dictionary-first lookup, smart language detection, and universal English pivot"""
 import requests
 import re
 import threading
@@ -66,7 +66,6 @@ LANG_NAMES = {
     "amharic": "Amharic", "somali": "Somali",
 }
 
-# ISO → app language name aliases
 ISO_ALIASES = {
     "en": "english", "eng": "english",
     "fr": "french", "fra": "french",
@@ -95,6 +94,128 @@ ISO_ALIASES = {
     "af": "afrikaans", "afr": "afrikaans",
 }
 
+# ============================================================
+# CURATED LANGUAGE HINTS — quick wins for common words
+# ============================================================
+
+LANG_HINTS = {
+    "swahili": {
+        "habari", "asante", "karibu", "ndiyo", "hapana", "maji",
+        "chakula", "soko", "rafiki", "nyumbani", "kwaheri", "tafadhali",
+        "samahani", "polepole", "sana", "vizuri", "nzuri", "mbaya",
+        "mzuri", "kubwa", "ndogo", "kaka", "dada", "baba", "mama",
+        "mtoto", "wanawake", "wanaume", "jina", "langu", "lako",
+        "nini", "nani", "wapi", "lini", "vipi", "kwa", "na", "ya",
+        "kwaheri", "tutaonana", "kesho", "jana", "leo", "jioni",
+        "asubuhi", "mchana", "usiku", "wiki", "mwaka", "mwezi",
+        "safari", "gari", "basi", "shule", "hospitali", "polisi",
+        "kazi", "kitabu", "simu", "pesa", "siku", "wakati",
+        "ninataka", "nataka", "ninahitaji", "nahitaji",
+        "nina", "una", "ana", "tuna", "mna", "wana",
+        "niko", "uko", "yuko", "tuko", "mko", "wako",
+        "naku", "napenda", "nakupenda", "nampenda",
+        "nime", "una", "ame", "tume", "mme", "wame",
+    },
+    "luganda": {
+        "oli", "otya", "gyendi", "webale", "weebale", "nyo",
+        "wasuze", "osiibye", "sula", "bulungi", "yee", "nedda",
+        "mukwano", "amazzi", "emmere", "akatale", "ennyumba",
+        "nze", "ggwe", "ye", "ffe", "mmwe", "bo",
+        "nkwagala", "njagala", "nneetaaga", "oyitibwa", "ani",
+        "ndi", "oli", "ali", "tuli", "muli", "bali",
+        "genda", "jja", "jja", "wano", "wano", "eyo", "eri",
+    },
+    "acholi": {
+        "itye", "nining", "apwoyo", "apwoyo", "matek",
+        "atye", "maber", "ee", "pe", "kica", "konya",
+        "pii", "kec", "gwok", "ot", "lakwor",
+        "an", "in", "en", "wan", "wun", "gin",
+        "amari", "amito", "nyinga", "nga", "adi",
+    },
+    "runyankole": {
+        "ori", "ota", "webare", "munonga", "mwaramutse",
+        "mwabonaho", "eego", "nanga", "kyangye", "ndakwiheka",
+        "amaizi", "ekyokurya", "omukyaalo", "enju", "munywani",
+        "nyowe", "iwe", "we", "itwe", "imwe", "bo",
+        "ninkukunda", "ninkwenda", "ibara", "ryawe", "nirii",
+        "ndi", "ori", "ari", "turi", "muri", "bari",
+    },
+    "french": {
+        "bonjour", "salut", "merci", "oui", "non", "s'il",
+        "vous", "plaît", "au", "revoir", "comment", "ça",
+        "va", "bien", "très", "je", "tu", "il", "elle",
+        "nous", "ils", "elles", "le", "la", "les", "un",
+        "une", "des", "et", "ou", "mais", "où", "quand",
+        "pourquoi", "qui", "quoi", "avec", "sans", "pour",
+    },
+    "spanish": {
+        "hola", "gracias", "sí", "no", "por", "favor",
+        "adiós", "cómo", "estás", "bien", "muy", "yo",
+        "tú", "él", "ella", "nosotros", "ellos", "el",
+        "la", "los", "las", "un", "una", "unos", "y",
+        "o", "pero", "dónde", "cuándo", "por", "qué",
+    },
+    "german": {
+        "hallo", "danke", "ja", "nein", "bitte", "guten",
+        "morgen", "tag", "abend", "nacht", "wie", "geht",
+        "es", "dir", "ihnen", "ich", "du", "er", "sie",
+        "wir", "ihr", "der", "die", "das", "und", "oder",
+        "aber", "wo", "wann", "warum", "wer", "was",
+    },
+    "english": {
+        "hello", "hi", "thanks", "thank", "yes", "no",
+        "please", "sorry", "good", "morning", "afternoon",
+        "evening", "night", "how", "are", "you", "i", "am",
+        "the", "a", "an", "and", "or", "but", "is", "was",
+        "to", "of", "in", "on", "at", "for", "with", "by",
+        "what", "where", "when", "why", "who", "this", "that",
+    },
+    "italian": {
+        "ciao", "grazie", "sì", "no", "per", "favore",
+        "arrivederci", "come", "stai", "bene", "molto",
+        "io", "tu", "lui", "lei", "noi", "loro", "il",
+        "la", "i", "le", "un", "una", "e", "o", "ma",
+    },
+    "portuguese": {
+        "olá", "obrigado", "obrigada", "sim", "não", "por",
+        "favor", "adeus", "como", "está", "bem", "muito",
+        "eu", "você", "ele", "ela", "nós", "eles", "o",
+        "a", "os", "as", "um", "uma", "e", "ou", "mas",
+    },
+    "arabic": {
+        "مرحبا", "شكرا", "نعم", "لا", "من", "فضلك", "وداعا",
+        "كيف", "حال", "بخير", "أنا", "أنت", "هو", "هي",
+    },
+    "chinese": {
+        "你好", "谢谢", "是", "不", "请", "再见", "怎么样",
+        "我", "你", "他", "她", "我们", "他们",
+    },
+    "hindi": {
+        "नमस्ते", "धन्यवाद", "हाँ", "नहीं", "कृपया", "अलविदा",
+        "कैसे", "है", "ठीक", "मैं", "तुम", "वह",
+    },
+}
+
+
+def _lang_hint(text: str) -> Optional[str]:
+    """Fast curated detection: any word in our hints triggers the language."""
+    words = set(re.findall(r'\w+', text.lower()))
+    if not words:
+        return None
+    # Check strongest signal first
+    best_lang = None
+    best_hits = 0
+    for lang, hint_set in LANG_HINTS.items():
+        hits = len(words & hint_set)
+        if hits > best_hits:
+            best_hits = hits
+            best_lang = lang
+    # Require at least 1 hint match to accept
+    if best_hits >= 1:
+        return best_lang
+    return None
+
+
 _session = requests.Session()
 _session.headers.update({"User-Agent": "Mozilla/5.0"})
 
@@ -104,7 +225,6 @@ def clean(text: str) -> str:
 
 
 def normalize_lang(lang: str) -> str:
-    """Convert any language identifier to app-standard name."""
     if not lang:
         return "auto"
     lang_lower = lang.lower().strip()
@@ -114,7 +234,6 @@ def normalize_lang(lang: str) -> str:
 
 
 def is_bad_translation(original: str, result: str) -> bool:
-    """Strict validation: reject empty, same-as-input, or 70%+ word overlap."""
     if not result or len(result.strip()) < 1:
         return True
     orig_clean = original.lower().strip()
@@ -136,7 +255,6 @@ def is_bad_translation(original: str, result: str) -> bool:
 
 
 def looks_like_english(text: str) -> bool:
-    """Heuristic check: does the text look like English?"""
     if not text or len(text.strip()) < 2:
         return False
     english_markers = {
@@ -158,22 +276,37 @@ def looks_like_english(text: str) -> bool:
     return False
 
 
-# ============== LANGUAGE DETECTION ==============
+# ============== SMART LANGUAGE DETECTION ==============
 
 def detect_language(text: str) -> str:
-    """Detect source language using Groq + heuristics."""
+    """
+    Multi-stage detection:
+    1. Curated hints (fast, accurate for our supported languages)
+    2. langid (fallback)
+    3. Groq LLM (final fallback)
+    """
     if not text or len(text.strip()) < 2:
         return "english"
-    # Try langid if available
+
+    # Stage 1: curated hints — most accurate for our common words
+    hint = _lang_hint(text)
+    if hint:
+        print(f"🔍 Lang hint: {hint}")
+        return hint
+
+    # Stage 2: langid — but filter out nonsense results for short text
     try:
         import langid
-        lang_code, _ = langid.classify(text)
+        lang_code, confidence = langid.classify(text)
         normalized = normalize_lang(lang_code)
-        if normalized != "auto":
+        # Only accept if it's a language we recognize and reasonably confident
+        if normalized != "auto" and normalized in LANG_NAMES:
+            # Reject if langid says Indonesian but the text has Swahili words
             return normalized
-    except Exception:
-        pass
-    # Fallback: Groq detect
+    except Exception as e:
+        print(f"langid error: {e}")
+
+    # Stage 3: Groq — explicit detection prompt
     if GROQ_API_KEY:
         try:
             url = "https://api.groq.com/openai/v1/chat/completions"
@@ -181,7 +314,10 @@ def detect_language(text: str) -> str:
             payload = {
                 "model": GROQ_MODEL,
                 "messages": [
-                    {"role": "system", "content": "Detect the language of the user's text. Reply with ONLY the ISO 639-1 code (e.g., 'en', 'sw', 'fr'). No other text."},
+                    {"role": "system", "content":
+                        "Detect the language of the user's text. "
+                        "Reply with ONLY the ISO 639-1 code (two letters like 'en', 'sw', 'fr'). "
+                        "If unsure, reply 'en'."},
                     {"role": "user", "content": text[:200]}
                 ],
                 "temperature": 0.0,
@@ -190,10 +326,12 @@ def detect_language(text: str) -> str:
             resp = _session.post(url, headers=headers, json=payload, timeout=10)
             if resp.status_code == 200:
                 code = clean(resp.json()["choices"][0]["message"]["content"]).lower().strip()
-                code = re.sub(r'[^a-z]', '', code)[:3]
-                return normalize_lang(code) if code else "english"
+                code = re.sub(r'[^a-z]', '', code)[:2]
+                if code:
+                    return normalize_lang(code)
         except Exception as e:
-            print(f"Detect error: {e}")
+            print(f"Groq detect error: {e}")
+
     return "english"
 
 
@@ -328,7 +466,6 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
 # ============== DIRECT TRANSLATION ==============
 
 def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
-    """Try engines in priority order for a direct translation."""
     result = translate_via_dict(text, target_lang, source_lang)
     if result:
         print(f"📖 Dict hit: {source_lang} → {target_lang}")
@@ -391,7 +528,6 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     if not text or not text.strip():
         return None
 
-    # Normalize language inputs (ISO codes → full names)
     source_lang = normalize_lang(source_lang)
     target_lang = normalize_lang(target_lang)
 
@@ -406,10 +542,10 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
         return result
 
-    # -------- Step 0: Detect language if 'auto' --------
+    # Step 0: Detect language
     if source_lang == "auto":
         detected = detect_language(text)
-        print(f"🔍 Detected source: {detected}")
+        print(f"🔍 Detected: {detected}")
         source_lang = detected
 
     # 1. Dictionary
@@ -418,12 +554,12 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"📖 Dict hit: {source_lang} → {target_lang}")
         return _save(result)
 
-    # 2. Direct translation
+    # 2. Direct
     result = _translate_direct(text, source_lang, target_lang)
     if result:
         return _save(result)
 
-    # 3. Pivot through English
+    # 3. Pivot
     if source_lang != "english" and target_lang != "english":
         print(f"🔄 Pivot: {source_lang} → en → {target_lang}")
         english_text = to_english(text, source_lang)
