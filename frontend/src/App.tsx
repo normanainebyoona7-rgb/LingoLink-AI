@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import './App.css';
 import './landing.css';
 import './auth.css';
@@ -67,6 +67,7 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
+  const authBoxRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -97,6 +98,31 @@ function App() {
     } else {
       setSidebarCollapsed(!sidebarCollapsed);
     }
+  };
+
+  const handleAuthMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = authBoxRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const maxTilt = 6;
+
+    const tiltY = ((x - centerX) / centerX) * maxTilt;
+    const tiltX = ((centerY - y) / centerY) * maxTilt;
+
+    el.style.setProperty('--tilt-x', `${tiltX.toFixed(2)}deg`);
+    el.style.setProperty('--tilt-y', `${tiltY.toFixed(2)}deg`);
+  };
+
+  const handleAuthMouseLeave = () => {
+    const el = authBoxRef.current;
+    if (!el) return;
+    el.style.setProperty('--tilt-x', '0deg');
+    el.style.setProperty('--tilt-y', '0deg');
   };
 
   const handleNavigate = (tab: Tab) => {
@@ -198,7 +224,12 @@ function App() {
           <Landing onLoginClick={() => setAuthPage('login')} onRegisterClick={() => setAuthPage('register')} />
         ) : (
           <div className={`auth-full ${darkMode ? 'auth-dark' : 'auth-light'}`}>
-            <div className="auth-box">
+            <div
+              className="auth-box"
+              ref={authBoxRef}
+              onMouseMove={handleAuthMouseMove}
+              onMouseLeave={handleAuthMouseLeave}
+            >
               <div className="auth-logo">
                 <img
                   src="/branding/logo.png"
