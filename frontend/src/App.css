@@ -1,6 +1,7 @@
 /* ============================================
    LingoLink AI - App Shell Stylesheet
    Theme: Savanna Gold
+   Motion: Warm & Natural
    ============================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,22 +25,36 @@
   --text-muted: #6b5a3a;
   --border-dark: rgba(212, 160, 74, 0.15);
   --border-light: #d9cfbe;
+
+  --ease-warm: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-breath: cubic-bezier(0.45, 0, 0.55, 1);
+  --dur-tap: 0.12s;
+  --dur-hover: 0.2s;
+  --dur-mid: 0.28s;
+  --dur-page: 0.4s;
 }
 
 html, body {
   font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
-  height: 100vh;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overscroll-behavior: none;
 }
 
+/* body no longer fixed — that was clipping the landing page.
+   The app shell now constrains its own height via .app-root */
 body {
-  position: fixed;
-  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-root {
@@ -64,7 +79,9 @@ body {
   height: 100dvh;
   overflow: hidden;
   z-index: 100;
-  transition: width 0.3s ease, transform 0.3s ease;
+  transition:
+    width var(--dur-mid) var(--ease-warm),
+    transform var(--dur-mid) var(--ease-warm);
 }
 
 .sb-collapsed .sb-sidebar { width: 60px; min-width: 60px; }
@@ -77,10 +94,6 @@ body {
 .sb-sidebar.sb-dark .sb-brand-text { color: var(--bright-amber); }
 .sb-sidebar.sb-dark .sb-user { color: var(--text-dark); }
 .sb-sidebar.sb-dark .sb-item { color: var(--text-dim); }
-.sb-sidebar.sb-dark .sb-item:hover {
-  background: rgba(212, 160, 74, 0.1);
-  color: var(--bright-amber);
-}
 
 .sb-sidebar.sb-light {
   background: #faf5eb;
@@ -90,10 +103,6 @@ body {
 .sb-sidebar.sb-light .sb-brand-text { color: var(--deep-gold); }
 .sb-sidebar.sb-light .sb-user { color: var(--text-light); }
 .sb-sidebar.sb-light .sb-item { color: var(--text-muted); }
-.sb-sidebar.sb-light .sb-item:hover {
-  background: rgba(74, 53, 32, 0.08);
-  color: var(--deep-gold);
-}
 
 /* ============ BRAND ============ */
 .sb-brand {
@@ -108,7 +117,27 @@ body {
 .sb-dark .sb-brand { border-color: rgba(212, 160, 74, 0.15); }
 .sb-light .sb-brand { border-color: var(--border-light); }
 
-.sb-brand-icon { font-size: 22px; }
+.sb-brand-icon {
+  font-size: 22px;
+  transition: transform var(--dur-mid) var(--ease-out);
+}
+
+.sb-brand:hover .sb-brand-icon {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+.sb-brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+  transition: transform var(--dur-mid) var(--ease-warm);
+}
+
+.sb-brand:hover .sb-brand-logo {
+  transform: rotate(-8deg) scale(1.08);
+}
 
 .sb-brand-text {
   font-weight: 700;
@@ -142,14 +171,22 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: all 0.25s ease;
+  transition:
+    background var(--dur-hover) var(--ease-soft),
+    border-color var(--dur-hover) var(--ease-soft),
+    color var(--dur-hover) var(--ease-soft),
+    transform var(--dur-tap) var(--ease-soft);
 }
 
 .sb-home-btn:hover {
   background: rgba(212, 160, 74, 0.2);
   border-color: var(--bright-amber);
   color: var(--bright-amber);
-  transform: translateY(-1px);
+}
+
+.sb-home-btn:active {
+  transform: scale(0.98);
+  transition-duration: 60ms;
 }
 
 /* ============ MENU ============ */
@@ -182,13 +219,25 @@ body {
   font-weight: 500;
   cursor: pointer;
   border-radius: 8px;
-  transition: all 0.22s ease;
   text-align: left;
   white-space: nowrap;
   width: 100%;
   flex-shrink: 0;
   position: relative;
   color: inherit;
+  transition:
+    background var(--dur-hover) var(--ease-soft),
+    color var(--dur-hover) var(--ease-soft);
+}
+
+.sb-sidebar.sb-dark .sb-item:hover {
+  background: rgba(212, 160, 74, 0.08);
+  color: var(--bright-amber);
+}
+
+.sb-sidebar.sb-light .sb-item:hover {
+  background: rgba(212, 160, 74, 0.1);
+  color: var(--deep-gold);
 }
 
 .sb-item.sb-active {
@@ -206,11 +255,29 @@ body {
   width: 3px;
   background: var(--bright-amber);
   border-radius: 0 3px 3px 0;
+  animation: barSlideIn var(--dur-mid) var(--ease-out);
 }
 
-.sb-item:active { transform: scale(0.98); }
+@keyframes barSlideIn {
+  from { transform: scaleY(0); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
 
-.sb-icon { font-size: 16px; min-width: 20px; text-align: center; }
+.sb-item:active {
+  transform: scale(0.985);
+  transition-duration: 60ms;
+}
+
+.sb-icon {
+  font-size: 16px;
+  min-width: 20px;
+  text-align: center;
+  transition: transform var(--dur-hover) var(--ease-soft);
+}
+
+.sb-item:hover .sb-icon {
+  transform: scale(1.06);
+}
 
 .sb-collapsed .sb-label,
 .sb-collapsed .sb-brand-text { display: none; }
@@ -250,7 +317,11 @@ body {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  transition: all 0.22s ease;
+  transition:
+    background var(--dur-hover) var(--ease-soft),
+    border-color var(--dur-hover) var(--ease-soft),
+    color var(--dur-hover) var(--ease-soft),
+    transform var(--dur-tap) var(--ease-soft);
 }
 
 .sb-theme-btn {
@@ -274,6 +345,12 @@ body {
 .sb-logout:hover {
   background: rgba(200, 122, 92, 0.22);
   border-color: var(--terracotta);
+}
+
+.sb-theme-btn:active,
+.sb-logout:active {
+  transform: scale(0.985);
+  transition-duration: 60ms;
 }
 
 /* ============ MAIN AREA ============ */
@@ -313,12 +390,15 @@ body {
   padding: 6px 10px;
   z-index: 110;
   border-radius: 8px;
-  transition: all 0.2s ease;
   min-width: 40px;
   min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background var(--dur-hover) var(--ease-soft),
+    color var(--dur-hover) var(--ease-soft),
+    transform var(--dur-mid) var(--ease-out);
 }
 
 .app-dark .sb-collapse { color: var(--text-dim); }
@@ -327,9 +407,13 @@ body {
 .sb-collapse:hover {
   background: rgba(212, 160, 74, 0.12);
   color: var(--bright-amber);
+  transform: rotate(90deg);
 }
 
-.sb-collapse:active { transform: scale(0.94); }
+.sb-collapse:active {
+  transform: rotate(90deg) scale(0.92);
+  transition-duration: 80ms;
+}
 
 .sb-title {
   font-size: 16px;
@@ -353,25 +437,30 @@ body {
   cursor: pointer;
   padding: 6px;
   border-radius: 50%;
-  transition: all 0.25s ease;
   min-width: 36px;
   min-height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background var(--dur-hover) var(--ease-soft),
+    transform var(--dur-mid) var(--ease-out);
 }
 
-.sb-theme-toggle:hover { background: rgba(212, 160, 74, 0.12); }
+.sb-theme-toggle:hover {
+  background: rgba(212, 160, 74, 0.12);
+  transform: rotate(20deg) scale(1.08);
+}
 
 .sb-dot {
   color: var(--bright-amber);
   font-size: 9px;
-  animation: pulseDot 2s ease-in-out infinite;
+  animation: warmPulse 3s var(--ease-soft) infinite;
 }
 
-@keyframes pulseDot {
+@keyframes warmPulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.55; }
 }
 
 .sb-status { font-size: 11px; font-weight: 600; }
@@ -405,56 +494,73 @@ body {
 
 /* ============ PAGE TRANSITIONS ============ */
 .sb-content > * {
-  animation: pageIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  animation: pageEnter var(--dur-page) var(--ease-out) both;
   max-width: 100%;
 }
 
-@keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ============ MOBILE OVERLAY ============ */
 .mobile-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(26, 18, 8, 0.65);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(26, 18, 8, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 99;
-  animation: fadeIn 0.22s ease;
+  animation: overlayFade var(--dur-mid) var(--ease-soft);
   cursor: pointer;
 }
 
-@keyframes fadeIn {
+@keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ============ AUTH BOX LOGO ============ */
+.auth-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.auth-logo-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+  object-fit: contain;
+  display: inline-block;
+  filter: drop-shadow(0 4px 16px rgba(212, 160, 74, 0.35));
+  animation: logoBreath 4s var(--ease-breath) infinite;
+}
+
+@keyframes logoBreath {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 4px 16px rgba(212, 160, 74, 0.35));
+  }
+  50% {
+    transform: scale(1.02);
+    filter: drop-shadow(0 6px 24px rgba(212, 160, 74, 0.5));
+  }
 }
 
 /* ============ MOBILE ============ */
 @media (max-width: 768px) {
   .sb-sidebar {
     position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
+    top: 0; left: 0; bottom: 0;
     width: 270px;
     min-width: 270px;
     max-width: 82vw;
     height: 100vh;
     height: 100dvh;
     z-index: 100;
-    transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.45);
+    transition: transform var(--dur-mid) var(--ease-out);
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.4);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -467,7 +573,6 @@ body {
 
   .sb-menu { flex: none; overflow-y: visible; }
 
-  /* Bigger tap targets */
   .sb-item {
     padding: 14px 16px;
     font-size: 14px;
@@ -485,16 +590,14 @@ body {
   .sb-brand { padding: 16px 18px; }
   .sb-brand-text { font-size: 16px; }
 
-  /* Content spacing */
   .sb-content {
     padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
   }
 
   .sb-content > * {
-    animation-duration: 0.28s;
+    animation-duration: 0.32s;
   }
 
-  /* Topbar */
   .sb-topbar {
     padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
     gap: 8px;
@@ -512,18 +615,22 @@ body {
     font-size: 20px;
   }
 
-  /* Prevent horizontal overflow globally */
+  .sb-collapse:hover,
+  .sb-theme-toggle:hover,
+  .sb-brand:hover .sb-brand-icon,
+  .sb-brand:hover .sb-brand-logo {
+    transform: none;
+  }
+
   .sb-content,
   .sb-content * {
     max-width: 100%;
   }
 
-  /* Better form fields on mobile — prevent iOS zoom */
   input, textarea, select {
     font-size: 16px !important;
   }
 
-  /* Remove hover effects on touch devices (they stick) */
   .sb-item:hover,
   .sb-home-btn:hover,
   .sb-theme-btn:hover,
@@ -531,10 +638,16 @@ body {
   .sb-collapse:hover,
   .sb-theme-toggle:hover {
     background: inherit;
+    color: inherit;
   }
 
   .sb-item.sb-active:hover {
     background: #4a3520;
+  }
+
+  .auth-logo-img {
+    width: 64px;
+    height: 64px;
   }
 }
 

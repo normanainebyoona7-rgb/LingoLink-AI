@@ -13,9 +13,16 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+    document.body.classList.add('landing-active');
+    document.documentElement.classList.add('landing-active');
+    return () => {
+      document.body.classList.remove('landing-active');
+      document.documentElement.classList.remove('landing-active');
     };
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -23,17 +30,17 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
   const features = [
     { icon: '🔄', title: 'Real-Time Translation', description: 'Auto-detects language and translates as you type with smart debouncing for instant results.' },
     { icon: '🎤', title: 'Hold-to-Speak', description: 'Hold the mic button, speak naturally in any language, and release for instant translation.' },
-    { icon: '🎬', title: 'Video Subtitles', description: 'Upload videos and generate AI-powered subtitles in any of our 50+ supported languages.' },
-    { icon: '📞', title: 'AI Call Center', description: 'AI auto-answers calls and responds in the caller\'s language with voice.' },
-    { icon: '🌍', title: 'African Languages', description: 'Luganda, Acholi, Alur, Ateso, Swahili, Yoruba, and 30+ local African dialects.' },
+    { icon: '🔊', title: 'Natural Voices', description: 'Male and female voices for every language — powered by Sunbird and Edge-TTS.' },
+    { icon: '📞', title: 'AI Call Center', description: 'AI auto-answers calls and responds in the caller\'s language with natural voice.' },
+    { icon: '🌍', title: '50+ Languages', description: 'Luganda, Acholi, Ateso, Runyankole, Swahili, French, Spanish, and 40+ more.' },
     { icon: '🔒', title: 'Enterprise Security', description: 'Secure JWT authentication with encrypted data transmission for your peace of mind.' },
   ];
 
   const languages = [
-    'English', 'Spanish', 'French', 'German', 'Swahili', 'Luganda',
-    'Acholi', 'Alur', 'Ateso', 'Runyankole', 'Rukiga', 'Yoruba',
-    'Hausa', 'Igbo', 'Zulu', 'Xhosa', 'Amharic', 'Somali',
-    'Kinyarwanda', 'Kirundi',
+    'English', 'French', 'Spanish', 'German', 'Swahili', 'Luganda',
+    'Acholi', 'Ateso', 'Runyankole', 'Rukiga', 'Lugbara', 'Lusoga',
+    'Yoruba', 'Hausa', 'Igbo', 'Zulu', 'Xhosa', 'Amharic',
+    'Somali', 'Kinyarwanda',
   ];
 
   const testimonials = [
@@ -44,27 +51,42 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
 
   const pricingPlans = [
     { name: 'Free', price: '$0', description: 'For individuals getting started', features: ['50 translations/day', '5 languages', 'Text translation', 'Community support'], highlighted: false },
-    { name: 'Premium', price: '$29', description: 'For professionals and businesses', features: ['Unlimited translations', '50+ languages', 'Voice translation', 'Video subtitles', 'Priority support'], highlighted: true },
+    { name: 'Premium', price: '$29', description: 'For professionals and businesses', features: ['Unlimited translations', '50+ languages', 'Voice translation', 'Male & female voices', 'Priority support'], highlighted: true },
     { name: 'Enterprise', price: 'Custom', description: 'For large organizations', features: ['Everything in Premium', 'AI Call Center', 'API access', 'Dedicated support', 'Custom integration'], highlighted: false },
   ];
 
   const faqs = [
-    { question: 'How accurate is the translation?', answer: 'Our AI uses multiple engines (NLLB-200, Gemini, Google) with smart fallback. For African languages, NLLB-200 provides state-of-the-art accuracy.' },
-    { question: 'Which African languages are supported?', answer: 'We support 30+ African languages including Luganda, Acholi, Alur, Ateso, Runyankole, Rukiga, Swahili, Yoruba, Hausa, Igbo, Zulu, Xhosa, and many more.' },
-    { question: 'Can I use it on my phone?', answer: 'Yes! Our platform is fully responsive and works on any device with a browser. We also have a mobile app for Android.' },
+    { question: 'How accurate is the translation?', answer: 'Our platform combines local dictionaries, Sunbird AI, and Groq with smart fallback. For Ugandan languages, this delivers state-of-the-art accuracy.' },
+    { question: 'Which African languages are supported?', answer: 'We support 30+ African languages including Luganda, Acholi, Ateso, Runyankole, Rukiga, Lugbara, Lusoga, Swahili, Yoruba, Hausa, Igbo, Zulu, Xhosa, and more.' },
+    { question: 'Can I use it on my phone?', answer: 'Yes. Our platform is fully responsive and works on any device with a modern browser.' },
     { question: 'Is my data secure?', answer: 'Absolutely. We use JWT authentication, encrypted data transmission, and never share your data with third parties.' },
     { question: 'Do you offer API access?', answer: 'Yes, Enterprise plans include API access for custom integration with your existing systems.' },
   ];
 
   return (
     <div className={`landing-root ${darkMode ? 'landing-dark' : 'landing-light'}`}>
-      {/* Navigation */}
+
+      {/* ============ NAVIGATION ============ */}
       <nav className={`ln-nav ${scrolled ? 'ln-nav-scrolled' : ''}`}>
-        <div className="ln-logo">
-          <span className="ln-logo-icon">🌐</span>
+        <div className="ln-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <img
+            src="/branding/logo.png"
+            alt="LingoLink AI"
+            className="ln-logo-img"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                const fallback = document.createElement('span');
+                fallback.className = 'ln-logo-icon';
+                fallback.textContent = '🌍';
+                parent.insertBefore(fallback, e.currentTarget);
+              }
+            }}
+          />
           <span className="ln-logo-text">LingoLink AI</span>
         </div>
-        
+
         <div className={`ln-links ${isMenuOpen ? 'ln-links-open' : ''}`}>
           <a href="#features" className="ln-link" onClick={() => setIsMenuOpen(false)}>Features</a>
           <a href="#languages" className="ln-link" onClick={() => setIsMenuOpen(false)}>Languages</a>
@@ -78,12 +100,12 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
           <button className="ln-register-btn" onClick={onRegisterClick}>Get Started</button>
         </div>
 
-        <button className="ln-hamburger" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        <button className="ln-hamburger" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
           {isMenuOpen ? '✕' : '☰'}
         </button>
       </nav>
 
-      {/* Hero Section */}
+      {/* ============ HERO ============ */}
       <section className="ln-hero">
         <div className="ln-hero-content">
           <div className="ln-badge">🚀 Enterprise AI Translation Platform</div>
@@ -92,7 +114,7 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             <span className="ln-gradient">Instantly & Accurately</span>
           </h1>
           <p className="ln-hero-sub">
-            Translate text, voice, and video across 50+ languages with enterprise-grade AI precision.
+            Translate text, voice, and conversations across 50+ languages with enterprise-grade AI precision.
             Built for businesses, call centers, and field agents across Africa and beyond.
           </p>
           <div className="ln-hero-btns">
@@ -111,15 +133,30 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             <div className="ln-stat"><span className="ln-stat-num">∞</span><span className="ln-stat-label">Translations</span></div>
           </div>
         </div>
+
         <div className="ln-hero-visual">
           <div className="ln-platform-card">
-            <div className="ln-platform-icon">🌐</div>
+            <img
+              src="/branding/logo.png"
+              alt="LingoLink AI"
+              className="ln-platform-logo"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const fallback = document.createElement('div');
+                  fallback.className = 'ln-platform-icon';
+                  fallback.textContent = '🌍';
+                  parent.insertBefore(fallback, e.currentTarget);
+                }
+              }}
+            />
             <h3>Enterprise Translation Platform</h3>
             <p>Real-time AI-powered translation for businesses, call centers, and field agents.</p>
             <div className="ln-platform-features">
               <span className="ln-pf-item">✓ Text Translation</span>
               <span className="ln-pf-item">✓ Voice Translation</span>
-              <span className="ln-pf-item">✓ Video Subtitles</span>
+              <span className="ln-pf-item">✓ Male & Female Voices</span>
               <span className="ln-pf-item">✓ AI Call Center</span>
               <span className="ln-pf-item">✓ 50+ Languages</span>
             </div>
@@ -127,13 +164,13 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="ln-features">
+      {/* ============ FEATURES ============ */}
+      <section id="features" className="ln-section ln-features">
         <h2 className="ln-section-title">Powerful Features</h2>
         <p className="ln-section-sub">Everything you need for seamless AI-powered translation</p>
         <div className="ln-features-grid">
           {features.map((feature, index) => (
-            <div key={index} className="ln-feature" style={{ animationDelay: `${index * 0.1}s` }}>
+            <div key={index} className="ln-feature">
               <span className="ln-feature-icon">{feature.icon}</span>
               <h3>{feature.title}</h3>
               <p>{feature.description}</p>
@@ -142,8 +179,8 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
         </div>
       </section>
 
-      {/* Languages */}
-      <section id="languages" className="ln-languages">
+      {/* ============ LANGUAGES ============ */}
+      <section id="languages" className="ln-section ln-languages">
         <h2 className="ln-section-title">Supported Languages</h2>
         <p className="ln-section-sub">From international languages to local African dialects</p>
         <div className="ln-lang-cloud">
@@ -151,11 +188,11 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             <span key={lang} className="ln-lang-chip">{lang}</span>
           ))}
         </div>
-        <p className="ln-lang-more">+ 30 more languages supported including Runyankole, Lusoga, Ateso, and more</p>
+        <p className="ln-lang-more">+ 30 more languages including Runyankole, Lusoga, Ateso, and more</p>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="ln-pricing">
+      {/* ============ PRICING ============ */}
+      <section id="pricing" className="ln-section ln-pricing">
         <h2 className="ln-section-title">Pricing Plans</h2>
         <p className="ln-section-sub">Choose the plan that fits your needs</p>
         <div className="ln-pricing-grid">
@@ -178,8 +215,8 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="ln-testimonials">
+      {/* ============ TESTIMONIALS ============ */}
+      <section id="testimonials" className="ln-section ln-testimonials">
         <h2 className="ln-section-title">What Our Users Say</h2>
         <p className="ln-section-sub">Trusted by teams across Africa</p>
         <div className="ln-testimonials-grid">
@@ -187,18 +224,16 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             <div key={index} className="ln-testimonial-card">
               <div className="ln-testimonial-avatar">{testimonial.avatar}</div>
               <p className="ln-testimonial-text">"{testimonial.text}"</p>
-              <div className="ln-testimonial-author">
-                <p className="ln-testimonial-name">{testimonial.name}</p>
-                <p className="ln-testimonial-role">{testimonial.role}</p>
-              </div>
+              <p className="ln-testimonial-name">{testimonial.name}</p>
+              <p className="ln-testimonial-role">{testimonial.role}</p>
               <div className="ln-testimonial-stars">★★★★★</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="ln-faq">
+      {/* ============ FAQ ============ */}
+      <section id="faq" className="ln-section ln-faq">
         <h2 className="ln-section-title">Frequently Asked Questions</h2>
         <p className="ln-section-sub">Everything you need to know</p>
         <div className="ln-faq-list">
@@ -218,18 +253,31 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ============ CTA ============ */}
       <section className="ln-cta">
         <h2>Ready to Break Language Barriers?</h2>
         <p>Join thousands of users translating with AI precision every single day.</p>
         <button className="ln-btn-primary" onClick={onRegisterClick}>Start Translating Now</button>
       </section>
 
-      {/* Footer */}
+      {/* ============ FOOTER ============ */}
       <footer className="ln-footer">
         <div className="ln-footer-content">
           <div className="ln-footer-brand">
-            <span>🌐</span>
+            <img
+              src="/branding/logo.png"
+              alt="LingoLink AI"
+              className="ln-footer-logo"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const fallback = document.createElement('span');
+                  fallback.textContent = '🌍';
+                  parent.insertBefore(fallback, e.currentTarget);
+                }
+              }}
+            />
             <span>LingoLink AI</span>
           </div>
           <div className="ln-footer-links">
@@ -239,7 +287,7 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             <a href="#faq">FAQ</a>
           </div>
         </div>
-        <p>© 2026 LingoLink AI — Enterprise AI Translation Platform. All rights reserved.</p>
+        <p className="ln-footer-copy">© 2026 LingoLink AI — Enterprise AI Translation Platform. All rights reserved.</p>
       </footer>
     </div>
   );

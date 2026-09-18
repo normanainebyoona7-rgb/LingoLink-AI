@@ -199,7 +199,14 @@ function App() {
         ) : (
           <div className={`auth-full ${darkMode ? 'auth-dark' : 'auth-light'}`}>
             <div className="auth-box">
-              <div className="auth-logo">🌍</div>
+              <div className="auth-logo">
+                <img
+                  src="/branding/logo.png"
+                  alt="LingoLink AI"
+                  className="auth-logo-img"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </div>
               <h1>{authPage === 'login' ? 'Welcome Back' : authPage === 'register' ? 'Create Account' : 'Forgot Password'}</h1>
               <p>
                 {authPage === 'login' ? 'Sign in to continue translating' :
@@ -269,7 +276,21 @@ function App() {
 
         <aside className={`sb-sidebar ${darkMode ? 'sb-dark' : 'sb-light'} ${isMobile ? (mobileSidebarOpen ? 'mobile-open' : 'mobile-closed') : ''}`}>
           <div className="sb-brand">
-            <span className="sb-brand-icon">🌍</span>
+            <img
+              src="/branding/logo.png"
+              alt="LingoLink AI"
+              className="sb-brand-logo"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  const fallback = document.createElement('span');
+                  fallback.className = 'sb-brand-icon';
+                  fallback.textContent = '🌍';
+                  parent.insertBefore(fallback, e.currentTarget);
+                }
+              }}
+            />
             {(!sidebarCollapsed || isMobile) && <span className="sb-brand-text">LingoLink AI</span>}
           </div>
 

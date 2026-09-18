@@ -1,8 +1,9 @@
 /* ============================================
    LingoLink AI - Base Stylesheet
-   (Tailwind removed — base resets only)
+   Theme: Savanna Gold
    ============================================ */
 
+/* ============ GLOBAL RESET ============ */
 * {
   margin: 0;
   padding: 0;
@@ -11,7 +12,6 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
 }
@@ -20,18 +20,17 @@ body {
   font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  overflow: hidden;
-  height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 #root {
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ============ SCROLLBARS ============ */
@@ -89,18 +88,6 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Prevent text selection on buttons */
-button,
-.sb-item,
-.sb-home-btn,
-.sb-theme-btn,
-.sb-logout,
-.sb-collapse,
-.sb-theme-toggle {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 /* ============ MOBILE BASE ============ */
 @media (max-width: 768px) {
   body {
@@ -112,11 +99,6 @@ button,
   textarea,
   select {
     font-size: 16px;
-  }
-
-  /* No hover states on touch (they stick) */
-  button:hover {
-    transform: none;
   }
 }
 
