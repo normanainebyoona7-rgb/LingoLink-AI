@@ -20,7 +20,6 @@
   --text-light: #1a1208;
   --text-muted: #6b5a3a;
 
-  /* Warm & Natural motion tokens */
   --ease-warm: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -110,7 +109,6 @@
   transform: rotate(-12deg) scale(1.08);
 }
 
-/* Custom logo image (replaces emoji) */
 .ln-logo-img {
   width: 32px;
   height: 32px;
@@ -379,7 +377,6 @@
 
 .ln-platform-icon { font-size: 50px; margin-bottom: 15px; }
 
-/* Custom logo in hero platform card */
 .ln-platform-logo {
   width: 72px;
   height: 72px;
@@ -782,13 +779,26 @@
 .ln-cta {
   text-align: center;
   padding: 70px 50px;
-  background: linear-gradient(135deg, #2a1e10, #1a1208);
   border-top: 1px solid rgba(212, 160, 74, 0.15);
   border-bottom: 1px solid rgba(212, 160, 74, 0.15);
 }
 
-.ln-cta h2 { font-size: 32px; margin-bottom: 12px; font-weight: 800; color: var(--bright-amber); }
-.ln-cta p { margin-bottom: 26px; font-size: 15px; color: var(--text-dim); }
+.landing-dark .ln-cta {
+  background: linear-gradient(135deg, #2a1e10, #1a1208);
+}
+
+.landing-light .ln-cta {
+  background: linear-gradient(135deg, #faf5eb, #f0e5d0);
+  border-color: #e8dfcc;
+}
+
+.ln-cta h2 { font-size: 32px; margin-bottom: 12px; font-weight: 800; }
+.landing-dark .ln-cta h2 { color: var(--bright-amber); }
+.landing-light .ln-cta h2 { color: var(--deep-gold); }
+
+.ln-cta p { margin-bottom: 26px; font-size: 15px; }
+.landing-dark .ln-cta p { color: var(--text-dim); }
+.landing-light .ln-cta p { color: var(--text-muted); }
 
 .ln-cta .ln-btn-primary {
   padding: 16px 40px;
@@ -799,8 +809,17 @@
 /* ============ FOOTER ============ */
 .ln-footer {
   padding: 40px 50px calc(40px + env(safe-area-inset-bottom));
+  border-top: 1px solid;
+}
+
+.landing-dark .ln-footer {
   background: #1a1208;
-  border-top: 1px solid rgba(212, 160, 74, 0.15);
+  border-color: rgba(212, 160, 74, 0.15);
+}
+
+.landing-light .ln-footer {
+  background: #f5ede0;
+  border-color: #e8dfcc;
 }
 
 .ln-footer-content {
@@ -818,11 +837,12 @@
   align-items: center;
   gap: 8px;
   font-size: 16px;
-  color: var(--bright-amber);
   font-weight: 700;
 }
 
-/* Custom logo in footer */
+.landing-dark .ln-footer-brand { color: var(--bright-amber); }
+.landing-light .ln-footer-brand { color: var(--deep-gold); }
+
 .ln-footer-logo {
   width: 26px;
   height: 26px;
@@ -832,21 +852,28 @@
 }
 
 .ln-footer-links { display: flex; gap: 22px; flex-wrap: wrap; }
+
 .ln-footer-links a {
-  color: var(--text-dim);
   text-decoration: none;
   font-size: 13px;
   transition: color var(--dur-hover) var(--ease-soft);
 }
-.ln-footer-links a:hover { color: var(--bright-amber); }
+
+.landing-dark .ln-footer-links a { color: var(--text-dim); }
+.landing-light .ln-footer-links a { color: var(--text-muted); }
+
+.landing-dark .ln-footer-links a:hover { color: var(--bright-amber); }
+.landing-light .ln-footer-links a:hover { color: var(--deep-gold); }
 
 .ln-footer-copy {
   text-align: center;
   font-size: 12px;
-  color: var(--text-dim);
   max-width: 1200px;
   margin: 0 auto;
 }
+
+.landing-dark .ln-footer-copy { color: var(--text-dim); }
+.landing-light .ln-footer-copy { color: var(--text-muted); }
 
 /* ============ RESPONSIVE ============ */
 @media (max-width: 1024px) {

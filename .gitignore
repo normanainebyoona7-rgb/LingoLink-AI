@@ -28,3 +28,5 @@ backend/.env
 # OS
 .DS_Store
 Thumbs.db
+
+LINGOLINK_BACKUP.json
