@@ -31,3 +31,5 @@ Thumbs.db
 
 LINGOLINK_BACKUP.json
 *.bak
+
+backend/app/*.jsonl

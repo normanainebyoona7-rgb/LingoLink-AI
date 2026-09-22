@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
 import './App.css';
 import './landing.css';
 import './auth.css';
@@ -17,7 +16,6 @@ import Video from './pages/Video';
 import CallCenter from './pages/CallCenter';
 import Admin from './pages/Admin';
 import Settings from './pages/Settings';
-import JoinCall from './pages/JoinCall';
 import Icon, { IconName } from './components/Icon';
 
 interface ThemeContextType {
@@ -61,7 +59,6 @@ interface SidebarItem {
 }
 
 function App() {
-  const location = useLocation();
   const [darkMode, setDarkMode] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -226,17 +223,6 @@ function App() {
     setAuthPage('landing');
     setMobileSidebarOpen(false);
   };
-
-  // ---- Caller join path ----
-  // If URL is /join/:code, render the caller page without requiring login.
-  const pathname = location.pathname;
-  if (pathname.startsWith('/join/')) {
-    return (
-      <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
-        <JoinCall />
-      </ThemeContext.Provider>
-    );
-  }
 
   if (!isLoggedIn) {
     return (
