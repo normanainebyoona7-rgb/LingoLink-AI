@@ -35,3 +35,5 @@ LINGOLINK_BACKUP.json
 backend/app/*.jsonl
 
 *.bak*
+
+*.bak*
