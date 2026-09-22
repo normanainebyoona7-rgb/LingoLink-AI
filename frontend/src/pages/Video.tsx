@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -51,15 +52,15 @@ export default function Video({ token }: Props) {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const validTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
     if (!validTypes.includes(file.type)) {
       setError('Invalid file. Upload MP4, MOV, AVI, or WebM.');
       return;
     }
-    
+
     if (videoUrl) URL.revokeObjectURL(videoUrl);
-    
+
     const url = URL.createObjectURL(file);
     setSelectedFile(file);
     setVideoUrl(url);
@@ -68,50 +69,50 @@ export default function Video({ token }: Props) {
     setSubtitles([]);
     setCurrentSubtitle(null);
     hasProcessedRef.current = false;
-    
+
     await processVideo(file);
   };
 
   const processVideo = async (file: File) => {
     if (hasProcessedRef.current) return;
     hasProcessedRef.current = true;
-    
+
     setIsProcessing(true);
-    setStatus('🎯 Extracting audio from video...');
+    setStatus('Extracting audio from video...');
     setError('');
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
-      setStatus('🎯 Transcribing video audio with AI...');
-      
+
+      setStatus('Transcribing video audio with AI...');
+
       const res = await fetch(`${API_URL}/speech/transcribe`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         const transcribedText = data.text || data.transcribed_text || '';
-        
+
         if (transcribedText && transcribedText.trim()) {
-          setStatus('🔄 Translating subtitles...');
-          
+          setStatus('Translating subtitles...');
+
           const sentences = transcribedText
             .replace(/([.!?])\s+/g, '$1\n')
             .split('\n')
             .filter((s: string) => s.trim().length > 0);
-          
+
           const duration = videoRef.current?.duration || 60;
           const subtitleList: Subtitle[] = [];
-          
+
           for (let i = 0; i < sentences.length; i++) {
             const sentence = sentences[i].trim();
             const startTime = (i / sentences.length) * duration;
             const endTime = ((i + 1) / sentences.length) * duration;
-            
+
             try {
               const translateRes = await fetch(`${API_URL}/translate/text`, {
                 method: 'POST',
@@ -125,7 +126,7 @@ export default function Video({ token }: Props) {
                   target_language: subtitleLanguage,
                 }),
               });
-              
+
               if (translateRes.ok) {
                 const translateData = await translateRes.json();
                 subtitleList.push({
@@ -138,21 +139,21 @@ export default function Video({ token }: Props) {
               }
             } catch {}
           }
-          
+
           subtitlesRef.current = subtitleList;
           setSubtitles(subtitleList);
-          setStatus(`✅ ${subtitleList.length} subtitles ready! Just play the video.`);
+          setStatus(`${subtitleList.length} subtitles ready! Just play the video.`);
         } else {
-          setStatus('⚠️ No speech detected. Using demo subtitles.');
+          setStatus('No speech detected. Using demo subtitles.');
           generateDemoSubtitles();
         }
       } else {
-        setStatus('⚠️ Backend unavailable. Using demo subtitles.');
+        setStatus('Backend unavailable. Using demo subtitles.');
         generateDemoSubtitles();
       }
     } catch (err) {
       console.error('Processing error:', err);
-      setStatus('⚠️ Processing failed. Using demo subtitles.');
+      setStatus('Processing failed. Using demo subtitles.');
       generateDemoSubtitles();
     } finally {
       setIsProcessing(false);
@@ -169,7 +170,7 @@ export default function Video({ token }: Props) {
       { start: 20, end: 25, original: 'Thank you for joining us today for this session', translated: 'Webale kwegatta ku ffe olwaleero mu lukiiko luno' },
       { start: 25, end: duration, original: 'Let us begin the presentation now', translated: 'Ka tutandike okwanjula kati' },
     ];
-    
+
     const subtitleList: Subtitle[] = demoData.map((item, index) => ({
       id: index,
       startTime: item.start,
@@ -177,10 +178,10 @@ export default function Video({ token }: Props) {
       originalText: item.original,
       translatedText: item.translated,
     }));
-    
+
     subtitlesRef.current = subtitleList;
     setSubtitles(subtitleList);
-    setStatus('✅ Demo subtitles ready! Play the video.');
+    setStatus('Demo subtitles ready! Play the video.');
   };
 
   const handleTimeUpdate = () => {
@@ -195,11 +196,11 @@ export default function Video({ token }: Props) {
 
   const handleLanguageChange = async (lang: string) => {
     setSubtitleLanguage(lang);
-    
+
     if (subtitlesRef.current.length > 0) {
       setIsProcessing(true);
-      setStatus('🔄 Re-translating subtitles...');
-      
+      setStatus('Re-translating subtitles...');
+
       const updatedSubtitles = await Promise.all(
         subtitlesRef.current.map(async (sub) => {
           try {
@@ -223,10 +224,10 @@ export default function Video({ token }: Props) {
           return sub;
         })
       );
-      
+
       subtitlesRef.current = updatedSubtitles;
       setSubtitles(updatedSubtitles);
-      setStatus(`✅ Subtitles re-translated to ${languages.find(l => l.code === lang)?.name}!`);
+      setStatus(`Subtitles re-translated to ${languages.find(l => l.code === lang)?.name}!`);
       setIsProcessing(false);
     }
   };
@@ -234,7 +235,7 @@ export default function Video({ token }: Props) {
   return (
     <div className={`video-root ${darkMode ? 'video-dark' : 'video-light'}`}>
       <div className="video-header">
-        <h2>🎬 Video Studio</h2>
+        <h2><Icon name="video" size={22} /> Video Studio</h2>
         <p>Upload video — subtitles auto-generate and translate as it plays</p>
       </div>
 
@@ -248,7 +249,7 @@ export default function Video({ token }: Props) {
 
       {!videoUrl && (
         <div className="video-upload-area" onClick={() => fileInputRef.current?.click()}>
-          <span className="video-upload-icon">📁</span>
+          <span className="video-upload-icon"><Icon name="folder" size={48} strokeWidth={1.4} /></span>
           <h3>Upload Video</h3>
           <p>MP4, MOV, AVI, WebM — subtitles auto-generate</p>
         </div>
@@ -272,7 +273,7 @@ export default function Video({ token }: Props) {
             onTimeUpdate={handleTimeUpdate}
             controls
           />
-          
+
           {currentSubtitle && isPlaying && (
             <div className="live-subtitle-overlay">
               <div className="subtitle-original">{currentSubtitle.originalText}</div>
@@ -285,7 +286,7 @@ export default function Video({ token }: Props) {
       {selectedFile && (
         <div className="video-controls-bar">
           <div className="video-file-info">
-            <span className="video-file-icon">📹</span>
+            <span className="video-file-icon"><Icon name="video" size={22} /></span>
             <div>
               <p className="video-file-name">{selectedFile.name}</p>
               <span className="video-file-size">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</span>
@@ -312,22 +313,30 @@ export default function Video({ token }: Props) {
                 hasProcessedRef.current = false;
               }}
             >
-              🗑️
+              <Icon name="trash" size={16} />
             </button>
           </div>
         </div>
       )}
 
-      {status && !isProcessing && <p className="video-success">{status}</p>}
-      {error && <p className="video-error">❌ {error}</p>}
+      {status && !isProcessing && (
+        <p className="video-success">
+          {status.toLowerCase().startsWith('demo') || status.toLowerCase().startsWith('no speech') || status.toLowerCase().startsWith('backend') || status.toLowerCase().startsWith('processing failed') ? (
+            <><Icon name="alert" size={16} /> {status}</>
+          ) : (
+            <><Icon name="check" size={16} /> {status}</>
+          )}
+        </p>
+      )}
+      {error && <p className="video-error"><Icon name="alert" size={16} /> {error}</p>}
 
       {subtitles.length > 0 && (
         <div className="video-subtitle-timeline">
-          <h3>📝 Subtitles ({subtitles.length})</h3>
+          <h3><Icon name="file-text" size={18} /> Subtitles ({subtitles.length})</h3>
           <p className="video-timeline-hint">Subtitles appear automatically as the video plays</p>
           {subtitles.map((sub) => (
-            <div 
-              key={sub.id} 
+            <div
+              key={sub.id}
               className={`video-timeline-item ${currentSubtitle?.id === sub.id ? 'active' : ''}`}
             >
               <span className="video-timeline-time">

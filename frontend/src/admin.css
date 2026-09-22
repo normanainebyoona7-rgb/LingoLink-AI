@@ -811,3 +811,95 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===== Admin SVG Icon alignment ===== */
+.admin-panel-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-metric-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-chart-card h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-search-wrap {
+  position: relative;
+  flex: 1;
+}
+
+.admin-search-wrap .admin-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a7a5c;
+  pointer-events: none;
+}
+
+.admin-search-input {
+  padding-left: 40px !important;
+}
+
+.admin-add-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-cancel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+}
+
+.admin-user-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-setting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

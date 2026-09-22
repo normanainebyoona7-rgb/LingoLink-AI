@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../App';
+import Icon, { IconName } from '../components/Icon';
 
 interface Props {
   onLoginClick: () => void;
@@ -27,13 +28,13 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const features = [
-    { icon: '🔄', title: 'Real-Time Translation', description: 'Auto-detects language and translates as you type with smart debouncing for instant results.' },
-    { icon: '🎤', title: 'Hold-to-Speak', description: 'Hold the mic button, speak naturally in any language, and release for instant translation.' },
-    { icon: '🔊', title: 'Natural Voices', description: 'Male and female voices for every language — powered by Sunbird and Edge-TTS.' },
-    { icon: '📞', title: 'AI Call Center', description: 'AI auto-answers calls and responds in the caller\'s language with natural voice.' },
-    { icon: '🌍', title: '50+ Languages', description: 'Luganda, Acholi, Ateso, Runyankole, Swahili, French, Spanish, and 40+ more.' },
-    { icon: '🔒', title: 'Enterprise Security', description: 'Secure JWT authentication with encrypted data transmission for your peace of mind.' },
+  const features: { icon: IconName; title: string; description: string }[] = [
+    { icon: 'translate', title: 'Real-Time Translation', description: 'Auto-detects language and translates as you type with smart debouncing for instant results.' },
+    { icon: 'voice', title: 'Hold-to-Speak', description: 'Hold the mic button, speak naturally in any language, and release for instant translation.' },
+    { icon: 'volume', title: 'Natural Voices', description: 'Male and female voices for every language — powered by Sunbird and Edge-TTS.' },
+    { icon: 'callcenter', title: 'AI Call Center', description: 'AI auto-answers calls and responds in the caller\'s language with natural voice.' },
+    { icon: 'globe', title: '50+ Languages', description: 'Luganda, Acholi, Ateso, Runyankole, Swahili, French, Spanish, and 40+ more.' },
+    { icon: 'shield', title: 'Enterprise Security', description: 'Secure JWT authentication with encrypted data transmission for your peace of mind.' },
   ];
 
   const languages = [
@@ -73,16 +74,7 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             src="/branding/logo.png"
             alt="LingoLink AI"
             className="ln-logo-img"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-              const parent = e.currentTarget.parentElement;
-              if (parent) {
-                const fallback = document.createElement('span');
-                fallback.className = 'ln-logo-icon';
-                fallback.textContent = '🌍';
-                parent.insertBefore(fallback, e.currentTarget);
-              }
-            }}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
           <span className="ln-logo-text">LingoLink AI</span>
         </div>
@@ -94,21 +86,23 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
           <a href="#testimonials" className="ln-link" onClick={() => setIsMenuOpen(false)}>Testimonials</a>
           <a href="#faq" className="ln-link" onClick={() => setIsMenuOpen(false)}>FAQ</a>
           <button className="ln-theme-toggle" onClick={toggleDarkMode} title="Toggle theme">
-            {darkMode ? '☀️' : '🌙'}
+            <Icon name={darkMode ? 'sun' : 'moon'} size={18} />
           </button>
           <button className="ln-login-btn" onClick={onLoginClick}>Sign In</button>
           <button className="ln-register-btn" onClick={onRegisterClick}>Get Started</button>
         </div>
 
         <button className="ln-hamburger" onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
-          {isMenuOpen ? '✕' : '☰'}
+          <Icon name={isMenuOpen ? 'x' : 'menu'} size={22} />
         </button>
       </nav>
 
       {/* ============ HERO ============ */}
       <section className="ln-hero">
         <div className="ln-hero-content">
-          <div className="ln-badge">🚀 Enterprise AI Translation Platform</div>
+          <div className="ln-badge">
+            <Icon name="rocket" size={16} /> Enterprise AI Translation Platform
+          </div>
           <h1 className="ln-hero-title">
             Break Language Barriers<br />
             <span className="ln-gradient">Instantly & Accurately</span>
@@ -140,25 +134,16 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
               src="/branding/logo.png"
               alt="LingoLink AI"
               className="ln-platform-logo"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  const fallback = document.createElement('div');
-                  fallback.className = 'ln-platform-icon';
-                  fallback.textContent = '🌍';
-                  parent.insertBefore(fallback, e.currentTarget);
-                }
-              }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             <h3>Enterprise Translation Platform</h3>
             <p>Real-time AI-powered translation for businesses, call centers, and field agents.</p>
             <div className="ln-platform-features">
-              <span className="ln-pf-item">✓ Text Translation</span>
-              <span className="ln-pf-item">✓ Voice Translation</span>
-              <span className="ln-pf-item">✓ Male & Female Voices</span>
-              <span className="ln-pf-item">✓ AI Call Center</span>
-              <span className="ln-pf-item">✓ 50+ Languages</span>
+              <span className="ln-pf-item"><Icon name="check" size={16} /> Text Translation</span>
+              <span className="ln-pf-item"><Icon name="check" size={16} /> Voice Translation</span>
+              <span className="ln-pf-item"><Icon name="check" size={16} /> Male & Female Voices</span>
+              <span className="ln-pf-item"><Icon name="check" size={16} /> AI Call Center</span>
+              <span className="ln-pf-item"><Icon name="check" size={16} /> 50+ Languages</span>
             </div>
           </div>
         </div>
@@ -171,7 +156,7 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
         <div className="ln-features-grid">
           {features.map((feature, index) => (
             <div key={index} className="ln-feature">
-              <span className="ln-feature-icon">{feature.icon}</span>
+              <span className="ln-feature-icon"><Icon name={feature.icon} size={28} /></span>
               <h3>{feature.title}</h3>
               <p>{feature.description}</p>
             </div>
@@ -204,7 +189,7 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
               <p className="ln-pricing-desc">{plan.description}</p>
               <ul className="ln-pricing-features">
                 {plan.features.map((feature, i) => (
-                  <li key={i}>✓ {feature}</li>
+                  <li key={i}><Icon name="check" size={16} /> {feature}</li>
                 ))}
               </ul>
               <button className={plan.highlighted ? 'ln-btn-primary' : 'ln-btn-secondary'} onClick={onRegisterClick}>
@@ -226,7 +211,9 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
               <p className="ln-testimonial-text">"{testimonial.text}"</p>
               <p className="ln-testimonial-name">{testimonial.name}</p>
               <p className="ln-testimonial-role">{testimonial.role}</p>
-              <div className="ln-testimonial-stars">★★★★★</div>
+              <div className="ln-testimonial-stars">
+                {[0, 1, 2, 3, 4].map((s) => <Icon key={s} name="star" size={16} />)}
+              </div>
             </div>
           ))}
         </div>
@@ -241,7 +228,9 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
             <div key={index} className="ln-faq-item">
               <button className="ln-faq-question" onClick={() => setActiveFaq(activeFaq === index ? null : index)}>
                 <span>{faq.question}</span>
-                <span className="ln-faq-icon">{activeFaq === index ? '−' : '+'}</span>
+                <span className="ln-faq-icon">
+                  <Icon name={activeFaq === index ? 'minus' : 'plus'} size={18} />
+                </span>
               </button>
               {activeFaq === index && (
                 <div className="ln-faq-answer">
@@ -268,15 +257,7 @@ export default function Landing({ onLoginClick, onRegisterClick }: Props) {
               src="/branding/logo.png"
               alt="LingoLink AI"
               className="ln-footer-logo"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  const fallback = document.createElement('span');
-                  fallback.textContent = '🌍';
-                  parent.insertBefore(fallback, e.currentTarget);
-                }
-              }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             <span>LingoLink AI</span>
           </div>

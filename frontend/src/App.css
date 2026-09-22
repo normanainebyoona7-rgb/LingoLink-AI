@@ -662,3 +662,43 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Custom SVG Icons ===== */
+.ll-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.sb-item .ll-icon,
+.sb-home-btn .ll-icon,
+.sb-theme-btn .ll-icon,
+.sb-logout .ll-icon,
+.sb-user .ll-icon {
+  color: inherit;
+}
+
+.sb-item:hover .ll-icon {
+  transform: translateX(2px);
+}
+
+.sb-item.sb-active .ll-icon {
+  color: #d4a537;
+}
+
+.sb-collapse .ll-icon {
+  color: inherit;
+}
+
+.sb-theme-toggle .ll-icon {
+  color: inherit;
+}
+
+.sb-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}

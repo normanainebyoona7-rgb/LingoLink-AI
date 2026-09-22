@@ -4,6 +4,7 @@ import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
 import VoiceSettings from '../components/VoiceSettings';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -135,7 +136,7 @@ export default function Voice({ token }: Props) {
   return (
     <div className={`voice-root ${darkMode ? 'voice-dark' : 'voice-light'}`}>
       <div className="voice-header">
-        <h2>🎤 Voice Translation</h2>
+        <h2><Icon name="voice" size={22} /> Voice Translation</h2>
         <p>Speak in one language, hear translation in another</p>
       </div>
 
@@ -145,7 +146,9 @@ export default function Voice({ token }: Props) {
           onChange={setSourceLanguage}
           placeholder="source language"
         />
-        <button className="voice-swap-btn" onClick={swapLanguages}>⇄</button>
+        <button className="voice-swap-btn" onClick={swapLanguages}>
+          <Icon name="swap" size={18} />
+        </button>
         <SearchableDropdown
           value={targetLanguage}
           onChange={setTargetLanguage}
@@ -172,18 +175,23 @@ export default function Voice({ token }: Props) {
           <span className="voice-box-label">YOU SAID:</span>
           <p className="voice-box-text">{sourceText || 'Speak to see text here...'}</p>
         </div>
-        <div className="voice-arrow">↓</div>
+        <div className="voice-arrow"><Icon name="arrow-down" size={20} /></div>
         <div className="voice-target-box">
           <span className="voice-box-label">TRANSLATION:</span>
           <p className="voice-box-text">
-            {isTranslating ? '⏳ Translating...' : translatedText || 'Translation appears here...'}
+            {isTranslating ? (
+              <><Icon name="loader" size={16} className="spin" /> Translating...</>
+            ) : (
+              translatedText || 'Translation appears here...'
+            )}
           </p>
           {translatedText && !isTranslating && (
             <button
               className="voice-speak-btn"
               onClick={isSpeaking ? stopSpeaking : () => speakTranslation(translatedText)}
             >
-              {isSpeaking ? '🔊 Playing...' : '🔊 Hear Translation'}
+              <Icon name={isSpeaking ? 'speaker-off' : 'speaker'} size={16} />
+              {isSpeaking ? ' Playing...' : ' Hear Translation'}
             </button>
           )}
         </div>
@@ -192,14 +200,14 @@ export default function Voice({ token }: Props) {
       <div className="voice-settings">
         <div className="voice-setting-row">
           <div>
-            <span className="voice-setting-label">🔊 Voice Output</span>
+            <span className="voice-setting-label"><Icon name="volume" size={16} /> Voice Output</span>
             <p className="voice-setting-desc">Hear translations spoken aloud</p>
           </div>
           <ToggleSwitch checked={voiceEnabled} onChange={() => setVoiceEnabled(!voiceEnabled)} />
         </div>
         <div className="voice-setting-row">
           <div>
-            <span className="voice-setting-label">🎙️ Auto-Speak Translation</span>
+            <span className="voice-setting-label"><Icon name="mic" size={16} /> Auto-Speak Translation</span>
             <p className="voice-setting-desc">Automatically speak after translation</p>
           </div>
           <ToggleSwitch checked={autoSpeak} onChange={() => setAutoSpeak(!autoSpeak)} />
@@ -209,8 +217,10 @@ export default function Voice({ token }: Props) {
       {conversation.length > 0 && (
         <div className="voice-conversation">
           <div className="voice-conversation-header">
-            <h3>💬 Conversation</h3>
-            <button className="voice-clear-btn" onClick={clearConversation}>🗑️ Clear</button>
+            <h3><Icon name="message-circle" size={18} /> Conversation</h3>
+            <button className="voice-clear-btn" onClick={clearConversation}>
+              <Icon name="trash" size={16} /> Clear
+            </button>
           </div>
           <div className="voice-conversation-list">
             {conversation.map((item, index) => (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from './Icon';
 
 interface VoiceSettingsProps {
   language: string;
@@ -30,9 +31,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
     const lang = language.toLowerCase();
     if (LANGS_WITH_BOTH.has(lang)) {
       setAvailable({ male: true, female: true });
-      // Keep current selection
     } else {
-      // Unknown language — force female and disable male
       setAvailable({ male: false, female: true });
       setGender('female');
       onVoiceChange('female');
@@ -61,7 +60,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             disabled={!available.female}
             title={!available.female ? 'Not available for this language' : 'Female voice'}
           >
-            👩 Female
+            <Icon name="user-female" size={16} /> Female
           </button>
           <button
             type="button"
@@ -70,7 +69,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({
             disabled={!available.male}
             title={!available.male ? 'Not available for this language' : 'Male voice'}
           >
-            👨 Male
+            <Icon name="user-male" size={16} /> Male
           </button>
         </div>
       </div>

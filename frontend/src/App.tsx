@@ -16,6 +16,7 @@ import Video from './pages/Video';
 import CallCenter from './pages/CallCenter';
 import Admin from './pages/Admin';
 import Settings from './pages/Settings';
+import Icon, { IconName } from './components/Icon';
 
 interface ThemeContextType {
   darkMode: boolean;
@@ -50,6 +51,12 @@ export const LANGUAGES: Record<string, string> = {
 
 type Tab = 'dashboard' | 'translate' | 'history' | 'voice' | 'twoway' | 'live' | 'video' | 'callcenter' | 'admin' | 'settings';
 type AuthPage = 'landing' | 'login' | 'register' | 'forgot';
+
+interface SidebarItem {
+  id: Tab;
+  icon: IconName;
+  label: string;
+}
 
 function App() {
   const [darkMode, setDarkMode] = useState(true);
@@ -285,17 +292,17 @@ function App() {
     );
   }
 
-  const sidebarItems = [
-    { id: 'dashboard' as Tab, icon: '📊', label: 'Dashboard' },
-    { id: 'translate' as Tab, icon: '🔄', label: 'Translate' },
-    { id: 'history' as Tab, icon: '📜', label: 'History' },
-    { id: 'voice' as Tab, icon: '🎤', label: 'Voice' },
-    { id: 'twoway' as Tab, icon: '💬', label: 'Two-Way' },
-    { id: 'live' as Tab, icon: '🎙️', label: 'Live' },
-    { id: 'video' as Tab, icon: '🎬', label: 'Video Studio' },
-    { id: 'callcenter' as Tab, icon: '📞', label: 'Call Center' },
-    ...(isAdmin ? [{ id: 'admin' as Tab, icon: '⚙️', label: 'Admin' }] : []),
-    { id: 'settings' as Tab, icon: '🔧', label: 'Settings' },
+  const sidebarItems: SidebarItem[] = [
+    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { id: 'translate', icon: 'translate', label: 'Translate' },
+    { id: 'history', icon: 'history', label: 'History' },
+    { id: 'voice', icon: 'voice', label: 'Voice' },
+    { id: 'twoway', icon: 'twoway', label: 'Two-Way' },
+    { id: 'live', icon: 'live', label: 'Live' },
+    { id: 'video', icon: 'video', label: 'Video Studio' },
+    { id: 'callcenter', icon: 'callcenter', label: 'Call Center' },
+    ...(isAdmin ? [{ id: 'admin' as Tab, icon: 'admin' as IconName, label: 'Admin' }] : []),
+    { id: 'settings', icon: 'settings', label: 'Settings' },
   ];
 
   return (
@@ -327,7 +334,8 @@ function App() {
 
           <div className="sb-home-section">
             <button className="sb-home-btn" onClick={goHome}>
-              🏠 {(!sidebarCollapsed || isMobile) && <span>Home</span>}
+              <Icon name="home" size={18} />
+              {(!sidebarCollapsed || isMobile) && <span>Home</span>}
             </button>
           </div>
 
@@ -335,7 +343,7 @@ function App() {
             {sidebarItems.map((item) => (
               <button key={item.id} className={`sb-item ${activeTab === item.id ? 'sb-active' : ''}`}
                 onClick={() => handleNavigate(item.id)}>
-                <span className="sb-icon">{item.icon}</span>
+                <span className="sb-icon"><Icon name={item.icon} size={18} /></span>
                 {(!sidebarCollapsed || isMobile) && <span className="sb-label">{item.label}</span>}
               </button>
             ))}
@@ -343,24 +351,30 @@ function App() {
 
           <div className="sb-footer">
             <div className="sb-user">
-              <span>👤</span>
+              <Icon name="user" size={18} />
               {(!sidebarCollapsed || isMobile) && <span>{username}</span>}
             </div>
             <button className="sb-theme-btn" onClick={toggleDarkMode}>
-              {darkMode ? '☀️' : '🌙'} {(!sidebarCollapsed || isMobile) && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+              <Icon name={darkMode ? 'sun' : 'moon'} size={18} />
+              {(!sidebarCollapsed || isMobile) && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
             </button>
             <button className="sb-logout" onClick={logout}>
-              🚪 {(!sidebarCollapsed || isMobile) && <span>Logout</span>}
+              <Icon name="logout" size={18} />
+              {(!sidebarCollapsed || isMobile) && <span>Logout</span>}
             </button>
           </div>
         </aside>
 
         <main className="sb-main">
           <header className="sb-topbar">
-            <button className="sb-collapse" onClick={toggleSidebar}>☰</button>
-            <h2 className="sb-title">{sidebarItems.find(i => i.id === activeTab)?.label}</h2>
+            <button className="sb-collapse" onClick={toggleSidebar}>
+              <Icon name="menu" size={20} />
+            </button>
+            <h2 className="sb-title">{sidebarItems.find(i => i.id === activeTab)?.label || (activeTab === 'admin' ? 'Admin' : '')}</h2>
             <div className="sb-actions">
-              <button className="sb-theme-toggle" onClick={toggleDarkMode}>{darkMode ? '☀️' : '🌙'}</button>
+              <button className="sb-theme-toggle" onClick={toggleDarkMode}>
+                <Icon name={darkMode ? 'sun' : 'moon'} size={18} />
+              </button>
               <span className="sb-dot">●</span>
               <span className="sb-status">Online</span>
             </div>

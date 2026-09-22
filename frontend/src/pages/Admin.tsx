@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -126,7 +127,7 @@ export default function Admin({ token }: Props) {
   };
 
   const toggleLanguage = (langName: string) => {
-    setLanguages(prev => prev.map(l => 
+    setLanguages(prev => prev.map(l =>
       l.name === langName ? { ...l, enabled: !l.enabled } : l
     ));
   };
@@ -151,31 +152,56 @@ export default function Admin({ token }: Props) {
   return (
     <div className={`admin-panel-root ${darkMode ? 'admin-dark' : 'admin-light'}`}>
       <div className="admin-panel-header">
-        <h2>⚙️ Admin Control Panel</h2>
+        <h2><Icon name="settings" size={22} /> Admin Control Panel</h2>
         <p>Manage users, languages, and platform settings</p>
       </div>
 
       <div className="admin-panel-tabs">
-        <button className={`admin-panel-tab ${activeSection === 'overview' ? 'active' : ''}`} onClick={() => setActiveSection('overview')}>📊 Overview</button>
-        <button className={`admin-panel-tab ${activeSection === 'users' ? 'active' : ''}`} onClick={() => setActiveSection('users')}>👥 Users</button>
-        <button className={`admin-panel-tab ${activeSection === 'languages' ? 'active' : ''}`} onClick={() => setActiveSection('languages')}>🌍 Languages</button>
-        <button className={`admin-panel-tab ${activeSection === 'analytics' ? 'active' : ''}`} onClick={() => setActiveSection('analytics')}>📈 Analytics</button>
-        <button className={`admin-panel-tab ${activeSection === 'settings' ? 'active' : ''}`} onClick={() => setActiveSection('settings')}>🔧 Settings</button>
+        <button className={`admin-panel-tab ${activeSection === 'overview' ? 'active' : ''}`} onClick={() => setActiveSection('overview')}>
+          <Icon name="bar-chart" size={16} /> Overview
+        </button>
+        <button className={`admin-panel-tab ${activeSection === 'users' ? 'active' : ''}`} onClick={() => setActiveSection('users')}>
+          <Icon name="users" size={16} /> Users
+        </button>
+        <button className={`admin-panel-tab ${activeSection === 'languages' ? 'active' : ''}`} onClick={() => setActiveSection('languages')}>
+          <Icon name="globe" size={16} /> Languages
+        </button>
+        <button className={`admin-panel-tab ${activeSection === 'analytics' ? 'active' : ''}`} onClick={() => setActiveSection('analytics')}>
+          <Icon name="trending-up" size={16} /> Analytics
+        </button>
+        <button className={`admin-panel-tab ${activeSection === 'settings' ? 'active' : ''}`} onClick={() => setActiveSection('settings')}>
+          <Icon name="settings" size={16} /> Settings
+        </button>
       </div>
 
       {/* OVERVIEW */}
       {activeSection === 'overview' && (
         <div className="admin-overview">
           <div className="admin-metrics-grid">
-            <div className="admin-metric-card purple"><span className="admin-metric-icon">👥</span><h3>Total Users</h3><p className="admin-metric-value">{metrics.totalUsers}</p></div>
-            <div className="admin-metric-card blue"><span className="admin-metric-icon">⭐</span><h3>Premium Users</h3><p className="admin-metric-value">{metrics.premiumUsers}</p></div>
-            <div className="admin-metric-card green"><span className="admin-metric-icon">🔄</span><h3>Translations</h3><p className="admin-metric-value">{metrics.totalTranslations}</p></div>
-            <div className="admin-metric-card orange"><span className="admin-metric-icon">📅</span><h3>Today</h3><p className="admin-metric-value">{metrics.dailyTranslations}</p></div>
+            <div className="admin-metric-card purple">
+              <span className="admin-metric-icon"><Icon name="users" size={28} /></span>
+              <h3>Total Users</h3>
+              <p className="admin-metric-value">{metrics.totalUsers}</p>
+            </div>
+            <div className="admin-metric-card blue">
+              <span className="admin-metric-icon"><Icon name="star" size={28} /></span>
+              <h3>Premium Users</h3>
+              <p className="admin-metric-value">{metrics.premiumUsers}</p>
+            </div>
+            <div className="admin-metric-card green">
+              <span className="admin-metric-icon"><Icon name="refresh" size={28} /></span>
+              <h3>Translations</h3>
+              <p className="admin-metric-value">{metrics.totalTranslations}</p>
+            </div>
+            <div className="admin-metric-card orange">
+              <span className="admin-metric-icon"><Icon name="calendar" size={28} /></span>
+              <h3>Today</h3>
+              <p className="admin-metric-value">{metrics.dailyTranslations}</p>
+            </div>
           </div>
 
-          {/* PIE CHART */}
           <div className="admin-chart-card">
-            <h3>📊 Language Distribution</h3>
+            <h3><Icon name="bar-chart" size={18} /> Language Distribution</h3>
             <div className="admin-pie-chart-container">
               <div className="admin-pie-chart" style={{
                 background: `conic-gradient(${languages.filter(l => l.enabled).map((lang, i) => {
@@ -211,8 +237,19 @@ export default function Admin({ token }: Props) {
       {activeSection === 'users' && (
         <div className="admin-users-section">
           <div className="admin-toolbar">
-            <input type="text" placeholder="🔍 Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search-input" />
-            <button className="admin-add-user-btn" onClick={() => setShowAddUser(!showAddUser)}>➕ Add User</button>
+            <div className="admin-search-wrap">
+              <Icon name="search" size={16} className="admin-search-icon" />
+              <input
+                type="text"
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="admin-search-input"
+              />
+            </div>
+            <button className="admin-add-user-btn" onClick={() => setShowAddUser(!showAddUser)}>
+              <Icon name="plus" size={16} /> Add User
+            </button>
           </div>
 
           {showAddUser && (
@@ -220,22 +257,34 @@ export default function Admin({ token }: Props) {
               <input type="text" placeholder="Username" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} />
               <input type="email" placeholder="Email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
               <input type="password" placeholder="Password" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} />
-              <button className="admin-save-btn" onClick={addUser}>✅ Add</button>
-              <button className="admin-cancel-btn" onClick={() => setShowAddUser(false)}>✕</button>
+              <button className="admin-save-btn" onClick={addUser}>
+                <Icon name="check" size={14} /> Add
+              </button>
+              <button className="admin-cancel-btn" onClick={() => setShowAddUser(false)}>
+                <Icon name="x" size={14} />
+              </button>
             </div>
           )}
 
           <div className="admin-users-list">
             {users.filter(u => u.username.toLowerCase().includes(searchTerm.toLowerCase())).map((user) => (
               <div key={user.id} className="admin-user-row">
-                <span className="admin-user-avatar">👤</span>
+                <span className="admin-user-avatar"><Icon name="user" size={20} /></span>
                 <div className="admin-user-info">
                   <p className="admin-user-name">{user.username}</p>
                   <span className="admin-user-email">{user.email || 'No email'}</span>
                 </div>
-                <span className={`admin-user-plan ${user.is_premium ? 'premium' : 'free'}`}>{user.is_premium ? '⭐ Premium' : 'Free'}</span>
+                <span className={`admin-user-plan ${user.is_premium ? 'premium' : 'free'}`}>
+                  {user.is_premium ? (
+                    <><Icon name="star" size={14} /> Premium</>
+                  ) : (
+                    'Free'
+                  )}
+                </span>
                 <span className="admin-user-translations">{user.daily_translation_count || 0} translations</span>
-                <button className="admin-remove-btn" onClick={() => removeUser(user.id)}>🗑️ Remove</button>
+                <button className="admin-remove-btn" onClick={() => removeUser(user.id)}>
+                  <Icon name="trash" size={14} /> Remove
+                </button>
               </div>
             ))}
           </div>
@@ -246,14 +295,20 @@ export default function Admin({ token }: Props) {
       {activeSection === 'languages' && (
         <div className="admin-languages-section">
           <div className="admin-toolbar">
-            <button className="admin-add-user-btn" onClick={() => setShowAddLanguage(!showAddLanguage)}>➕ Add Language</button>
+            <button className="admin-add-user-btn" onClick={() => setShowAddLanguage(!showAddLanguage)}>
+              <Icon name="plus" size={16} /> Add Language
+            </button>
           </div>
 
           {showAddLanguage && (
             <div className="admin-add-form">
               <input type="text" placeholder="Language name" value={newLangName} onChange={(e) => setNewLangName(e.target.value)} />
-              <button className="admin-save-btn" onClick={addLanguage}>✅ Add</button>
-              <button className="admin-cancel-btn" onClick={() => setShowAddLanguage(false)}>✕</button>
+              <button className="admin-save-btn" onClick={addLanguage}>
+                <Icon name="check" size={14} /> Add
+              </button>
+              <button className="admin-cancel-btn" onClick={() => setShowAddLanguage(false)}>
+                <Icon name="x" size={14} />
+              </button>
             </div>
           )}
 
@@ -264,7 +319,9 @@ export default function Admin({ token }: Props) {
                 <span className="admin-language-name">{lang.name}</span>
                 <span className="admin-language-count">{lang.count} translations</span>
                 <ToggleSwitch checked={lang.enabled} onChange={() => toggleLanguage(lang.name)} />
-                <button className="admin-remove-btn" onClick={() => removeLanguage(lang.name)}>🗑️</button>
+                <button className="admin-remove-btn" onClick={() => removeLanguage(lang.name)}>
+                  <Icon name="trash" size={14} />
+                </button>
               </div>
             ))}
           </div>
@@ -275,7 +332,7 @@ export default function Admin({ token }: Props) {
       {activeSection === 'analytics' && (
         <div className="admin-analytics-section">
           <div className="admin-chart-card">
-            <h3>📈 Platform Growth</h3>
+            <h3><Icon name="trending-up" size={18} /> Platform Growth</h3>
             <div className="admin-growth-chart">
               <div className="admin-growth-bar-row">
                 <span className="admin-growth-label">Users</span>
@@ -301,27 +358,27 @@ export default function Admin({ token }: Props) {
       {activeSection === 'settings' && (
         <div className="admin-settings-section">
           <div className="admin-setting-row">
-            <span className="admin-setting-label">🔒 Registration</span>
+            <span className="admin-setting-label"><Icon name="lock" size={16} /> Registration</span>
             <ToggleSwitch checked={settings.registration} onChange={() => toggleSetting('registration')} />
           </div>
           <div className="admin-setting-row">
-            <span className="admin-setting-label">🤖 AI Translation</span>
+            <span className="admin-setting-label"><Icon name="bot" size={16} /> AI Translation</span>
             <ToggleSwitch checked={settings.aiTranslation} onChange={() => toggleSetting('aiTranslation')} />
           </div>
           <div className="admin-setting-row">
-            <span className="admin-setting-label">🎤 Voice Translation</span>
+            <span className="admin-setting-label"><Icon name="mic" size={16} /> Voice Translation</span>
             <ToggleSwitch checked={settings.voiceTranslation} onChange={() => toggleSetting('voiceTranslation')} />
           </div>
           <div className="admin-setting-row">
-            <span className="admin-setting-label">🎬 Video Subtitles</span>
+            <span className="admin-setting-label"><Icon name="video" size={16} /> Video Subtitles</span>
             <ToggleSwitch checked={settings.videoSubtitles} onChange={() => toggleSetting('videoSubtitles')} />
           </div>
           <div className="admin-setting-row">
-            <span className="admin-setting-label">📊 Analytics</span>
+            <span className="admin-setting-label"><Icon name="bar-chart" size={16} /> Analytics</span>
             <ToggleSwitch checked={settings.analytics} onChange={() => toggleSetting('analytics')} />
           </div>
           <div className="admin-setting-row">
-            <span className="admin-setting-label">💾 Cache</span>
+            <span className="admin-setting-label"><Icon name="save" size={16} /> Cache</span>
             <ToggleSwitch checked={settings.cache} onChange={() => toggleSetting('cache')} />
           </div>
         </div>

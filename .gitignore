@@ -30,3 +30,4 @@ backend/.env
 Thumbs.db
 
 LINGOLINK_BACKUP.json
+*.bak

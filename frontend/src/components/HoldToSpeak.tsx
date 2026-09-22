@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
+import Icon from './Icon';
 
 interface Props {
   token: string;
@@ -262,13 +263,19 @@ export default function HoldToSpeak({ token, language = 'auto', onTranscribed }:
           cursor: 'pointer',
         }}
       >
-        <span className="hts-icon">{isProcessing ? '⏳' : isHolding ? '🔴' : '🎙️'}</span>
+        <span className="hts-icon">
+          <Icon
+            name={isProcessing ? 'loader' : isHolding ? 'circle-filled' : 'mic'}
+            size={22}
+            className={isProcessing ? 'spin' : ''}
+          />
+        </span>
         <span className="hts-text">
           {isProcessing ? 'Processing...' : isHolding ? 'Release to Translate' : 'Hold to Speak'}
         </span>
       </button>
 
-      {error && <p className="hts-error">❌ {error}</p>}
+      {error && <p className="hts-error"><Icon name="alert" size={16} /> {error}</p>}
       {!error && !isHolding && !isProcessing && permissionState !== 'granted' && (
         <p className={`hts-hint ${darkMode ? 'dark' : 'light'}`}>
           {permissionState === 'denied'
@@ -280,7 +287,7 @@ export default function HoldToSpeak({ token, language = 'auto', onTranscribed }:
       {showPermissionModal && (
         <div className="permission-modal-overlay" onClick={() => setShowPermissionModal(false)}>
           <div className="permission-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="permission-icon">🎤</div>
+            <div className="permission-icon"><Icon name="mic" size={40} /></div>
             <h3>Microphone Access Required</h3>
             <p>LingoLink AI needs access to your microphone to record and translate your speech.</p>
 
@@ -318,7 +325,7 @@ export default function HoldToSpeak({ token, language = 'auto', onTranscribed }:
                 Close
               </button>
               <button className="permission-retry-btn" onClick={requestPermission}>
-                🎤 Request Permission
+                <Icon name="mic" size={16} /> Request Permission
               </button>
             </div>
           </div>

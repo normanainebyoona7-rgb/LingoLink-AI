@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import jsPDF from 'jspdf';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -111,8 +112,7 @@ export default function History({ token }: Props) {
       const contentWidth = pageWidth - margin * 2;
       let y = margin;
 
-      // Header
-      pdf.setFillColor(212, 160, 74); // warm gold
+      pdf.setFillColor(212, 160, 74);
       pdf.rect(0, 0, pageWidth, 22, 'F');
 
       pdf.setTextColor(26, 18, 8);
@@ -140,7 +140,6 @@ export default function History({ token }: Props) {
 
       y = 32;
 
-      // Entries
       pdf.setTextColor(26, 18, 8);
       filteredHistory.forEach((item, index) => {
         const sourceLines = pdf.splitTextToSize(item.source_text || '', contentWidth - 4);
@@ -148,29 +147,24 @@ export default function History({ token }: Props) {
         const blockHeight =
           14 + sourceLines.length * 5 + translatedLines.length * 5 + 8;
 
-        // Page break check
         if (y + blockHeight > pageHeight - margin) {
           pdf.addPage();
           y = margin;
         }
 
-        // Card border
         pdf.setDrawColor(212, 160, 74);
         pdf.setLineWidth(0.3);
         pdf.roundedRect(margin, y, contentWidth, blockHeight - 3, 2, 2);
 
-        // Gold left bar
         pdf.setFillColor(212, 160, 74);
         pdf.rect(margin, y, 1.2, blockHeight - 3, 'F');
 
-        // Date + index
         pdf.setFontSize(8);
         pdf.setTextColor(120, 100, 70);
         pdf.setFont('helvetica', 'normal');
         const dateStr = new Date(item.created_at).toLocaleString();
         pdf.text(`#${index + 1}  •  ${dateStr}`, margin + 4, y + 5);
 
-        // Source
         pdf.setFontSize(8);
         pdf.setTextColor(150, 120, 60);
         pdf.setFont('helvetica', 'bold');
@@ -181,7 +175,6 @@ export default function History({ token }: Props) {
         pdf.setFont('helvetica', 'normal');
         pdf.text(sourceLines, margin + 4, y + 16);
 
-        // Translation
         const transY = y + 16 + sourceLines.length * 5 + 1;
         pdf.setFontSize(8);
         pdf.setTextColor(150, 120, 60);
@@ -196,7 +189,6 @@ export default function History({ token }: Props) {
         y += blockHeight;
       });
 
-      // Footer on each page
       const totalPages = (pdf as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
@@ -249,7 +241,7 @@ export default function History({ token }: Props) {
     <div className={`history-root ${darkMode ? 'history-dark' : 'history-light'}`}>
       <div className="history-header">
         <div>
-          <h2>📜 Translation History</h2>
+          <h2><Icon name="history" size={22} /> Translation History</h2>
           <p>Your recent translations across all languages</p>
         </div>
         <div className="history-actions">
@@ -260,15 +252,17 @@ export default function History({ token }: Props) {
               disabled={exporting}
               title="Download as PDF"
             >
-              {exporting ? '⏳ Exporting...' : '📄 Export PDF'}
+              <Icon name={exporting ? 'loader' : 'file-text'} size={16} className={exporting ? 'spin' : ''} />
+              {exporting ? ' Exporting...' : ' Export PDF'}
             </button>
           )}
           <button className="history-refresh" onClick={fetchHistory} disabled={loading}>
-            {loading ? '⏳' : '🔄'} Refresh
+            <Icon name={loading ? 'loader' : 'refresh'} size={16} className={loading ? 'spin' : ''} />
+            {' '}Refresh
           </button>
           {history.length > 0 && (
             <button className="history-clear-all" onClick={clearAllHistory}>
-              🗑️ Clear All
+              <Icon name="trash" size={16} /> Clear All
             </button>
           )}
         </div>
@@ -276,9 +270,10 @@ export default function History({ token }: Props) {
 
       <div className="history-toolbar">
         <div className="history-search">
+          <Icon name="search" size={16} className="history-search-icon" />
           <input
             type="text"
-            placeholder="🔍 Search translations..."
+            placeholder="Search translations..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -291,11 +286,11 @@ export default function History({ token }: Props) {
         </div>
       </div>
 
-      {error && <p className="history-error">❌ {error}</p>}
+      {error && <p className="history-error"><Icon name="alert" size={16} /> {error}</p>}
 
       {filteredHistory.length === 0 ? (
         <div className="history-empty">
-          <span className="history-empty-icon">📭</span>
+          <span className="history-empty-icon"><Icon name="inbox" size={48} strokeWidth={1.4} /></span>
           <p>No translations found</p>
           <span>Start translating to see your history here</span>
         </div>
@@ -309,13 +304,13 @@ export default function History({ token }: Props) {
                 </span>
                 <div className="history-item-actions">
                   <button className="history-item-btn" onClick={() => speakTranslation(item.translated_text, item.target_language)} title="Hear">
-                    🔊
+                    <Icon name="speaker" size={16} />
                   </button>
                   <button className="history-item-btn" onClick={() => copyTranslation(item.translated_text)} title="Copy">
-                    📋
+                    <Icon name="copy" size={16} />
                   </button>
                   <button className="history-item-btn delete" onClick={() => deleteTranslation(item.id)} title="Delete">
-                    🗑️
+                    <Icon name="trash" size={16} />
                   </button>
                 </div>
               </div>

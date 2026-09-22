@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -23,6 +24,7 @@ export default function Settings({ token, username }: Props) {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'success' | 'error' | ''>('');
   const [showCropModal, setShowCropModal] = useState(false);
   const [cropImage, setCropImage] = useState('');
   const [cropScale, setCropScale] = useState(1);
@@ -77,19 +79,28 @@ export default function Settings({ token, username }: Props) {
   const saveProfile = async () => {
     setIsSaving(true);
     setSaveMessage('');
+    setSaveStatus('');
     try {
       const res = await fetch(`${API_URL}/auth/me`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (res.ok) {
-        setSaveMessage('✅ Profile saved successfully!');
+        setSaveMessage('Profile saved successfully!');
+        setSaveStatus('success');
+      } else {
+        setSaveMessage('Failed to save profile');
+        setSaveStatus('error');
       }
     } catch {
-      setSaveMessage('❌ Failed to save profile');
+      setSaveMessage('Failed to save profile');
+      setSaveStatus('error');
     } finally {
       setIsSaving(false);
-      setTimeout(() => setSaveMessage(''), 3000);
+      setTimeout(() => {
+        setSaveMessage('');
+        setSaveStatus('');
+      }, 3000);
     }
   };
 
@@ -108,19 +119,19 @@ export default function Settings({ token, username }: Props) {
   return (
     <div className={`settings-root ${darkMode ? 'settings-dark' : 'settings-light'}`}>
       <div className="settings-header">
-        <h2>🔧 Settings</h2>
+        <h2><Icon name="settings" size={22} /> Settings</h2>
         <p>Manage your profile, preferences, and notifications</p>
       </div>
 
       {/* Profile Section */}
       <div className="settings-card">
-        <h3>👤 Profile Information</h3>
+        <h3><Icon name="user" size={18} /> Profile Information</h3>
         <div className="profile-header">
           <div className="profile-picture-container">
             {profile.profilePicture ? (
-              <img 
-                src={profile.profilePicture} 
-                alt="Profile" 
+              <img
+                src={profile.profilePicture}
+                alt="Profile"
                 className="profile-picture"
               />
             ) : (
@@ -129,7 +140,7 @@ export default function Settings({ token, username }: Props) {
               </div>
             )}
             <button className="profile-upload-btn" onClick={() => fileInputRef.current?.click()} type="button">
-              📷 Change Photo
+              <Icon name="camera" size={14} /> Change Photo
             </button>
             <input
               ref={fileInputRef}
@@ -199,9 +210,17 @@ export default function Settings({ token, username }: Props) {
             </div>
           </div>
           <button className="settings-save-btn" onClick={saveProfile} disabled={isSaving} type="button">
-            {isSaving ? '⏳ Saving...' : '💾 Save Profile'}
+            {isSaving ? (
+              <><Icon name="loader" size={16} className="spin" /> Saving...</>
+            ) : (
+              <><Icon name="save" size={16} /> Save Profile</>
+            )}
           </button>
-          {saveMessage && <p className="save-message">{saveMessage}</p>}
+          {saveMessage && (
+            <p className={`save-message ${saveStatus}`}>
+              <Icon name={saveStatus === 'success' ? 'check' : 'alert'} size={16} /> {saveMessage}
+            </p>
+          )}
         </div>
       </div>
 
@@ -209,7 +228,7 @@ export default function Settings({ token, username }: Props) {
       {showCropModal && (
         <div className="crop-modal-overlay" onClick={() => setShowCropModal(false)}>
           <div className="crop-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>✂️ Crop Profile Picture</h3>
+            <h3><Icon name="crop" size={18} /> Crop Profile Picture</h3>
             <p>Use slider to zoom</p>
             <div className="crop-preview-container">
               <img
@@ -237,7 +256,9 @@ export default function Settings({ token, username }: Props) {
             </div>
             <div className="crop-buttons">
               <button className="crop-cancel-btn" onClick={() => setShowCropModal(false)} type="button">Cancel</button>
-              <button className="crop-save-btn" onClick={saveCroppedImage} type="button">✅ Apply</button>
+              <button className="crop-save-btn" onClick={saveCroppedImage} type="button">
+                <Icon name="check" size={14} /> Apply
+              </button>
             </div>
           </div>
         </div>
@@ -245,32 +266,32 @@ export default function Settings({ token, username }: Props) {
 
       {/* Preferences */}
       <div className="settings-card">
-        <h3>⚙️ Translation Preferences</h3>
+        <h3><Icon name="settings" size={18} /> Translation Preferences</h3>
         <div className="toggle-list">
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">🔄 Auto Translate</span>
+              <span className="toggle-label"><Icon name="refresh" size={16} /> Auto Translate</span>
               <p className="toggle-desc">Translate as you type</p>
             </div>
             <ToggleSwitch checked={preferences.autoTranslate} onChange={() => handlePreferenceChange('autoTranslate')} />
           </div>
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">🔍 Auto Detect Language</span>
+              <span className="toggle-label"><Icon name="search" size={16} /> Auto Detect Language</span>
               <p className="toggle-desc">Automatically detect source language</p>
             </div>
             <ToggleSwitch checked={preferences.autoDetect} onChange={() => handlePreferenceChange('autoDetect')} />
           </div>
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">🔊 Voice Output</span>
+              <span className="toggle-label"><Icon name="volume" size={16} /> Voice Output</span>
               <p className="toggle-desc">Hear translations spoken aloud</p>
             </div>
             <ToggleSwitch checked={preferences.voiceOutput} onChange={() => handlePreferenceChange('voiceOutput')} />
           </div>
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">🌙 Dark Mode</span>
+              <span className="toggle-label"><Icon name="moon" size={16} /> Dark Mode</span>
               <p className="toggle-desc">Toggle dark/light theme</p>
             </div>
             <ToggleSwitch checked={darkMode} onChange={toggleDarkMode} />
@@ -280,25 +301,25 @@ export default function Settings({ token, username }: Props) {
 
       {/* Notifications */}
       <div className="settings-card">
-        <h3>🔔 Notification Settings</h3>
+        <h3><Icon name="bell" size={18} /> Notification Settings</h3>
         <div className="toggle-list">
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">📧 Email Notifications</span>
+              <span className="toggle-label"><Icon name="mail" size={16} /> Email Notifications</span>
               <p className="toggle-desc">Receive email updates</p>
             </div>
             <ToggleSwitch checked={notifications.emailNotifications} onChange={() => handleNotificationChange('emailNotifications')} />
           </div>
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">📱 Push Notifications</span>
+              <span className="toggle-label"><Icon name="smartphone" size={16} /> Push Notifications</span>
               <p className="toggle-desc">Get mobile push alerts</p>
             </div>
             <ToggleSwitch checked={notifications.pushNotifications} onChange={() => handleNotificationChange('pushNotifications')} />
           </div>
           <div className="toggle-row">
             <div className="toggle-info">
-              <span className="toggle-label">🔒 Security Alerts</span>
+              <span className="toggle-label"><Icon name="lock" size={16} /> Security Alerts</span>
               <p className="toggle-desc">Login and security notifications</p>
             </div>
             <ToggleSwitch checked={notifications.securityAlerts} onChange={() => handleNotificationChange('securityAlerts')} />

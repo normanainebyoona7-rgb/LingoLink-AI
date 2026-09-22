@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -63,7 +64,6 @@ export default function CallCenter({ token }: Props) {
     ],
   };
 
-  // Map language names to TTS codes
   const ttsLanguageCodes: Record<string, string> = {
     'Luganda': 'luganda',
     'Swahili': 'swahili',
@@ -93,7 +93,6 @@ export default function CallCenter({ token }: Props) {
     };
     setCallQueue(prev => [...prev, newCall]);
 
-    // AUTO-ACCEPT after 2 seconds
     if (autoAnswer) {
       setTimeout(() => {
         acceptCall(newCall.id);
@@ -114,27 +113,26 @@ export default function CallCenter({ token }: Props) {
       status: 'active',
       transcript: initialTranscript,
     };
-    
+
     setActiveCall(activeCallData);
     setCallQueue(prev => prev.filter(c => c.id !== callId));
-    
+
     setCallTimer(0);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setCallTimer(prev => prev + 1);
     }, 1000);
 
-    // AI responds with text + audio
     aiRespond(activeCallData);
   };
 
   const aiRespond = (call: Call) => {
     setAiProcessing(true);
-    
+
     setTimeout(() => {
       const responses = aiResponses[call.language] || aiResponses['English'];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
+
       setActiveCall(prev => {
         if (!prev) return prev;
         return {
@@ -148,7 +146,6 @@ export default function CallCenter({ token }: Props) {
       });
       setAiProcessing(false);
 
-      // SPEAK the response using TTS
       speakResponse(randomResponse, call.language);
     }, 2000);
   };
@@ -202,10 +199,10 @@ export default function CallCenter({ token }: Props) {
   return (
     <div className={`cc-root ${darkMode ? 'cc-dark' : 'cc-light'}`}>
       <div className="cc-header">
-        <h2>📞 AI Call Center</h2>
+        <h2><Icon name="callcenter" size={22} /> AI Call Center</h2>
         <p>AI auto-answers and responds in caller's language with voice</p>
         <div className="cc-auto-answer-toggle">
-          <span>🤖 Auto-Answer</span>
+          <span><Icon name="bot" size={16} /> Auto-Answer</span>
           <button
             className={`slider-toggle ${autoAnswer ? 'on' : 'off'}`}
             onClick={() => setAutoAnswer(!autoAnswer)}
@@ -214,7 +211,7 @@ export default function CallCenter({ token }: Props) {
           </button>
         </div>
         <button className="cc-simulate-btn" onClick={simulateIncomingCall}>
-          📞 Simulate Incoming Call
+          <Icon name="callcenter" size={16} /> Simulate Incoming Call
         </button>
       </div>
 
@@ -222,21 +219,29 @@ export default function CallCenter({ token }: Props) {
         <div className="cc-active-call">
           <div className="cc-active-header">
             <div className="cc-caller-info">
-              <span className="cc-avatar">👤</span>
+              <span className="cc-avatar"><Icon name="user" size={20} /></span>
               <div>
                 <h3>{activeCall.caller}</h3>
-                <span className="cc-status-active">● Active — {formatTime(callTimer)}</span>
+                <span className="cc-status-active">
+                  <Icon name="circle-filled" size={8} /> Active — {formatTime(callTimer)}
+                </span>
               </div>
             </div>
             <div className="cc-controls">
-              {isSpeaking && <span className="cc-speaking-indicator">🔊 AI Speaking...</span>}
-              <button className="cc-end-btn" onClick={endCall}>🔴 End Call</button>
+              {isSpeaking && (
+                <span className="cc-speaking-indicator">
+                  <Icon name="speaker" size={16} /> AI Speaking...
+                </span>
+              )}
+              <button className="cc-end-btn" onClick={endCall}>
+                <Icon name="phone-off" size={16} /> End Call
+              </button>
             </div>
           </div>
           <div className="cc-language-bar">
-            <span>🗣️ Caller: {activeCall.language}</span>
+            <span><Icon name="message-circle" size={14} /> Caller: {activeCall.language}</span>
             <span className="cc-lang-arrow">→</span>
-            <span>🤖 AI Responds in: {activeCall.language} (with audio)</span>
+            <span><Icon name="bot" size={14} /> AI Responds in: {activeCall.language} (with audio)</span>
           </div>
           <div className="cc-transcript">
             {activeCall.transcript.map((line, index) => (
@@ -257,21 +262,29 @@ export default function CallCenter({ token }: Props) {
       )}
 
       <div className="cc-queue-section">
-        <h3>📋 Call Queue ({callQueue.length})</h3>
+        <h3><Icon name="file-text" size={18} /> Call Queue ({callQueue.length})</h3>
         {callQueue.length === 0 ? (
           <p className="cc-empty">No calls in queue — AI will auto-answer incoming calls</p>
         ) : (
           callQueue.map((call) => (
             <div key={call.id} className="cc-queue-item">
-              <span className="cc-avatar">👤</span>
+              <span className="cc-avatar"><Icon name="user" size={20} /></span>
               <div className="cc-queue-info">
                 <p className="cc-queue-caller">{call.caller}</p>
-                <span className="cc-queue-lang">🗣️ {call.language}</span>
+                <span className="cc-queue-lang">
+                  <Icon name="message-circle" size={14} /> {call.language}
+                </span>
               </div>
-              <span className="cc-ringing">🔔 Auto-answering...</span>
+              <span className="cc-ringing">
+                <Icon name="bell" size={14} /> Auto-answering...
+              </span>
               <div className="cc-queue-actions">
-                <button className="cc-accept-btn" onClick={() => acceptCall(call.id)}>✓ Answer Now</button>
-                <button className="cc-decline-btn" onClick={() => declineCall(call.id)}>✕</button>
+                <button className="cc-accept-btn" onClick={() => acceptCall(call.id)}>
+                  <Icon name="check" size={14} /> Answer Now
+                </button>
+                <button className="cc-decline-btn" onClick={() => declineCall(call.id)}>
+                  <Icon name="x" size={14} />
+                </button>
               </div>
             </div>
           ))
@@ -279,25 +292,28 @@ export default function CallCenter({ token }: Props) {
       </div>
 
       <div className="cc-history-section">
-        <h3>🕐 Call History ({callHistory.length})</h3>
+        <h3><Icon name="clock" size={18} /> Call History ({callHistory.length})</h3>
         {callHistory.length === 0 ? (
           <p className="cc-empty">No previous calls</p>
         ) : (
           callHistory.map((call) => (
             <div key={call.id} className="cc-history-item">
-              <span className="cc-avatar">👤</span>
+              <span className="cc-avatar"><Icon name="user" size={20} /></span>
               <div className="cc-history-info">
                 <p className="cc-history-caller">{call.caller}</p>
                 <span className="cc-history-lang">{call.language} → AI Auto-Translated + Voice</span>
               </div>
-              <span className="cc-history-duration">⏱ {call.duration}</span>
-              <span className="cc-history-status">✓ Completed</span>
+              <span className="cc-history-duration">
+                <Icon name="clock" size={14} /> {call.duration}
+              </span>
+              <span className="cc-history-status">
+                <Icon name="check" size={14} /> Completed
+              </span>
             </div>
           ))
         )}
       </div>
 
-      {/* Hidden audio for TTS */}
       <audio
         ref={audioRef}
         onEnded={() => setIsSpeaking(false)}

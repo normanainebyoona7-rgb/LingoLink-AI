@@ -3,6 +3,7 @@ import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -122,12 +123,10 @@ export default function TwoWay({ token }: Props) {
 
       setTurns((prev) => [...prev, turn]);
 
-      // Auto-speak the translation
       if (autoSpeak && translatedText) {
         speak(translatedText, targetLang);
       }
 
-      // Move focus to the other speaker
       setActiveSpeaker(speaker === 'A' ? 'B' : 'A');
     } catch (err) {
       console.error('Translation failed:', err);
@@ -186,7 +185,7 @@ export default function TwoWay({ token }: Props) {
 
       {/* Header */}
       <div className="twoway-header">
-        <h2>💬 Two-Way Conversation</h2>
+        <h2><Icon name="message-circle" size={22} /> Two-Way Conversation</h2>
         <p>Two people, two languages — one phone</p>
       </div>
 
@@ -201,7 +200,7 @@ export default function TwoWay({ token }: Props) {
               onClick={() => setGender('female')}
               title="Female voice"
             >
-              👩 Female
+              <Icon name="user-female" size={16} /> Female
             </button>
             <button
               type="button"
@@ -209,7 +208,7 @@ export default function TwoWay({ token }: Props) {
               onClick={() => setGender('male')}
               title="Male voice"
             >
-              👨 Male
+              <Icon name="user-male" size={16} /> Male
             </button>
           </div>
         </div>
@@ -230,7 +229,7 @@ export default function TwoWay({ token }: Props) {
       <div className={`twoway-speaker ${activeSpeaker === 'A' ? 'twoway-active' : ''}`}>
         <div className="twoway-speaker-header">
           <div className="twoway-speaker-info">
-            <span className="twoway-avatar">👤</span>
+            <span className="twoway-avatar"><Icon name="user" size={18} /></span>
             <span className="twoway-speaker-name">Speaker A</span>
           </div>
           <SearchableDropdown
@@ -246,13 +245,17 @@ export default function TwoWay({ token }: Props) {
             onTranscribed={(text) => handleTranscribed('A', text)}
           />
         </div>
-        {busySpeaker === 'A' && <p className="twoway-status">Translating…</p>}
+        {busySpeaker === 'A' && (
+          <p className="twoway-status">
+            <Icon name="loader" size={14} className="spin" /> Translating…
+          </p>
+        )}
       </div>
 
       {/* Swap */}
       <div className="twoway-swap-row">
         <button className="twoway-swap-btn" onClick={swapLanguages} title="Swap languages">
-          ⇅
+          <Icon name="swap" size={20} />
         </button>
       </div>
 
@@ -260,7 +263,7 @@ export default function TwoWay({ token }: Props) {
       <div className={`twoway-speaker ${activeSpeaker === 'B' ? 'twoway-active' : ''}`}>
         <div className="twoway-speaker-header">
           <div className="twoway-speaker-info">
-            <span className="twoway-avatar">👤</span>
+            <span className="twoway-avatar"><Icon name="user" size={18} /></span>
             <span className="twoway-speaker-name">Speaker B</span>
           </div>
           <SearchableDropdown
@@ -276,25 +279,29 @@ export default function TwoWay({ token }: Props) {
             onTranscribed={(text) => handleTranscribed('B', text)}
           />
         </div>
-        {busySpeaker === 'B' && <p className="twoway-status">Translating…</p>}
+        {busySpeaker === 'B' && (
+          <p className="twoway-status">
+            <Icon name="loader" size={14} className="spin" /> Translating…
+          </p>
+        )}
       </div>
 
-      {error && <p className="twoway-error">❌ {error}</p>}
+      {error && <p className="twoway-error"><Icon name="alert" size={16} /> {error}</p>}
 
       {/* Transcript */}
       <div className="twoway-transcript">
         <div className="twoway-transcript-header">
-          <h3>💬 Conversation</h3>
+          <h3><Icon name="message-circle" size={18} /> Conversation</h3>
           {turns.length > 0 && (
             <button className="twoway-clear-btn" onClick={clearConversation}>
-              🗑️ Clear
+              <Icon name="trash" size={16} /> Clear
             </button>
           )}
         </div>
 
         {turns.length === 0 ? (
           <div className="twoway-empty">
-            <span className="twoway-empty-icon">💬</span>
+            <span className="twoway-empty-icon"><Icon name="message-circle" size={48} strokeWidth={1.4} /></span>
             <p>No conversation yet</p>
             <span>Hold a mic above to start</span>
           </div>

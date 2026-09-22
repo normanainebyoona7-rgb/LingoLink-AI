@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
+import Icon from '../components/Icon';
 
 interface Props {
   token: string;
@@ -19,7 +20,6 @@ interface LiveSegment {
 
 const STORAGE_KEY = 'lingolink_live_transcript';
 
-// VAD config
 const SILENCE_THRESHOLD = 0.02;
 const SILENCE_DURATION_MS = 900;
 const MIN_CHUNK_MS = 1500;
@@ -79,7 +79,6 @@ export default function LiveTranslation({ token }: Props) {
     };
   }, []);
 
-  // ---- Recording loop with VAD ----
   const startRecording = async () => {
     setError('');
     try {
@@ -232,8 +231,6 @@ export default function LiveTranslation({ token }: Props) {
         return;
       }
 
-      // ---- ALWAYS call /translate/text ----
-      // Even if detectedLang is 'auto' or the same as target, let the backend decide.
       let translatedText = originalText;
       try {
         const trRes = await fetch(`${API_URL}/translate/text`, {
@@ -260,7 +257,6 @@ export default function LiveTranslation({ token }: Props) {
         console.error('Translation call failed:', err);
       }
 
-      // Echo check — strict (exact match)
       const isEchoed = translatedText.trim() === originalText.trim();
 
       const segment: LiveSegment = {
@@ -314,7 +310,7 @@ export default function LiveTranslation({ token }: Props) {
     <div className={`live-root ${darkMode ? 'live-dark' : 'live-light'}`}>
 
       <div className="live-header">
-        <h2>🎙️ Live Translation</h2>
+        <h2><Icon name="mic" size={22} /> Live Translation</h2>
         <p>Auto-detects language and translates on natural pauses</p>
       </div>
 
@@ -337,12 +333,16 @@ export default function LiveTranslation({ token }: Props) {
               type="button"
               className={`live-gender-btn ${gender === 'female' ? 'active' : ''}`}
               onClick={() => setGender('female')}
-            >👩 Female</button>
+            >
+              <Icon name="user-female" size={16} /> Female
+            </button>
             <button
               type="button"
               className={`live-gender-btn ${gender === 'male' ? 'active' : ''}`}
               onClick={() => setGender('male')}
-            >👨 Male</button>
+            >
+              <Icon name="user-male" size={16} /> Male
+            </button>
           </div>
         </div>
 
@@ -380,27 +380,33 @@ export default function LiveTranslation({ token }: Props) {
               />
             </div>
             <p className="live-status">
-              {processing ? '⏳ Processing…' : volume > 0.02 ? '🎧 Hearing you…' : '🤫 Listening for speech…'}
+              {processing ? (
+                <><Icon name="loader" size={14} className="spin" /> Processing…</>
+              ) : volume > 0.02 ? (
+                <><Icon name="headphones" size={14} /> Hearing you…</>
+              ) : (
+                <><Icon name="volume-off" size={14} /> Listening for speech…</>
+              )}
             </p>
           </>
         )}
       </div>
 
-      {error && <p className="live-error">❌ {error}</p>}
+      {error && <p className="live-error"><Icon name="alert" size={16} /> {error}</p>}
 
       <div className="live-transcript">
         <div className="live-transcript-header">
-          <h3>💬 Live Transcript</h3>
+          <h3><Icon name="message-circle" size={18} /> Live Transcript</h3>
           {segments.length > 0 && (
             <button className="live-clear-btn" onClick={clearTranscript}>
-              🗑️ Clear
+              <Icon name="trash" size={16} /> Clear
             </button>
           )}
         </div>
 
         {segments.length === 0 ? (
           <div className="live-empty">
-            <span className="live-empty-icon">🎙️</span>
+            <span className="live-empty-icon"><Icon name="mic" size={48} strokeWidth={1.4} /></span>
             <p>Nothing captured yet</p>
             <span>Press "Start Live Record" and speak</span>
           </div>

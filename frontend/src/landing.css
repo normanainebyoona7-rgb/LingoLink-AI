@@ -975,3 +975,54 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Landing SVG Icon alignment ===== */
+.ln-badge .ll-icon,
+.ln-pf-item .ll-icon,
+.ln-pricing-features .ll-icon {
+  vertical-align: -3px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.ln-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ln-pf-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ln-pricing-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ln-testimonial-stars {
+  display: flex;
+  gap: 2px;
+  color: #d4a537;
+}
+
+.ln-testimonial-stars .ll-icon {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+.ln-hamburger .ll-icon,
+.ln-theme-toggle .ll-icon {
+  color: inherit;
+}
+
+.ln-feature-icon .ll-icon {
+  color: #d4a537;
+}
+
+.ln-faq-icon .ll-icon {
+  color: inherit;
+}

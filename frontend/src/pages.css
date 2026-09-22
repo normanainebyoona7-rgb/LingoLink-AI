@@ -1753,3 +1753,613 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ===== Dashboard SVG Icon alignment ===== */
+.dash-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dash-section h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-quick-card .dash-quick-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+}
+
+.dash-quick-arrow {
+  display: inline-flex;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.dash-quick-card:hover .dash-quick-arrow {
+  transform: translateX(4px);
+}
+
+.dash-card .dc-icon {
+  color: #d4a537;
+}
+
+/* Rotate the loader icon while loading */
+.dash-refresh:disabled .ll-icon {
+  animation: ll-spin 0.9s linear infinite;
+}
+
+@keyframes ll-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ===== Translate page SVG Icon alignment ===== */
+.swap-btn .ll-icon {
+  color: inherit;
+  transition: transform 0.25s ease;
+}
+
+.swap-btn:hover .ll-icon {
+  transform: rotate(180deg);
+}
+
+.send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gender-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Spin utility used by loader */
+.ll-icon.spin {
+  animation: ll-spin 0.9s linear infinite;
+}
+
+@keyframes ll-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ===== History SVG Icon alignment ===== */
+.history-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-item-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-empty .history-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a7a5c;
+  margin-bottom: 12px;
+}
+
+/* Search input with icon inside */
+.history-search {
+  position: relative;
+}
+
+.history-search .history-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a7a5c;
+  pointer-events: none;
+}
+
+.history-search input {
+  padding-left: 40px !important;
+}
+
+/* Spin utility (safe to duplicate) */
+.ll-icon.spin {
+  animation: ll-spin 0.9s linear infinite;
+}
+
+@keyframes ll-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ===== Voice page SVG Icon alignment ===== */
+.voice-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.voice-swap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-swap-btn .ll-icon {
+  transition: transform 0.25s ease;
+}
+
+.voice-swap-btn:hover .ll-icon {
+  transform: rotate(180deg);
+}
+
+.voice-speak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voice-setting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voice-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+}
+
+.voice-conversation-header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voice-box-text .ll-icon {
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+
+/* ===== HoldToSpeak SVG Icon alignment ===== */
+.hts-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+}
+
+.hts-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.permission-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+  margin-bottom: 8px;
+}
+
+.permission-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Color behavior for the filled record dot while holding */
+.hts-button.holding .hts-icon .ll-icon {
+  color: #ff4444;
+}
+
+/* ===== SearchableDropdown SVG Icon alignment ===== */
+.lang-select-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lang-select-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.lang-select-arrow.up {
+  transform: rotate(180deg);
+}
+
+.lang-select-search {
+  position: relative;
+}
+
+.lang-select-search .lang-select-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8a7a5c;
+  pointer-events: none;
+}
+
+.lang-select-search input {
+  padding-left: 36px !important;
+}
+
+.lang-select-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lang-select-option-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lang-select-check {
+  display: inline-flex;
+  align-items: center;
+  color: #d4a537;
+}
+
+/* ===== VoiceSettings SVG Icon alignment ===== */
+.voice-gender-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== TwoWay page SVG Icon alignment ===== */
+.twoway-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.twoway-gender-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.twoway-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.twoway-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.twoway-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.twoway-swap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* TwoWay uses a vertical swap (⇅) vs the horizontal one in Translate/Voice */
+.twoway-swap-btn .ll-icon {
+  transform: rotate(90deg);
+  transition: transform 0.25s ease;
+}
+
+.twoway-swap-btn:hover .ll-icon {
+  transform: rotate(270deg);
+}
+
+.twoway-transcript-header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.twoway-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.twoway-empty .twoway-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a7a5c;
+  margin-bottom: 12px;
+}
+
+/* ===== LiveTranslation SVG Icon alignment ===== */
+.live-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-gender-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-transcript-header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-empty .live-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a7a5c;
+  margin-bottom: 12px;
+}
+
+/* ===== Video page SVG Icon alignment ===== */
+.video-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.video-upload-area .video-upload-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+  margin-bottom: 12px;
+}
+
+.video-file-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.video-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+}
+
+.video-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.video-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.video-subtitle-timeline h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== CallCenter SVG Icon alignment ===== */
+.cc-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cc-auto-answer-toggle > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-simulate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+}
+
+.cc-status-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4ade80;
+}
+
+.cc-speaking-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-end-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-language-bar > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-queue-section h3,
+.cc-history-section h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cc-queue-lang {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cc-ringing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-accept-btn,
+.cc-decline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-history-duration,
+.cc-history-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ===== Settings SVG Icon alignment ===== */
+.settings-header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-card h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.save-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.save-message.success {
+  color: #4ade80;
+}
+
+.save-message.error {
+  color: #ef4444;
+}
+
+.crop-modal h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crop-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

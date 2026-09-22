@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
+import Icon, { IconName } from '../components/Icon';
 
 interface Props {
   token: string;
@@ -75,13 +76,13 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-  const quickActions = [
-    { icon: '🔄', label: 'Translate', tab: 'translate', desc: 'Instant text translation' },
-    { icon: '🎤', label: 'Voice', tab: 'voice', desc: 'Speech to text translation' },
-    { icon: '🎬', label: 'Video', tab: 'video', desc: 'Video subtitle generation' },
-    { icon: '📞', label: 'Call Center', tab: 'callcenter', desc: 'Live call translation' },
-    { icon: '📜', label: 'History', tab: 'history', desc: 'View past translations' },
-    { icon: '🔧', label: 'Settings', tab: 'settings', desc: 'Profile and preferences' },
+  const quickActions: { icon: IconName; label: string; tab: string; desc: string }[] = [
+    { icon: 'translate', label: 'Translate', tab: 'translate', desc: 'Instant text translation' },
+    { icon: 'voice', label: 'Voice', tab: 'voice', desc: 'Speech to text translation' },
+    { icon: 'video', label: 'Video', tab: 'video', desc: 'Video subtitle generation' },
+    { icon: 'callcenter', label: 'Call Center', tab: 'callcenter', desc: 'Live call translation' },
+    { icon: 'history', label: 'History', tab: 'history', desc: 'View past translations' },
+    { icon: 'settings', label: 'Settings', tab: 'settings', desc: 'Profile and preferences' },
   ];
 
   return (
@@ -92,31 +93,32 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
           <p>Here's your real-time translation activity overview</p>
         </div>
         <button className="dash-refresh" onClick={fetchAllData} disabled={loading}>
-          {loading ? '⏳ Loading...' : '🔄 Refresh Data'}
+          <Icon name={loading ? 'loader' : 'refresh'} size={16} />
+          {loading ? ' Loading...' : ' Refresh Data'}
         </button>
       </div>
 
       <div className="dash-cards">
         <div className="dash-card dc-purple">
-          <span className="dc-icon">🌐</span>
+          <span className="dc-icon"><Icon name="globe" size={28} /></span>
           <h3>Total Translations</h3>
           <p className="dc-value">{metrics.totalTranslations || '—'}</p>
           <span className="dc-sub">All-time translations</span>
         </div>
         <div className="dash-card dc-blue">
-          <span className="dc-icon">👥</span>
+          <span className="dc-icon"><Icon name="users" size={28} /></span>
           <h3>Total Users</h3>
           <p className="dc-value">{metrics.totalUsers || '—'}</p>
           <span className="dc-sub">Registered accounts</span>
         </div>
         <div className="dash-card dc-green">
-          <span className="dc-icon">📅</span>
+          <span className="dc-icon"><Icon name="calendar" size={28} /></span>
           <h3>Today's Translations</h3>
           <p className="dc-value">{metrics.dailyTranslations || '—'}</p>
           <span className="dc-sub">Translations today</span>
         </div>
         <div className="dash-card dc-orange">
-          <span className="dc-icon">⚡</span>
+          <span className="dc-icon"><Icon name="zap" size={28} /></span>
           <h3>System Status</h3>
           <p className="dc-value dc-online">Online</p>
           <span className="dc-sub">All systems operational</span>
@@ -125,7 +127,7 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
 
       <div className="dash-charts">
         <div className="dash-section">
-          <h3>🌍 Language Distribution</h3>
+          <h3><Icon name="globe" size={18} /> Language Distribution</h3>
           <p className="dash-section-sub">Most translated languages</p>
           {topLanguages.length > 0 ? (
             <div className="dash-lang-list">
@@ -153,7 +155,7 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
         </div>
 
         <div className="dash-section">
-          <h3>📊 Activity Overview</h3>
+          <h3><Icon name="bar-chart" size={18} /> Activity Overview</h3>
           <p className="dash-section-sub">Translation metrics summary</p>
           <div className="dash-metrics-grid">
             <div className="dash-metric">
@@ -178,7 +180,7 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
 
       {history.length > 0 && (
         <div className="dash-section">
-          <h3>🕐 Recent Activity</h3>
+          <h3><Icon name="clock" size={18} /> Recent Activity</h3>
           <p className="dash-section-sub">Latest translations</p>
           <div className="dash-activity-list">
             {history.slice(0, 5).map((item) => (
@@ -199,12 +201,12 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
         <div className="dash-quick-grid">
           {quickActions.map((action) => (
             <div key={action.tab} className="dash-quick-card" onClick={() => onNavigate(action.tab)}>
-              <span className="dash-quick-icon">{action.icon}</span>
+              <span className="dash-quick-icon"><Icon name={action.icon} size={24} /></span>
               <div className="dash-quick-info">
                 <h4>{action.label}</h4>
                 <p>{action.desc}</p>
               </div>
-              <span className="dash-quick-arrow">→</span>
+              <span className="dash-quick-arrow"><Icon name="arrow-right" size={18} /></span>
             </div>
           ))}
         </div>
