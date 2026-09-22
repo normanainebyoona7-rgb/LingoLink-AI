@@ -3,11 +3,20 @@ Call Center WebSocket routes.
 
 Endpoints:
   POST /call/create           → create new session, returns {code}
-  GET  /call/{code}/status    → is the session waiting / connected / unknown
-  WS   /ws/call/{code}/{role} → main realtime channel (role = agent | caller)
+  GET  /call/{code}/status    → waiting / connected / unknown
+  WS   /ws/call/{code}/{role} → realtime channel (role = agent | caller)
+
+Message types (both directions unless noted):
+  joined         (server → client) — session state + recent history
+  peer_joined    (server → client) — the other side connected
+  peer_left      (server → client) — the other side disconnected
+  chat           (both ways)       — { role, text, language, ts }
+  typing         (both ways)       — { role, is_typing }
+  ai_toggle      (agent → server)  — { enabled: bool }
+  ping / pong    (client/server)   — keepalive
 """
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-from app.call_manager import manager, CallSession
+from app.call_manager import manager
 import time
 
 
@@ -20,6 +29,7 @@ async def create_call():
     return {
         "code": session.code,
         "created_at": session.created_at,
+        "ai_mode": session.ai_mode,
     }
 
 
@@ -35,6 +45,7 @@ async def call_status(code: str):
         "waiting_for_caller": session.agent is not None and session.caller is None,
         "connected": session.is_full(),
         "message_count": len(session.messages),
+        "ai_mode": session.ai_mode,
     }
 
 
@@ -55,13 +66,14 @@ async def call_ws(websocket: WebSocket, code: str, role: str):
         await websocket.close(code=4004)
         return
 
-    # Notify the other participant that we joined, and send back recent messages
+    # Send current state + history to the joiner
     await websocket.send_json({
         "type": "joined",
         "code": session.code,
         "role": role,
-        "other_present": (session.agent is not None and session.caller is not None),
+        "other_present": session.is_full(),
         "messages": session.messages[-50:],
+        "ai_mode": session.ai_mode,
     })
 
     await manager.broadcast(session, {
@@ -75,7 +87,6 @@ async def call_ws(websocket: WebSocket, code: str, role: str):
             msg_type = data.get("type")
 
             if msg_type == "chat":
-                # { type: "chat", text: str, language: str, source_lang?: str }
                 msg = {
                     "type": "chat",
                     "role": role,
@@ -84,11 +95,8 @@ async def call_ws(websocket: WebSocket, code: str, role: str):
                     "ts": time.time(),
                 }
                 session.messages.append(msg)
-                # Keep last 200 to bound memory
                 if len(session.messages) > 200:
                     session.messages = session.messages[-200:]
-
-                # Broadcast to BOTH (echo back to sender too, so UI is consistent)
                 await manager.broadcast(session, msg)
 
             elif msg_type == "typing":
@@ -97,6 +105,15 @@ async def call_ws(websocket: WebSocket, code: str, role: str):
                     "role": role,
                     "is_typing": bool(data.get("is_typing")),
                 }, exclude_role=role)
+
+            elif msg_type == "ai_toggle":
+                # Only agent can flip this
+                if role == "agent":
+                    session.ai_mode = bool(data.get("enabled"))
+                    await manager.broadcast(session, {
+                        "type": "ai_mode",
+                        "enabled": session.ai_mode,
+                    })
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong", "ts": time.time()})
