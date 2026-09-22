@@ -2363,3 +2363,493 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ============================================================
+   CALL CENTER — Real-time translated calls
+   ============================================================ */
+
+.callcenter-root {
+  min-height: 100%;
+  padding: 24px;
+}
+
+/* ---------- LOBBY ---------- */
+.callcenter-lobby {
+  max-width: 520px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 40px 32px;
+  border: 1px solid rgba(212, 165, 55, 0.25);
+  border-radius: 16px;
+  background: rgba(212, 165, 55, 0.03);
+}
+
+.callcenter-lobby-icon {
+  color: #d4a537;
+  margin-bottom: 16px;
+  display: inline-flex;
+}
+
+.callcenter-lobby h2 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.callcenter-lobby > p {
+  color: #8a7a5c;
+  margin-bottom: 32px;
+}
+
+.callcenter-lang-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.callcenter-lang-group {
+  text-align: left;
+}
+
+.callcenter-lang-group label {
+  display: block;
+  font-size: 12px;
+  color: #8a7a5c;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.callcenter-lang-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 165, 55, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font-size: 14px;
+}
+
+.callcenter-start-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: #d4a537;
+  color: #1a1208;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.callcenter-start-btn:hover {
+  background: #e0b34a;
+  transform: translateY(-1px);
+}
+
+.callcenter-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ef4444;
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+/* ---------- WAITING FOR CALLER ---------- */
+.callcenter-waiting {
+  max-width: 520px;
+  margin: 40px auto;
+  text-align: center;
+  padding: 40px 32px;
+  border: 1px solid rgba(212, 165, 55, 0.25);
+  border-radius: 16px;
+  background: rgba(212, 165, 55, 0.03);
+}
+
+.callcenter-waiting-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #d4a537;
+  font-size: 14px;
+  margin-bottom: 28px;
+}
+
+.callcenter-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d4a537;
+  box-shadow: 0 0 0 0 rgba(212, 165, 55, 0.7);
+  animation: callcenter-pulse 1.8s infinite;
+}
+
+@keyframes callcenter-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(212, 165, 55, 0.7); }
+  70% { box-shadow: 0 0 0 12px rgba(212, 165, 55, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 165, 55, 0); }
+}
+
+.callcenter-code {
+  font-size: 56px;
+  letter-spacing: 8px;
+  font-weight: 700;
+  color: #d4a537;
+  margin: 0;
+  font-family: 'Courier New', monospace;
+}
+
+.callcenter-code-label {
+  color: #8a7a5c;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 6px 0 28px;
+}
+
+.callcenter-qr-wrap {
+  display: inline-block;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.callcenter-qr-hint {
+  color: #8a7a5c;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.callcenter-link-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.callcenter-link-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(212, 165, 55, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+}
+
+.callcenter-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #d4a537;
+  color: #1a1208;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.callcenter-waiting-hint {
+  color: #8a7a5c;
+  font-size: 13px;
+  margin-bottom: 28px;
+}
+
+.callcenter-cancel-btn {
+  padding: 10px 24px;
+  background: transparent;
+  color: #8a7a5c;
+  border: 1px solid rgba(212, 165, 55, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.callcenter-cancel-btn:hover {
+  color: #d4a537;
+  border-color: #d4a537;
+}
+
+/* ---------- CONNECTED — CALL VIEW ---------- */
+.callcenter-callview {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 140px);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.callcenter-call-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  background: rgba(212, 165, 55, 0.06);
+  border: 1px solid rgba(212, 165, 55, 0.25);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.callcenter-call-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.callcenter-call-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(212, 165, 55, 0.15);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4a537;
+}
+
+.callcenter-call-info h3 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.callcenter-call-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4ade80;
+}
+
+.callcenter-call-langs {
+  display: flex;
+  gap: 8px;
+}
+
+.callcenter-lang-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(212, 165, 55, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #b8935a;
+}
+
+.callcenter-end-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.callcenter-end-btn:hover {
+  background: #dc2626;
+}
+
+.callcenter-transcript {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(212, 165, 55, 0.15);
+  margin-bottom: 16px;
+}
+
+.callcenter-transcript-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8a7a5c;
+  gap: 12px;
+  text-align: center;
+}
+
+.callcenter-msg {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  max-width: 80%;
+}
+
+.callcenter-msg-agent {
+  background: rgba(212, 165, 55, 0.12);
+  border-left: 3px solid #d4a537;
+  margin-left: auto;
+}
+
+.callcenter-msg-caller {
+  background: rgba(100, 130, 200, 0.1);
+  border-left: 3px solid #6482c8;
+  margin-right: auto;
+}
+
+.callcenter-msg-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #8a7a5c;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.callcenter-msg-role {
+  font-weight: 600;
+  color: #d4a537;
+}
+
+.callcenter-msg-caller .callcenter-msg-role {
+  color: #85a3e0;
+}
+
+.callcenter-msg-lang {
+  padding: 1px 6px;
+  background: rgba(212, 165, 55, 0.15);
+  border-radius: 4px;
+}
+
+.callcenter-msg-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.callcenter-input-bar {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.callcenter-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 165, 55, 0.3);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font-size: 15px;
+  font-family: inherit;
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  line-height: 1.4;
+}
+
+.callcenter-input:focus {
+  outline: none;
+  border-color: #d4a537;
+}
+
+.callcenter-send-btn {
+  padding: 0 20px;
+  height: 44px;
+  background: #d4a537;
+  color: #1a1208;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.callcenter-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.callcenter-call-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f2994a;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+/* ---------- ENDED ---------- */
+.callcenter-ended {
+  max-width: 480px;
+  margin: 60px auto;
+  text-align: center;
+  padding: 40px 32px;
+  border: 1px solid rgba(212, 165, 55, 0.25);
+  border-radius: 16px;
+  background: rgba(212, 165, 55, 0.03);
+}
+
+.callcenter-ended-icon {
+  color: #8a7a5c;
+  margin-bottom: 16px;
+  display: inline-flex;
+}
+
+.callcenter-ended h2 {
+  margin-bottom: 24px;
+}
+
+.callcenter-ended-stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-bottom: 32px;
+}
+
+.callcenter-ended-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.callcenter-ended-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #d4a537;
+}
+
+.callcenter-ended-label {
+  font-size: 12px;
+  color: #8a7a5c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ---------- LIGHT THEME OVERRIDES ---------- */
+.callcenter-light .callcenter-lobby,
+.callcenter-light .callcenter-waiting,
+.callcenter-light .callcenter-ended {
+  background: rgba(212, 165, 55, 0.06);
+}
+
+.callcenter-light .callcenter-lang-group select,
+.callcenter-light .callcenter-link-input,
+.callcenter-light .callcenter-input {
+  background: white;
+  color: #2a1a08;
+}
+
+.callcenter-light .callcenter-transcript {
+  background: rgba(0, 0, 0, 0.03);
+}
