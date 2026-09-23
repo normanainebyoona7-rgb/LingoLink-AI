@@ -1026,3 +1026,508 @@
 .ln-faq-icon .ll-icon {
   color: inherit;
 }
+
+/* ============================================================
+   LANDING — PREMIUM OVERRIDES v2
+   ============================================================ */
+
+.ln-nav {
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid var(--border) !important;
+  transition: all 0.3s ease !important;
+}
+
+.ln-hero-title {
+  letter-spacing: -1px;
+  font-weight: 800;
+}
+
+.ln-gradient {
+  background: linear-gradient(135deg, #e0b34a, #b3891e) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ln-feature,
+.ln-pricing-card,
+.ln-testimonial-card {
+  border-radius: 16px !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.ln-feature:hover,
+.ln-testimonial-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: var(--border-hi) !important;
+  box-shadow: 0 12px 40px rgba(224, 179, 74, 0.15) !important;
+}
+
+.ln-pricing-highlighted {
+  box-shadow: 0 12px 40px rgba(224, 179, 74, 0.2) !important;
+  border-color: var(--gold) !important;
+}
+
+.ln-btn-primary {
+  background: var(--grad-gold) !important;
+  color: #1a1208 !important;
+  border: none !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 20px rgba(224, 179, 74, 0.25) !important;
+}
+
+.ln-btn-primary:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 32px rgba(224, 179, 74, 0.4) !important;
+}
+
+.ln-btn-secondary {
+  border-radius: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ln-btn-secondary:hover {
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+}
+
+.ln-badge {
+  border-radius: 20px !important;
+  background: var(--gold-soft) !important;
+  border: 1px solid var(--border-hi) !important;
+  padding: 8px 16px !important;
+  font-weight: 600;
+}
+
+.ln-platform-card {
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
+}
+
+.ln-stat-num {
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+.ln-lang-chip {
+  border-radius: 20px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ln-lang-chip:hover {
+  background: var(--gold-soft) !important;
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+  transform: translateY(-2px);
+}
+
+.ln-cta {
+  border-radius: 20px !important;
+  background: linear-gradient(135deg, rgba(224, 179, 74, 0.15), rgba(179, 137, 30, 0.05)) !important;
+  border: 1px solid var(--border-hi) !important;
+}
+
+.ln-faq-item {
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid var(--border) !important;
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+
+.ln-faq-item:hover {
+  border-color: var(--border-hi) !important;
+}
+
+/* ============================================================
+   FIX — Hero title text visibility
+   ============================================================ */
+
+/* Base: hero title is always readable text */
+.ln-hero-title {
+  color: #f5ecd9 !important;
+  -webkit-text-fill-color: #f5ecd9 !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+}
+
+/* Only the gradient span gets the gradient treatment */
+.ln-hero-title .ln-gradient {
+  background: linear-gradient(135deg, #e0b34a, #b3891e) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  display: inline-block;
+}
+
+/* Light mode — hero title should be dark, not invisible */
+.app-light .ln-hero-title,
+.landing-light .ln-hero-title {
+  color: #2a1a08 !important;
+  -webkit-text-fill-color: #2a1a08 !important;
+}
+
+.app-light .ln-hero-title .ln-gradient,
+.landing-light .ln-hero-title .ln-gradient {
+  background: linear-gradient(135deg, #b3891e, #8a6a1e) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* ============================================================
+   FIX — Other possibly-invisible text on landing
+   ============================================================ */
+
+/* Hero subtitle */
+.ln-hero-sub {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-hero-sub,
+.landing-light .ln-hero-sub {
+  color: #5a4a30 !important;
+}
+
+/* Stats labels */
+.ln-stat-label {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-stat-label,
+.landing-light .ln-stat-label {
+  color: #5a4a30 !important;
+}
+
+/* Section subs */
+.ln-section-sub,
+.ln-lang-more {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-section-sub,
+.landing-light .ln-section-sub,
+.app-light .ln-lang-more,
+.landing-light .ln-lang-more {
+  color: #5a4a30 !important;
+}
+
+/* Platform card body text */
+.ln-platform-card p {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-platform-card p,
+.landing-light .ln-platform-card p {
+  color: #5a4a30 !important;
+}
+
+/* Footer copy */
+.ln-footer-copy {
+  color: #8a7a5c !important;
+}
+
+/* Nav links visibility in both modes */
+.ln-link {
+  color: #d4c4a0 !important;
+}
+
+.app-light .ln-link,
+.landing-light .ln-link {
+  color: #5a4a30 !important;
+}
+
+.ln-link:hover {
+  color: #e0b34a !important;
+}
+
+/* Testimonial text */
+.ln-testimonial-text,
+.ln-testimonial-name,
+.ln-testimonial-role {
+  color: #f5ecd9 !important;
+}
+
+.app-light .ln-testimonial-text,
+.landing-light .ln-testimonial-text,
+.app-light .ln-testimonial-name,
+.landing-light .ln-testimonial-name,
+.app-light .ln-testimonial-role,
+.landing-light .ln-testimonial-role {
+  color: #2a1a08 !important;
+}
+
+/* Pricing features */
+.ln-pricing-features li {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-pricing-features li,
+.landing-light .ln-pricing-features li {
+  color: #5a4a30 !important;
+}
+
+/* FAQ answer text */
+.ln-faq-answer p {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-faq-answer p,
+.landing-light .ln-faq-answer p {
+  color: #5a4a30 !important;
+}
+
+/* CTA paragraph */
+.ln-cta p {
+  color: #b8a480 !important;
+}
+
+.app-light .ln-cta p,
+.landing-light .ln-cta p {
+  color: #5a4a30 !important;
+}
+
+/* ============================================================
+   FIX — Primary button text always visible
+   Covers: Start Free Trial, Start Translating Now, Get Started, etc.
+   ============================================================ */
+
+.ln-btn-primary,
+.ln-register-btn,
+.ln-cta .ln-btn-primary,
+.ln-pricing-card .ln-btn-primary {
+  background: linear-gradient(135deg, #e0b34a, #b3891e) !important;
+  color: #1a1208 !important;
+  -webkit-text-fill-color: #1a1208 !important;
+  border: none !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 20px rgba(224, 179, 74, 0.3) !important;
+  opacity: 1 !important;
+}
+
+.ln-btn-primary:hover,
+.ln-register-btn:hover,
+.ln-cta .ln-btn-primary:hover,
+.ln-pricing-card .ln-btn-primary:hover {
+  background: linear-gradient(135deg, #f0c45c, #c99a2a) !important;
+  color: #1a1208 !important;
+  -webkit-text-fill-color: #1a1208 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 32px rgba(224, 179, 74, 0.45) !important;
+}
+
+/* Secondary button (Explore Features, etc.) — visible in dark */
+.ln-btn-secondary {
+  background: transparent !important;
+  color: #e0b34a !important;
+  -webkit-text-fill-color: #e0b34a !important;
+  border: 1px solid rgba(224, 179, 74, 0.5) !important;
+  font-weight: 600 !important;
+}
+
+.ln-btn-secondary:hover {
+  background: rgba(224, 179, 74, 0.1) !important;
+  color: #f0c45c !important;
+  -webkit-text-fill-color: #f0c45c !important;
+  border-color: #e0b34a !important;
+}
+
+/* Sign In button — outlined */
+.ln-login-btn {
+  background: transparent !important;
+  color: #f5ecd9 !important;
+  -webkit-text-fill-color: #f5ecd9 !important;
+  border: 1px solid rgba(224, 179, 74, 0.5) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease;
+}
+
+.ln-login-btn:hover {
+  color: #e0b34a !important;
+  -webkit-text-fill-color: #e0b34a !important;
+  border-color: #e0b34a !important;
+  background: rgba(224, 179, 74, 0.08) !important;
+}
+
+/* ============================================================
+   LIGHT MODE overrides for the buttons
+   ============================================================ */
+
+.app-light .ln-btn-primary,
+.landing-light .ln-btn-primary,
+.app-light .ln-register-btn,
+.landing-light .ln-register-btn {
+  background: linear-gradient(135deg, #e0b34a, #b3891e) !important;
+  color: #1a1208 !important;
+  -webkit-text-fill-color: #1a1208 !important;
+}
+
+.app-light .ln-btn-secondary,
+.landing-light .ln-btn-secondary {
+  color: #b3891e !important;
+  -webkit-text-fill-color: #b3891e !important;
+  border-color: rgba(179, 137, 30, 0.6) !important;
+}
+
+.app-light .ln-btn-secondary:hover,
+.landing-light .ln-btn-secondary:hover {
+  color: #8a6a1e !important;
+  -webkit-text-fill-color: #8a6a1e !important;
+  background: rgba(179, 137, 30, 0.08) !important;
+}
+
+.app-light .ln-login-btn,
+.landing-light .ln-login-btn {
+  color: #2a1a08 !important;
+  -webkit-text-fill-color: #2a1a08 !important;
+  border-color: rgba(179, 137, 30, 0.5) !important;
+}
+
+.app-light .ln-login-btn:hover,
+.landing-light .ln-login-btn:hover {
+  color: #b3891e !important;
+  -webkit-text-fill-color: #b3891e !important;
+}
+
+/* ============================================================
+   FIX — Theme toggle icon visibility on landing nav
+   ============================================================ */
+
+.ln-theme-toggle {
+  color: #e0b34a !important;
+  background: rgba(224, 179, 74, 0.1) !important;
+  border: 1px solid rgba(224, 179, 74, 0.3) !important;
+  border-radius: 10px !important;
+  padding: 8px 10px !important;
+  transition: all 0.2s ease;
+}
+
+.ln-theme-toggle:hover {
+  background: rgba(224, 179, 74, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.app-light .ln-theme-toggle,
+.landing-light .ln-theme-toggle {
+  color: #b3891e !important;
+  background: rgba(179, 137, 30, 0.1) !important;
+  border-color: rgba(179, 137, 30, 0.3) !important;
+}
+
+/* Hamburger (mobile) */
+.ln-hamburger {
+  color: #e0b34a !important;
+}
+
+.app-light .ln-hamburger,
+.landing-light .ln-hamburger {
+  color: #b3891e !important;
+}
+
+/* ============================================================
+   FIX — "MOST POPULAR" badge on pricing cards
+   ============================================================ */
+
+.ln-pricing-badge {
+  background: linear-gradient(135deg, #e0b34a, #b3891e) !important;
+  color: #1a1208 !important;
+  -webkit-text-fill-color: #1a1208 !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  letter-spacing: 1px !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  box-shadow: 0 4px 12px rgba(224, 179, 74, 0.35) !important;
+  display: inline-block !important;
+  position: absolute !important;
+  top: -12px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 5 !important;
+  white-space: nowrap !important;
+}
+
+/* Ensure the pricing card can position the badge */
+.ln-pricing-card {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+/* Highlighted card stands out */
+.ln-pricing-highlighted {
+  border: 2px solid #e0b34a !important;
+  transform: translateY(-4px) !important;
+}
+
+/* Price text should always be visible */
+.ln-pricing-price {
+  color: #e0b34a !important;
+  -webkit-text-fill-color: #e0b34a !important;
+  font-weight: 800 !important;
+  font-size: 42px !important;
+}
+
+.app-light .ln-pricing-price,
+.landing-light .ln-pricing-price {
+  color: #b3891e !important;
+  -webkit-text-fill-color: #b3891e !important;
+}
+
+/* Plan name */
+.ln-pricing-card h3 {
+  color: var(--text) !important;
+  -webkit-text-fill-color: var(--text) !important;
+  font-weight: 700 !important;
+  font-size: 20px !important;
+}
+
+/* Plan description */
+.ln-pricing-desc {
+  color: #b8a480 !important;
+  -webkit-text-fill-color: #b8a480 !important;
+}
+
+.app-light .ln-pricing-desc,
+.landing-light .ln-pricing-desc {
+  color: #5a4a30 !important;
+  -webkit-text-fill-color: #5a4a30 !important;
+}
+
+/* Feature list items */
+.ln-pricing-features li {
+  color: #f5ecd9 !important;
+  -webkit-text-fill-color: #f5ecd9 !important;
+}
+
+.app-light .ln-pricing-features li,
+.landing-light .ln-pricing-features li {
+  color: #2a1a08 !important;
+  -webkit-text-fill-color: #2a1a08 !important;
+}
+
+/* ============================================================
+   SANITY SWEEP — anything with gradient text-fill that shouldn't be
+   ============================================================ */
+
+/* Reset any accidental text-fill: transparent on children */
+.ln-gradient *,
+.ln-gradient::before,
+.ln-gradient::after {
+  -webkit-text-fill-color: inherit;
+}
+
+/* Ensure card headings are always visible */
+.ln-feature h3,
+.ln-testimonial-name,
+.ln-faq-question span:first-child {
+  -webkit-text-fill-color: currentColor !important;
+}

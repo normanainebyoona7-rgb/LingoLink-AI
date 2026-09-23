@@ -3872,3 +3872,373 @@
   border-color: #d4a537;
 }
 
+/* ============================================================
+   LINGOLINK AI — PREMIUM THEME OVERRIDES v2
+   Applies to ALL pages. Both dark + light modes.
+   Non-destructive — delete this block to revert.
+   ============================================================ */
+
+/* ---------- GENERIC CARD ---------- */
+.dash-card,
+.dash-section,
+.settings-card,
+.history-item,
+.video-upload-area,
+.video-subtitle-timeline,
+.cc-idle,
+.cc-connecting,
+.cc-ended,
+.callcenter-lobby,
+.voice-settings-panel,
+.twoway-speaker,
+.twoway-transcript {
+  border-radius: 16px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-md) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.dash-card:hover,
+.history-item:hover,
+.settings-card:hover {
+  border-color: var(--border-hi) !important;
+  box-shadow: var(--shadow-lg) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* ---------- SECTION HEADERS WITH GOLD ACCENT ---------- */
+.dash-section h3,
+.settings-card h3,
+.history-header h2,
+.video-header h2,
+.voice-header h2,
+.twoway-header h2,
+.cc-idle-title,
+.cc-idle h2 {
+  position: relative;
+  padding-left: 16px !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-section h3::before,
+.settings-card h3::before,
+.video-header h2::before,
+.voice-header h2::before,
+.twoway-header h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: var(--grad-gold);
+  border-radius: 2px;
+}
+
+/* ---------- STAT CARDS (Dashboard) ---------- */
+.dash-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px !important;
+}
+
+.dash-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle at top right, rgba(224, 179, 74, 0.08), transparent 70%);
+  pointer-events: none;
+}
+
+.dc-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--gold-soft) !important;
+  color: var(--gold) !important;
+  margin-bottom: 14px;
+}
+
+.dash-card h3 {
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  font-weight: 600 !important;
+  margin: 0 0 8px !important;
+}
+
+.dc-value {
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.5px;
+  margin: 0 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.dc-sub {
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
+  margin-top: 6px;
+  display: block;
+}
+
+.dc-online {
+  color: #4ade80 !important;
+}
+
+/* ---------- BUTTONS — GOLD GRADIENT ---------- */
+.dash-refresh,
+.send-btn,
+.auth-btn,
+.settings-save-btn,
+.history-export,
+.history-refresh,
+.history-clear-all,
+.cc-start-btn,
+.callcenter-start-btn,
+.talkai-send-btn,
+.joincall-send,
+.cc-active-send-btn,
+.btn-primary,
+.profile-upload-btn,
+.crop-save-btn,
+.admin-add-user-btn,
+.admin-save-btn {
+  background: var(--grad-gold) !important;
+  color: #1a1208 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 2px 8px rgba(224, 179, 74, 0.15) !important;
+}
+
+.dash-refresh:hover,
+.send-btn:hover:not(:disabled),
+.auth-btn:hover,
+.settings-save-btn:hover:not(:disabled),
+.history-export:hover,
+.history-refresh:hover,
+.history-clear-all:hover,
+.cc-start-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(224, 179, 74, 0.3) !important;
+}
+
+.dash-refresh:disabled,
+.send-btn:disabled,
+.settings-save-btn:disabled,
+.cc-start-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Danger buttons stay red */
+.cc-end-btn,
+.cc-decline-btn,
+.history-item-btn.delete {
+  background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.cc-end-btn:hover,
+.history-item-btn.delete:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Secondary buttons */
+.dash-quick-card,
+.toggle-row,
+.history-filter,
+.setting-row,
+.admin-language-row,
+.admin-user-row {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-quick-card:hover,
+.admin-user-row:hover {
+  background: var(--gold-soft);
+  transform: translateX(3px);
+}
+
+/* ---------- INPUTS ---------- */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+select,
+textarea {
+  background: var(--surface-hi) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(224, 179, 74, 0.15) !important;
+}
+
+/* ---------- LANGUAGE BARS (Dashboard) ---------- */
+.dash-lang-bar {
+  background: var(--grad-gold);
+  border-radius: 4px;
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-lang-bar-wrap {
+  background: rgba(224, 179, 74, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* ---------- TRANSLATE PAGE PANELS ---------- */
+.input-panel,
+.output-panel {
+  border-radius: 16px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.input-panel:focus-within,
+.output-panel:hover {
+  border-color: var(--border-hi) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.panel-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 1px !important;
+  color: var(--gold) !important;
+  text-transform: uppercase;
+}
+
+/* ---------- VOICE + LIVE + TWOWAY mic ---------- */
+.hts-button {
+  border-radius: 16px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 20px rgba(224, 179, 74, 0.2) !important;
+}
+
+.hts-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(224, 179, 74, 0.35) !important;
+}
+
+/* ---------- HISTORY ITEM ---------- */
+.history-item {
+  padding: 18px !important;
+}
+
+.history-item-actions .history-item-btn {
+  border-radius: 8px !important;
+  transition: all 0.15s ease;
+}
+
+.history-item-btn:hover {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+/* ---------- SETTINGS TOGGLES ---------- */
+.toggle-switch,
+.slider-toggle {
+  transition: background 0.25s ease !important;
+}
+
+.toggle-switch.on,
+.slider-toggle.on {
+  background: var(--grad-gold) !important;
+}
+
+/* ---------- CALLCENTER ACTIVE CALL ---------- */
+.cc-active-header,
+.cc-active-controls,
+.cc-mic-bar {
+  border-radius: 14px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.cc-turn-ai {
+  background: linear-gradient(135deg, var(--gold-soft), rgba(224, 179, 74, 0.04)) !important;
+  border-left: 3px solid var(--gold) !important;
+  border-radius: 12px !important;
+}
+
+.cc-turn-user {
+  background: var(--surface-hi) !important;
+  border-right: 3px solid var(--gold-dim) !important;
+  border-radius: 12px !important;
+}
+
+.cc-volume-fill {
+  background: var(--grad-gold) !important;
+}
+
+/* ---------- SMOOTH SCROLLBARS ---------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(224, 179, 74, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(224, 179, 74, 0.4);
+}
+
+/* ---------- LIGHT MODE SPECIFIC OVERRIDES ---------- */
+.app-light .sb-sidebar { background: #f5ecd9 !important; }
+.app-light .sb-topbar { background: #fdfaf1 !important; }
+.app-light .sb-brand-logo { background: rgba(179, 137, 30, 0.1); }
+
+.app-light .dash-card,
+.app-light .dash-section,
+.app-light .settings-card,
+.app-light .history-item,
+.app-light .input-panel,
+.app-light .output-panel {
+  background: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(140, 100, 30, 0.08) !important;
+}
+
+
+
