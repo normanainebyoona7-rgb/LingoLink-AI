@@ -21,7 +21,13 @@ class CallSession:
         self.messages: List[dict] = []
         self.created_at = time.time()
         self.lock = asyncio.Lock()
-        self.ai_mode: bool = True  # AI answers by default; agent can toggle off
+
+        # AI / hybrid config
+        self.ai_mode: bool = True
+        self.ai_gender: str = "female"
+        self.ai_context: List[dict] = []      # English-only rolling context
+        self.agent_language: str = "english"
+        self.caller_language: str = "luganda"
 
     def is_full(self) -> bool:
         return self.agent is not None and self.caller is not None
@@ -35,12 +41,20 @@ class CallManager:
         self.sessions: Dict[str, CallSession] = {}
         self.lock = asyncio.Lock()
 
-    async def create_session(self) -> CallSession:
+    async def create_session(
+        self,
+        agent_language: str = "english",
+        caller_language: str = "luganda",
+        ai_gender: str = "female",
+    ) -> CallSession:
         async with self.lock:
             for _ in range(10):
                 code = generate_code()
                 if code not in self.sessions:
                     session = CallSession(code)
+                    session.agent_language = agent_language.lower()
+                    session.caller_language = caller_language.lower()
+                    session.ai_gender = ai_gender.lower()
                     self.sessions[code] = session
                     return session
             raise RuntimeError("Could not generate unique session code")

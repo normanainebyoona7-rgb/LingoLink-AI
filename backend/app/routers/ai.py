@@ -17,7 +17,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "qwen/qwen3.8-27b"
 
 SYSTEM_PROMPT = (
     "You are a friendly, professional customer service assistant for LingoLink AI, "
@@ -118,7 +118,7 @@ async def ai_reply(req: AIRequest):
                     "model": GROQ_MODEL,
                     "messages": messages,
                     "temperature": 0.5,
-                    "max_tokens": 200,
+                    "max_tokens": 300,
                 },
             )
             if r.status_code != 200:

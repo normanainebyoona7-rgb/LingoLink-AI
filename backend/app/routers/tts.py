@@ -13,9 +13,8 @@ router = APIRouter(prefix="/tts", tags=["tts"])
 
 SUNBIRD_API_KEY = os.getenv("SUNBIRD_API_KEY", "")
 
-# ---------- Sunbird voices (gender-aware) ----------
-# Pattern: salt_* = female, waxal_* = male
-# Where only one gender exists, both entries point to the available voice
+# ---------- Sunbird voices — ONLY Ugandan languages ----------
+# English and international languages go through Edge-TTS (fast)
 SUNBIRD_VOICES = {
     "luganda":    {"female": "salt_lug_0001",  "male": "waxal_lug_0002",  "code": "lug"},
     "acholi":     {"female": "salt_ach_0001",  "male": "waxal_ach_0001",  "code": "ach"},
@@ -24,13 +23,11 @@ SUNBIRD_VOICES = {
     "runyankore": {"female": "salt_nyn_0001",  "male": "waxal_nyn_0003",  "code": "nyn"},
     "rukiga":     {"female": "salt_nyn_0001",  "male": "waxal_nyn_0003",  "code": "nyn"},
     "swahili":    {"female": "waxal_swa_0006", "male": "waxal_swa_0006",  "code": "swa"},
-    "english":    {"female": "salt_eng_0001",  "male": "salt_eng_0001",   "code": "eng"},
-    # Additional if needed
-    "kinyarwanda":{"female": "bateesa_kin_0001","male": "bateesa_kin_0001","code": "kin"},
 }
 
-# ---------- Edge-TTS voices for everything else ----------
+# ---------- Edge-TTS voices — all international + English ----------
 EDGE_VOICES = {
+    "english":    {"male": "en-US-GuyNeural",       "female": "en-US-JennyNeural"},
     "french":     {"male": "fr-FR-HenriNeural",     "female": "fr-FR-DeniseNeural"},
     "spanish":    {"male": "es-ES-AlvaroNeural",    "female": "es-ES-ElviraNeural"},
     "german":     {"male": "de-DE-ConradNeural",    "female": "de-DE-KatjaNeural"},
@@ -83,14 +80,15 @@ def sunbird_tts(text: str, language: str, gender: str = "female") -> Optional[by
 
         print(f"🗣️ Sunbird TTS: lang={code}, voice={voice}, gender={gender}, text={text[:50]}")
 
-        resp = requests.post(url, headers=headers, json=payload, timeout=90)
+        # Reduced timeout: 20s hard cap. If it takes longer, we fall back to Edge-TTS.
+        resp = requests.post(url, headers=headers, json=payload, timeout=20)
         print(f"   Sunbird status: {resp.status_code}")
 
         if resp.status_code == 200:
             data = resp.json()
             audio_url = data.get("audio_url")
             if audio_url:
-                audio_resp = requests.get(audio_url, timeout=30)
+                audio_resp = requests.get(audio_url, timeout=15)
                 if audio_resp.status_code == 200:
                     print(f"   ✅ Downloaded {len(audio_resp.content)} bytes from Sunbird")
                     return audio_resp.content
@@ -121,7 +119,7 @@ async def edge_tts_generate(text: str, voice: str, rate: str = "+0%") -> Optiona
 
 @router.post("/speak")
 async def speak(req: TTSRequest):
-    """Route: Sunbird for Ugandan, Edge-TTS for international"""
+    """Route: Sunbird for Ugandan languages, Edge-TTS for everything else"""
     text = req.text.strip()
     if not text:
         raise HTTPException(400, "Empty text")
@@ -138,15 +136,12 @@ async def speak(req: TTSRequest):
                 media_type="audio/wav",
                 headers={"Content-Disposition": "inline; filename=tts.wav"}
             )
-        print(f"⚠️ Sunbird failed for {lang}, falling back to Edge-TTS")
+        print(f"⚠️ Sunbird failed/timeout for {lang}, falling back to Edge-TTS")
 
-    # 2. International → Edge-TTS
+    # 2. Everything else → Edge-TTS (fast, ~1s)
     voice_entry = EDGE_VOICES.get(lang)
     if not voice_entry:
-        if lang == "english":
-            voice_entry = {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"}
-        else:
-            voice_entry = {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"}
+        voice_entry = {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"}
 
     voice = voice_entry.get(gender) or voice_entry.get("female") or "en-US-JennyNeural"
 
@@ -166,7 +161,6 @@ async def speak(req: TTSRequest):
 
 @router.get("/voices")
 async def list_voices():
-    """List available voices"""
     return {
         "sunbird_ugandan": SUNBIRD_VOICES,
         "edge_international": EDGE_VOICES,
@@ -175,7 +169,6 @@ async def list_voices():
 
 @router.get("/sunbird-speakers")
 async def sunbird_speakers():
-    """Fetch live speaker list from Sunbird"""
     if not SUNBIRD_API_KEY:
         raise HTTPException(500, "SUNBIRD_API_KEY not set")
     try:

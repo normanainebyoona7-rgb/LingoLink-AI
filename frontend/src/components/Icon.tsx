@@ -14,7 +14,8 @@ export type IconName =
   | 'message-circle' | 'circle-filled' | 'chevron-down'
   | 'headphones' | 'folder' | 'bot' | 'phone-off' | 'bell'
   | 'trending-up' | 'lock' | 'save'
-  | 'camera' | 'crop' | 'mail' | 'smartphone';
+  | 'camera' | 'crop' | 'mail' | 'smartphone'
+  | 'phone-call' | 'phone-incoming' | 'pause' | 'mic-off';
 
 interface IconProps {
   name: IconName;
@@ -317,6 +318,15 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="M12 18v3" />
     </>
   ),
+  'mic-off': (
+    <>
+      <path d="M2 2 22 22" />
+      <path d="M9 5a3 3 0 0 1 6 0v5" />
+      <path d="M5 11a7 7 0 0 0 11 5.9" />
+      <path d="M19 11a7 7 0 0 1-.3 2" />
+      <path d="M12 18v3" />
+    </>
+  ),
   'file-text': (
     <>
       <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
@@ -383,6 +393,26 @@ const paths: Record<IconName, React.ReactNode> = {
     <>
       <path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2A16 16 0 0 1 4 5z" />
       <path d="m3 3 18 18" />
+    </>
+  ),
+  'phone-call': (
+    <>
+      <path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2A16 16 0 0 1 4 5z" />
+      <path d="M15 5a5 5 0 0 1 5 5" />
+      <path d="M15 9a2 2 0 0 1 2 2" />
+    </>
+  ),
+  'phone-incoming': (
+    <>
+      <path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2A16 16 0 0 1 4 5z" />
+      <path d="M16 3v6h6" />
+      <path d="m16 9 6-6" />
+    </>
+  ),
+  pause: (
+    <>
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
     </>
   ),
   bell: (
