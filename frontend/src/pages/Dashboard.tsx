@@ -12,6 +12,8 @@ interface Props {
 export default function Dashboard({ token, onNavigate, username }: Props) {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [metrics, setMetrics] = useState({
     totalTranslations: 0,
     totalUsers: 0,
@@ -23,25 +25,20 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
   const [languageStats, setLanguageStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
+    // Determine admin status from localStorage
+    const savedAdmin = localStorage.getItem('is_admin');
+    setIsAdmin(savedAdmin === 'true');
+  }, []);
+
+  useEffect(() => {
     fetchAllData();
-  }, [token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isAdmin]);
 
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const adminRes = await fetch(`${API_URL}/admin/dashboard`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (adminRes.ok) {
-        const data = await adminRes.json();
-        setMetrics(prev => ({
-          ...prev,
-          totalTranslations: data.total_translations || 0,
-          totalUsers: data.total_users || 0,
-          premiumUsers: data.premium_users || 0,
-        }));
-      }
-
+      // Fetch user's own history (everyone)
       const historyRes = await fetch(`${API_URL}/translate/history`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -62,7 +59,29 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
           const itemDate = new Date(item.created_at).toDateString();
           return itemDate === today;
         }).length;
-        setMetrics(prev => ({ ...prev, dailyTranslations: daily }));
+
+        // For non-admins, use own data for the visible metrics
+        setMetrics(prev => ({
+          ...prev,
+          totalTranslations: data.length,
+          dailyTranslations: daily,
+        }));
+      }
+
+      // Fetch platform-wide metrics — ONLY for admins
+      if (isAdmin) {
+        const adminRes = await fetch(`${API_URL}/admin/dashboard`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (adminRes.ok) {
+          const data = await adminRes.json();
+          setMetrics(prev => ({
+            ...prev,
+            totalTranslations: data.total_translations || prev.totalTranslations,
+            totalUsers: data.total_users || 0,
+            premiumUsers: data.premium_users || 0,
+          }));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -80,7 +99,7 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
     { icon: 'translate', label: 'Translate', tab: 'translate', desc: 'Instant text translation' },
     { icon: 'voice', label: 'Voice', tab: 'voice', desc: 'Speech to text translation' },
     { icon: 'video', label: 'Video', tab: 'video', desc: 'Video subtitle generation' },
-    { icon: 'callcenter', label: 'Call Center', tab: 'callcenter', desc: 'Live call translation' },
+    { icon: 'callcenter', label: 'Call Center', tab: 'callcenter', desc: 'Talk to AI' },
     { icon: 'history', label: 'History', tab: 'history', desc: 'View past translations' },
     { icon: 'settings', label: 'Settings', tab: 'settings', desc: 'Profile and preferences' },
   ];
@@ -90,7 +109,11 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
       <div className="dash-header">
         <div>
           <h2>Welcome Back, {username}</h2>
-          <p>Here's your real-time translation activity overview</p>
+          <p>
+            {isAdmin
+              ? "Here's the platform-wide translation overview"
+              : "Here's your translation activity"}
+          </p>
         </div>
         <button className="dash-refresh" onClick={fetchAllData} disabled={loading}>
           <Icon name={loading ? 'loader' : 'refresh'} size={16} />
@@ -99,24 +122,42 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
       </div>
 
       <div className="dash-cards">
+        {/* Card 1: For admins — platform-wide. For users — their own totals */}
         <div className="dash-card dc-purple">
           <span className="dc-icon"><Icon name="globe" size={28} /></span>
-          <h3>Total Translations</h3>
+          <h3>{isAdmin ? 'Total Translations' : 'Your Translations'}</h3>
           <p className="dc-value">{metrics.totalTranslations || '—'}</p>
-          <span className="dc-sub">All-time translations</span>
+          <span className="dc-sub">
+            {isAdmin ? 'All-time platform translations' : 'All-time by you'}
+          </span>
         </div>
-        <div className="dash-card dc-blue">
-          <span className="dc-icon"><Icon name="users" size={28} /></span>
-          <h3>Total Users</h3>
-          <p className="dc-value">{metrics.totalUsers || '—'}</p>
-          <span className="dc-sub">Registered accounts</span>
-        </div>
+
+        {/* Card 2: For admins — total users. For users — languages used */}
+        {isAdmin ? (
+          <div className="dash-card dc-blue">
+            <span className="dc-icon"><Icon name="users" size={28} /></span>
+            <h3>Total Users</h3>
+            <p className="dc-value">{metrics.totalUsers || '—'}</p>
+            <span className="dc-sub">Registered accounts</span>
+          </div>
+        ) : (
+          <div className="dash-card dc-blue">
+            <span className="dc-icon"><Icon name="globe" size={28} /></span>
+            <h3>Your Languages</h3>
+            <p className="dc-value">{Object.keys(languageStats).length || '—'}</p>
+            <span className="dc-sub">Languages you've used</span>
+          </div>
+        )}
+
+        {/* Card 3: For admins — platform daily. For users — their own today */}
         <div className="dash-card dc-green">
           <span className="dc-icon"><Icon name="calendar" size={28} /></span>
-          <h3>Today's Translations</h3>
+          <h3>{isAdmin ? "Today's Translations" : 'Your Today'}</h3>
           <p className="dc-value">{metrics.dailyTranslations || '—'}</p>
-          <span className="dc-sub">Translations today</span>
+          <span className="dc-sub">{isAdmin ? 'Platform-wide today' : 'Your translations today'}</span>
         </div>
+
+        {/* Card 4: System status (everyone) */}
         <div className="dash-card dc-orange">
           <span className="dc-icon"><Icon name="zap" size={28} /></span>
           <h3>System Status</h3>
@@ -127,8 +168,13 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
 
       <div className="dash-charts">
         <div className="dash-section">
-          <h3><Icon name="globe" size={18} /> Language Distribution</h3>
-          <p className="dash-section-sub">Most translated languages</p>
+          <h3>
+            <Icon name="globe" size={18} />
+            {isAdmin ? ' Platform Language Distribution' : ' Your Language Distribution'}
+          </h3>
+          <p className="dash-section-sub">
+            {isAdmin ? 'Most translated languages on the platform' : 'Languages you use most'}
+          </p>
           {topLanguages.length > 0 ? (
             <div className="dash-lang-list">
               {topLanguages.map(([lang, count]) => {
@@ -150,7 +196,9 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
               })}
             </div>
           ) : (
-            <p className="dash-section-sub" style={{ textAlign: 'center', marginTop: '30px' }}>No translation data yet</p>
+            <p className="dash-section-sub" style={{ textAlign: 'center', marginTop: '30px' }}>
+              No translation data yet
+            </p>
           )}
         </div>
 
@@ -166,10 +214,15 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
               <span className="dash-metric-value">{Object.keys(languageStats).length || '—'}</span>
               <span className="dash-metric-label">Languages Used</span>
             </div>
-            <div className="dash-metric">
-              <span className="dash-metric-value">{metrics.premiumUsers || '—'}</span>
-              <span className="dash-metric-label">Premium Users</span>
-            </div>
+
+            {/* Premium users card is admin-only */}
+            {isAdmin && (
+              <div className="dash-metric">
+                <span className="dash-metric-value">{metrics.premiumUsers || '—'}</span>
+                <span className="dash-metric-label">Premium Users</span>
+              </div>
+            )}
+
             <div className="dash-metric">
               <span className="dash-metric-value">—</span>
               <span className="dash-metric-label">Active Sessions</span>
@@ -180,7 +233,10 @@ export default function Dashboard({ token, onNavigate, username }: Props) {
 
       {history.length > 0 && (
         <div className="dash-section">
-          <h3><Icon name="clock" size={18} /> Recent Activity</h3>
+          <h3>
+            <Icon name="clock" size={18} />
+            {isAdmin ? ' Recent Activity' : ' Your Recent Activity'}
+          </h3>
           <p className="dash-section-sub">Latest translations</p>
           <div className="dash-activity-list">
             {history.slice(0, 5).map((item) => (

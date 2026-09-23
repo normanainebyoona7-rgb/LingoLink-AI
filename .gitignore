@@ -37,3 +37,10 @@ backend/app/*.jsonl
 *.bak*
 
 *.bak*
+
+frontend/android/app/build/
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/local.properties
+frontend/android/.idea/
+*.tsbuildinfo

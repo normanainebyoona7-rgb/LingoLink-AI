@@ -88,13 +88,18 @@ function App() {
     if (savedDark !== null) setDarkMode(savedDark === 'true');
     if (savedAdmin !== null) setIsAdmin(savedAdmin === 'true');
 
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Guard: non-admins must never be on the 'admin' tab
+  useEffect(() => {
+    if (isLoggedIn && !isAdmin && activeTab === 'admin') {
+      setActiveTab('dashboard');
+    }
+  }, [isLoggedIn, isAdmin, activeTab]);
 
   const toggleDarkMode = () => {
     const newValue = !darkMode;
@@ -103,11 +108,8 @@ function App() {
   };
 
   const toggleSidebar = () => {
-    if (isMobile) {
-      setMobileSidebarOpen(!mobileSidebarOpen);
-    } else {
-      setSidebarCollapsed(!sidebarCollapsed);
-    }
+    if (isMobile) setMobileSidebarOpen(!mobileSidebarOpen);
+    else setSidebarCollapsed(!sidebarCollapsed);
   };
 
   const handleAuthMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -118,12 +120,9 @@ function App() {
     const y = e.clientY - rect.top;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-
     const maxTilt = 6;
-
     const tiltY = ((x - centerX) / centerX) * maxTilt;
     const tiltX = ((centerY - y) / centerY) * maxTilt;
-
     el.style.setProperty('--tilt-x', `${tiltX.toFixed(2)}deg`);
     el.style.setProperty('--tilt-y', `${tiltY.toFixed(2)}deg`);
   };
@@ -167,6 +166,7 @@ function App() {
         setToken(data.access_token);
         setIsLoggedIn(true);
         setIsAdmin(data.is_admin || data.username === 'admin');
+        setActiveTab('dashboard'); // always start on dashboard after login
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', data.username);
         localStorage.setItem('is_admin', String(data.is_admin || data.username === 'admin'));
@@ -216,6 +216,7 @@ function App() {
     setIsAdmin(false);
     setAuthPage('landing');
     setMobileSidebarOpen(false);
+    setActiveTab('dashboard');
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('is_admin');
@@ -227,8 +228,6 @@ function App() {
     setMobileSidebarOpen(false);
   };
 
-  // ---- Caller join path ----
-  // If URL is /join/:code, render the caller page without requiring login.
   const pathname = location.pathname;
   if (pathname.startsWith('/join/')) {
     return (
@@ -404,12 +403,6 @@ function App() {
             {activeTab === 'video' && <Video token={token} />}
             {activeTab === 'callcenter' && <CallCenter token={token} />}
             {activeTab === 'admin' && isAdmin && <Admin token={token} />}
-            {activeTab === 'admin' && !isAdmin && (
-              <div className="gpanel">
-                <h3>🔒 Access Denied</h3>
-                <p>You need admin privileges to view this page.</p>
-              </div>
-            )}
             {activeTab === 'settings' && <Settings token={token} username={username} />}
           </div>
         </main>
