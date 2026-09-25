@@ -50,3 +50,5 @@ backend/download_luganda_phrases.py
 backend/inspect_bible_parallel.py
 backend/list_configs.py
 backend/test_datasets.py
+
+backend/test_sunbird*.py
