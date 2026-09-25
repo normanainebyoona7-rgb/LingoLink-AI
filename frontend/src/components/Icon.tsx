@@ -12,7 +12,8 @@ export type IconName =
   | 'speaker' | 'speaker-off' | 'copy' | 'mic'
   | 'file-text' | 'search' | 'alert' | 'inbox'
   | 'message-circle' | 'circle-filled' | 'chevron-down'
-  | 'headphones' | 'folder' | 'bot' | 'phone-off' | 'bell'
+  | 'headphones' | 'folder' | 'bot' | 'phone-off' | 'phone-call' | 'bell'
+  | 'mic-off'
   | 'trending-up' | 'lock' | 'save'
   | 'camera' | 'crop' | 'mail' | 'smartphone'
   | 'monitor';
@@ -386,10 +387,25 @@ const paths: Record<IconName, React.ReactNode> = {
       <path d="m3 3 18 18" />
     </>
   ),
+  'phone-call': (
+    <>
+      <path d="M4 5c0-1 1-2 2-2h2l2 5-2 1c1 3 3 5 6 6l1-2 5 2v2c0 1-1 2-2 2A16 16 0 0 1 4 5z" />
+      <path d="M15 5a4 4 0 0 1 4 4" />
+      <path d="M15 9a1 1 0 0 1 1-1" />
+    </>
+  ),
   bell: (
     <>
       <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" />
       <path d="M10 19a2 2 0 0 0 4 0" />
+    </>
+  ),
+  'mic-off': (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0" />
+      <path d="M12 18v3" />
+      <path d="m3 3 18 18" />
     </>
   ),
   'trending-up': (
