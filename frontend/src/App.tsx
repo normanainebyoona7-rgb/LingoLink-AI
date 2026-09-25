@@ -20,13 +20,19 @@ import Settings from './pages/Settings';
 import JoinCall from './pages/JoinCall';
 import Icon, { IconName } from './components/Icon';
 
+type ThemeMode = 'system' | 'light' | 'dark';
+
 interface ThemeContextType {
   darkMode: boolean;
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
   toggleDarkMode: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType>({
   darkMode: true,
+  themeMode: 'system',
+  setThemeMode: () => {},
   toggleDarkMode: () => {},
 });
 
@@ -60,9 +66,14 @@ interface SidebarItem {
   label: string;
 }
 
+const THEME_CYCLE: ThemeMode[] = ['system', 'light', 'dark'];
+
 function App() {
   const location = useLocation();
+
+  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
   const [darkMode, setDarkMode] = useState(true);
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authPage, setAuthPage] = useState<AuthPage>('landing');
@@ -80,12 +91,43 @@ function App() {
   const authBoxRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const saved = localStorage.getItem('themeMode') as ThemeMode | null;
+    if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      setThemeMode(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const update = () => {
+      if (themeMode === 'system') {
+        setDarkMode(mq.matches);
+      } else {
+        setDarkMode(themeMode === 'dark');
+      }
+    };
+
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, [themeMode]);
+
+  useEffect(() => {
+    localStorage.setItem('themeMode', themeMode);
+  }, [themeMode]);
+
+  const toggleDarkMode = () => {
+    const idx = THEME_CYCLE.indexOf(themeMode);
+    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+    setThemeMode(next);
+  };
+
+  useEffect(() => {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('username');
-    const savedDark = localStorage.getItem('darkMode');
     const savedAdmin = localStorage.getItem('is_admin');
     if (savedToken && savedUser) { setToken(savedToken); setUsername(savedUser); setIsLoggedIn(true); }
-    if (savedDark !== null) setDarkMode(savedDark === 'true');
     if (savedAdmin !== null) setIsAdmin(savedAdmin === 'true');
 
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -93,19 +135,6 @@ function App() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  // Guard: non-admins must never be on the 'admin' tab
-  useEffect(() => {
-    if (isLoggedIn && !isAdmin && activeTab === 'admin') {
-      setActiveTab('dashboard');
-    }
-  }, [isLoggedIn, isAdmin, activeTab]);
-
-  const toggleDarkMode = () => {
-    const newValue = !darkMode;
-    setDarkMode(newValue);
-    localStorage.setItem('darkMode', String(newValue));
-  };
 
   const toggleSidebar = () => {
     if (isMobile) setMobileSidebarOpen(!mobileSidebarOpen);
@@ -166,7 +195,6 @@ function App() {
         setToken(data.access_token);
         setIsLoggedIn(true);
         setIsAdmin(data.is_admin || data.username === 'admin');
-        setActiveTab('dashboard'); // always start on dashboard after login
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', data.username);
         localStorage.setItem('is_admin', String(data.is_admin || data.username === 'admin'));
@@ -216,7 +244,6 @@ function App() {
     setIsAdmin(false);
     setAuthPage('landing');
     setMobileSidebarOpen(false);
-    setActiveTab('dashboard');
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('is_admin');
@@ -228,10 +255,13 @@ function App() {
     setMobileSidebarOpen(false);
   };
 
+  const themeLabel = themeMode === 'system' ? 'System' : themeMode === 'light' ? 'Light Mode' : 'Dark Mode';
+  const themeIcon: IconName = themeMode === 'system' ? 'monitor' : themeMode === 'light' ? 'sun' : 'moon';
+
   const pathname = location.pathname;
   if (pathname.startsWith('/join/')) {
     return (
-      <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+      <ThemeContext.Provider value={{ darkMode, themeMode, setThemeMode, toggleDarkMode }}>
         <JoinCall />
       </ThemeContext.Provider>
     );
@@ -239,7 +269,7 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+      <ThemeContext.Provider value={{ darkMode, themeMode, setThemeMode, toggleDarkMode }}>
         {authPage === 'landing' ? (
           <Landing onLoginClick={() => setAuthPage('login')} onRegisterClick={() => setAuthPage('register')} />
         ) : (
@@ -319,7 +349,7 @@ function App() {
   ];
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+    <ThemeContext.Provider value={{ darkMode, themeMode, setThemeMode, toggleDarkMode }}>
       <div className={`app-root ${darkMode ? 'app-dark' : 'app-light'} ${sidebarCollapsed && !isMobile ? 'sb-collapsed' : ''}`}>
         {isMobile && mobileSidebarOpen && (
           <div className="mobile-overlay" onClick={() => setMobileSidebarOpen(false)} />
@@ -331,16 +361,7 @@ function App() {
               src="/branding/logo.png"
               alt="LingoLink AI"
               className="sb-brand-logo"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  const fallback = document.createElement('span');
-                  fallback.className = 'sb-brand-icon';
-                  fallback.textContent = '🌍';
-                  parent.insertBefore(fallback, e.currentTarget);
-                }
-              }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             {(!sidebarCollapsed || isMobile) && <span className="sb-brand-text">LingoLink AI</span>}
           </div>
@@ -367,9 +388,9 @@ function App() {
               <Icon name="user" size={18} />
               {(!sidebarCollapsed || isMobile) && <span>{username}</span>}
             </div>
-            <button className="sb-theme-btn" onClick={toggleDarkMode}>
-              <Icon name={darkMode ? 'sun' : 'moon'} size={18} />
-              {(!sidebarCollapsed || isMobile) && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+            <button className="sb-theme-btn" onClick={toggleDarkMode} title={`Theme: ${themeLabel}`}>
+              <Icon name={themeIcon} size={18} />
+              {(!sidebarCollapsed || isMobile) && <span>{themeLabel}</span>}
             </button>
             <button className="sb-logout" onClick={logout}>
               <Icon name="logout" size={18} />
@@ -385,8 +406,8 @@ function App() {
             </button>
             <h2 className="sb-title">{sidebarItems.find(i => i.id === activeTab)?.label || (activeTab === 'admin' ? 'Admin' : '')}</h2>
             <div className="sb-actions">
-              <button className="sb-theme-toggle" onClick={toggleDarkMode}>
-                <Icon name={darkMode ? 'sun' : 'moon'} size={18} />
+              <button className="sb-theme-toggle" onClick={toggleDarkMode} title={`Theme: ${themeLabel}`}>
+                <Icon name={themeIcon} size={18} />
               </button>
               <span className="sb-dot">●</span>
               <span className="sb-status">Online</span>
@@ -403,6 +424,12 @@ function App() {
             {activeTab === 'video' && <Video token={token} />}
             {activeTab === 'callcenter' && <CallCenter token={token} />}
             {activeTab === 'admin' && isAdmin && <Admin token={token} />}
+            {activeTab === 'admin' && !isAdmin && (
+              <div className="gpanel">
+                <h3>Access Denied</h3>
+                <p>You need admin privileges to view this page.</p>
+              </div>
+            )}
             {activeTab === 'settings' && <Settings token={token} username={username} />}
           </div>
         </main>

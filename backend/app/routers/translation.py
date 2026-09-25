@@ -1,7 +1,8 @@
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import requests
 import os
 import re
@@ -53,6 +54,12 @@ LANGUAGES = {
     "lingala": "Lingala", "kikongo": "Kikongo", "bemba": "Bemba",
     "zulu": "Zulu", "xhosa": "Xhosa", "afrikaans": "Afrikaans",
     "sesotho": "Sesotho", "setswana": "Setswana",
+    # === UgandaLex2 additions ===
+    "adhola": "Adhola", "kakwa": "Kakwa", "kumam": "Kumam",
+    "karamojong": "Karamojong", "lumasaba": "Lumasaba", "lugisu": "Lugisu",
+    "nyole": "Nyole", "aringa": "Aringa", "gungu": "Gungu",
+    "keliko": "Keliko", "talinga": "Talinga-Bwisi", "kebu": "Kebu",
+    "runyoro": "Runyoro", "rutooro": "Rutooro", "samia": "Samia",
 }
 
 CODES = {
@@ -72,6 +79,12 @@ CODES = {
     "acholi": "ach", "alur": "alz", "ateso": "teo",
     "lango": "laj", "lugbara": "lgg",
     "lusoga": "xog", "lugwere": "gwr", "dholuo": "luo",
+    # === UgandaLex2 additions ===
+    "adhola": "adh", "kakwa": "keo", "kumam": "kdi",
+    "karamojong": "kdj", "lumasaba": "myx", "lugisu": "myx",
+    "nyole": "nuj", "aringa": "luc", "gungu": "rub",
+    "keliko": "kbo", "talinga": "tlj", "kebu": "kbu",
+    "runyoro": "nyo", "rutooro": "ttj", "samia": "lsm",
 }
 
 CODE_TO_LANG = {v: k for k, v in CODES.items()}
@@ -174,7 +187,6 @@ async def translate_text(
         if not result:
             result = request.text
 
-        # Save to DB
         try:
             db_translation = models.Translation(
                 user_id=current_user.id,
@@ -221,6 +233,65 @@ async def get_translation_history(db: Session = Depends(get_db), current_user: m
         "target_language": t.target_language,
         "created_at": t.created_at
     } for t in translations]
+
+
+@router.get("/stats/me")
+async def get_my_stats(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Personal usage stats for the current logged-in user only."""
+    base_query = db.query(models.Translation).filter(models.Translation.user_id == current_user.id)
+
+    total_translations = base_query.count()
+
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_translations = base_query.filter(models.Translation.created_at >= today_start).count()
+
+    week_start = datetime.utcnow() - timedelta(days=7)
+    week_translations = base_query.filter(models.Translation.created_at >= week_start).count()
+
+    lang_rows = (
+        db.query(
+            models.Translation.target_language,
+            func.count(models.Translation.id).label("cnt")
+        )
+        .filter(models.Translation.user_id == current_user.id)
+        .group_by(models.Translation.target_language)
+        .order_by(func.count(models.Translation.id).desc())
+        .limit(6)
+        .all()
+    )
+
+    languages_used = len(lang_rows)
+    top_languages = [
+        {"language": row[0], "count": row[1]}
+        for row in lang_rows
+    ]
+
+    recent = (
+        base_query
+        .order_by(models.Translation.created_at.desc())
+        .limit(5)
+        .all()
+    )
+    recent_list = [{
+        "id": t.id,
+        "source_text": t.source_text,
+        "translated_text": t.translated_text,
+        "source_language": t.source_language,
+        "target_language": t.target_language,
+        "created_at": t.created_at,
+    } for t in recent]
+
+    return {
+        "total_translations": total_translations,
+        "today_translations": today_translations,
+        "week_translations": week_translations,
+        "languages_used": languages_used,
+        "top_languages": top_languages,
+        "recent": recent_list,
+    }
 
 
 @router.delete("/{translation_id}")

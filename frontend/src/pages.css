@@ -4240,5 +4240,77 @@ textarea:focus {
   box-shadow: 0 4px 20px rgba(140, 100, 30, 0.08) !important;
 }
 
+/* ===== Theme picker (Settings) ===== */
+.settings-subtitle {
+  color: #8a7a5c;
+  font-size: 13px;
+  margin: 4px 0 20px;
+}
+
+.theme-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(212, 165, 55, 0.2);
+  background: rgba(212, 165, 55, 0.03);
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.theme-option:hover {
+  border-color: rgba(212, 165, 55, 0.5);
+  transform: translateY(-1px);
+}
+
+.theme-option.active {
+  border-color: #d4a537;
+  background: rgba(212, 165, 55, 0.12);
+  box-shadow: 0 0 0 3px rgba(212, 165, 55, 0.1);
+}
+
+.theme-option .ll-icon {
+  color: #d4a537;
+}
+
+.theme-option-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-option-desc {
+  font-size: 11px;
+  color: #8a7a5c;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+@media (max-width: 500px) {
+  .theme-picker {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Dashboard error ===== */
+.dash-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ef4444;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
 
 

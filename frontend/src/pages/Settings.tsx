@@ -9,7 +9,8 @@ interface Props {
 }
 
 export default function Settings({ token, username }: Props) {
-  const { darkMode, toggleDarkMode } = useTheme();
+  const { themeMode, setThemeMode } = useTheme();
+
   const [profile, setProfile] = useState({
     fullName: username,
     email: '',
@@ -97,10 +98,7 @@ export default function Settings({ token, username }: Props) {
       setSaveStatus('error');
     } finally {
       setIsSaving(false);
-      setTimeout(() => {
-        setSaveMessage('');
-        setSaveStatus('');
-      }, 3000);
+      setTimeout(() => { setSaveMessage(''); setSaveStatus(''); }, 3000);
     }
   };
 
@@ -117,7 +115,7 @@ export default function Settings({ token, username }: Props) {
   );
 
   return (
-    <div className={`settings-root ${darkMode ? 'settings-dark' : 'settings-light'}`}>
+    <div className="settings-root">
       <div className="settings-header">
         <h2><Icon name="settings" size={22} /> Settings</h2>
         <p>Manage your profile, preferences, and notifications</p>
@@ -129,11 +127,7 @@ export default function Settings({ token, username }: Props) {
         <div className="profile-header">
           <div className="profile-picture-container">
             {profile.profilePicture ? (
-              <img
-                src={profile.profilePicture}
-                alt="Profile"
-                className="profile-picture"
-              />
+              <img src={profile.profilePicture} alt="Profile" className="profile-picture" />
             ) : (
               <div className="profile-picture-placeholder">
                 {username.charAt(0).toUpperCase()}
@@ -142,13 +136,7 @@ export default function Settings({ token, username }: Props) {
             <button className="profile-upload-btn" onClick={() => fileInputRef.current?.click()} type="button">
               <Icon name="camera" size={14} /> Change Photo
             </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleProfilePictureUpload}
-              style={{ display: 'none' }}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleProfilePictureUpload} style={{ display: 'none' }} />
           </div>
           <div className="profile-info-summary">
             <h4>{profile.fullName || username}</h4>
@@ -235,23 +223,12 @@ export default function Settings({ token, username }: Props) {
                 src={cropImage}
                 alt="Crop preview"
                 className="crop-preview-image"
-                style={{
-                  transform: `scale(${cropScale})`,
-                  objectFit: 'cover',
-                  objectPosition: 'center',
-                }}
+                style={{ transform: `scale(${cropScale})`, objectFit: 'cover', objectPosition: 'center' }}
               />
             </div>
             <div className="crop-controls">
               <label>Zoom:</label>
-              <input
-                type="range"
-                min="1"
-                max="3"
-                step="0.1"
-                value={cropScale}
-                onChange={(e) => setCropScale(parseFloat(e.target.value))}
-              />
+              <input type="range" min="1" max="3" step="0.1" value={cropScale} onChange={(e) => setCropScale(parseFloat(e.target.value))} />
               <span>{cropScale.toFixed(1)}x</span>
             </div>
             <div className="crop-buttons">
@@ -263,6 +240,42 @@ export default function Settings({ token, username }: Props) {
           </div>
         </div>
       )}
+
+      {/* APPEARANCE */}
+      <div className="settings-card">
+        <h3><Icon name="sun" size={18} /> Appearance</h3>
+        <p className="settings-subtitle">Choose how LingoLink AI looks on your device</p>
+
+        <div className="theme-picker">
+          <button
+            type="button"
+            className={`theme-option ${themeMode === 'system' ? 'active' : ''}`}
+            onClick={() => setThemeMode('system')}
+          >
+            <Icon name="monitor" size={24} />
+            <span className="theme-option-label">System</span>
+            <span className="theme-option-desc">Follow device</span>
+          </button>
+          <button
+            type="button"
+            className={`theme-option ${themeMode === 'light' ? 'active' : ''}`}
+            onClick={() => setThemeMode('light')}
+          >
+            <Icon name="sun" size={24} />
+            <span className="theme-option-label">Light</span>
+            <span className="theme-option-desc">Always bright</span>
+          </button>
+          <button
+            type="button"
+            className={`theme-option ${themeMode === 'dark' ? 'active' : ''}`}
+            onClick={() => setThemeMode('dark')}
+          >
+            <Icon name="moon" size={24} />
+            <span className="theme-option-label">Dark</span>
+            <span className="theme-option-desc">Always dim</span>
+          </button>
+        </div>
+      </div>
 
       {/* Preferences */}
       <div className="settings-card">
@@ -288,13 +301,6 @@ export default function Settings({ token, username }: Props) {
               <p className="toggle-desc">Hear translations spoken aloud</p>
             </div>
             <ToggleSwitch checked={preferences.voiceOutput} onChange={() => handlePreferenceChange('voiceOutput')} />
-          </div>
-          <div className="toggle-row">
-            <div className="toggle-info">
-              <span className="toggle-label"><Icon name="moon" size={16} /> Dark Mode</span>
-              <p className="toggle-desc">Toggle dark/light theme</p>
-            </div>
-            <ToggleSwitch checked={darkMode} onChange={toggleDarkMode} />
           </div>
         </div>
       </div>
