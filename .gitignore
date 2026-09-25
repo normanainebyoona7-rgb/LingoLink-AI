@@ -52,3 +52,5 @@ backend/list_configs.py
 backend/test_datasets.py
 
 backend/test_sunbird*.py
+
+*.broken
