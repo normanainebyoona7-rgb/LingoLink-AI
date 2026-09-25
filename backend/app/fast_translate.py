@@ -94,10 +94,6 @@ ISO_ALIASES = {
     "af": "afrikaans", "afr": "afrikaans",
 }
 
-# ============================================================
-# CURATED LANGUAGE HINTS — quick wins for common words
-# ============================================================
-
 LANG_HINTS = {
     "swahili": {
         "habari", "asante", "karibu", "ndiyo", "hapana", "maji",
@@ -202,7 +198,6 @@ def _lang_hint(text: str) -> Optional[str]:
     words = set(re.findall(r'\w+', text.lower()))
     if not words:
         return None
-    # Check strongest signal first
     best_lang = None
     best_hits = 0
     for lang, hint_set in LANG_HINTS.items():
@@ -210,7 +205,6 @@ def _lang_hint(text: str) -> Optional[str]:
         if hits > best_hits:
             best_hits = hits
             best_lang = lang
-    # Require at least 1 hint match to accept
     if best_hits >= 1:
         return best_lang
     return None
@@ -276,37 +270,24 @@ def looks_like_english(text: str) -> bool:
     return False
 
 
-# ============== SMART LANGUAGE DETECTION ==============
-
 def detect_language(text: str) -> str:
-    """
-    Multi-stage detection:
-    1. Curated hints (fast, accurate for our supported languages)
-    2. langid (fallback)
-    3. Groq LLM (final fallback)
-    """
     if not text or len(text.strip()) < 2:
         return "english"
 
-    # Stage 1: curated hints — most accurate for our common words
     hint = _lang_hint(text)
     if hint:
-        print(f"🔍 Lang hint: {hint}")
+        print(f"Lang hint: {hint}")
         return hint
 
-    # Stage 2: langid — but filter out nonsense results for short text
     try:
         import langid
         lang_code, confidence = langid.classify(text)
         normalized = normalize_lang(lang_code)
-        # Only accept if it's a language we recognize and reasonably confident
         if normalized != "auto" and normalized in LANG_NAMES:
-            # Reject if langid says Indonesian but the text has Swahili words
             return normalized
     except Exception as e:
         print(f"langid error: {e}")
 
-    # Stage 3: Groq — explicit detection prompt
     if GROQ_API_KEY:
         try:
             url = "https://api.groq.com/openai/v1/chat/completions"
@@ -323,7 +304,7 @@ def detect_language(text: str) -> str:
                 "temperature": 0.0,
                 "max_tokens": 5
             }
-            resp = _session.post(url, headers=headers, json=payload, timeout=10)
+            resp = _session.post(url, headers=headers, json=payload, timeout=(10, 30))
             if resp.status_code == 200:
                 code = clean(resp.json()["choices"][0]["message"]["content"]).lower().strip()
                 code = re.sub(r'[^a-z]', '', code)[:2]
@@ -335,8 +316,6 @@ def detect_language(text: str) -> str:
     return "english"
 
 
-# ============== DICTIONARIES ==============
-
 def translate_via_dict(text: str, target_lang: str, source_lang: str) -> Optional[str]:
     try:
         return lookup_local(text, target_lang, source_lang)
@@ -344,8 +323,6 @@ def translate_via_dict(text: str, target_lang: str, source_lang: str) -> Optiona
         print(f"Dict error: {e}")
         return None
 
-
-# ============== GOOGLE ==============
 
 def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if IS_CLOUD:
@@ -371,8 +348,6 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
     return None
 
 
-# ============== MYMEMORY ==============
-
 def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     try:
         tgt = GOOGLE_CODES.get(target_lang, target_lang)
@@ -392,8 +367,6 @@ def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -
         print(f"MyMemory error: {e}")
     return None
 
-
-# ============== SUNBIRD ==============
 
 def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if not SUNBIRD_API_KEY:
@@ -415,7 +388,8 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {"Authorization": f"Bearer {SUNBIRD_API_KEY}", "Content-Type": "application/json"}
         payload = {"messages": [{"role": "user", "content": prompt}], "target_language": code, "temperature": 0.1}
-        resp = _session.post(url, headers=headers, json=payload, timeout=15)
+        # Sunbird can take 30-60s on Render free tier
+        resp = _session.post(url, headers=headers, json=payload, timeout=(10, 60))
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data.get("content", ""))
@@ -425,8 +399,6 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         print(f"Sunbird error: {e}")
     return None
 
-
-# ============== GROQ ==============
 
 def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if not GROQ_API_KEY:
@@ -450,7 +422,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             "temperature": 0.3,
             "max_tokens": 1000
         }
-        resp = _session.post(url, headers=headers, json=payload, timeout=15)
+        resp = _session.post(url, headers=headers, json=payload, timeout=(10, 30))
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data["choices"][0]["message"]["content"])
@@ -463,12 +435,10 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 
-# ============== DIRECT TRANSLATION ==============
-
 def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
     result = translate_via_dict(text, target_lang, source_lang)
     if result:
-        print(f"📖 Dict hit: {source_lang} → {target_lang}")
+        print(f"Dict hit: {source_lang} -> {target_lang}")
         return result
 
     if target_lang in SUNBIRD_TARGETS:
@@ -496,14 +466,12 @@ def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional
     return None
 
 
-# ============== ENGLISH PIVOT ==============
-
 def to_english(text: str, source_lang: str) -> Optional[str]:
     if source_lang == "english":
         return text
     result = translate_via_dict(text, "english", source_lang)
     if result:
-        print(f"📖 Dict pivot: {source_lang} → english")
+        print(f"Dict pivot: {source_lang} -> english")
         return result
     if not IS_CLOUD:
         result = google_translate(text, "english", source_lang)
@@ -521,8 +489,6 @@ def to_english(text: str, source_lang: str) -> Optional[str]:
 def from_english(text: str, target_lang: str) -> Optional[str]:
     return _translate_direct(text, "english", target_lang)
 
-
-# ============== MAIN ROUTER ==============
 
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if not text or not text.strip():
@@ -542,29 +508,25 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
                 _cache[cache_key] = result
         return result
 
-    # Step 0: Detect language
     if source_lang == "auto":
         detected = detect_language(text)
-        print(f"🔍 Detected: {detected}")
+        print(f"Detected: {detected}")
         source_lang = detected
 
-    # 1. Dictionary
     result = translate_via_dict(text, target_lang, source_lang)
     if result:
-        print(f"📖 Dict hit: {source_lang} → {target_lang}")
+        print(f"Dict hit: {source_lang} -> {target_lang}")
         return _save(result)
 
-    # 2. Direct
     result = _translate_direct(text, source_lang, target_lang)
     if result:
         return _save(result)
 
-    # 3. Pivot
     if source_lang != "english" and target_lang != "english":
-        print(f"🔄 Pivot: {source_lang} → en → {target_lang}")
+        print(f"Pivot: {source_lang} -> en -> {target_lang}")
         english_text = to_english(text, source_lang)
         if english_text:
-            print(f"   → EN: '{english_text[:60]}'")
+            print(f"   -> EN: '{english_text[:60]}'")
             result = from_english(english_text, target_lang)
             if result:
                 return _save(result)
