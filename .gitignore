@@ -54,3 +54,7 @@ backend/test_datasets.py
 backend/test_sunbird*.py
 
 *.broken
+
+backend/test_16k.wav
+backend/test_*.wav
+test_16k.wav

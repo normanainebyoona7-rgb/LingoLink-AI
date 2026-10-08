@@ -102,7 +102,7 @@ LANG_HINTS = {
         "mzuri", "kubwa", "ndogo", "kaka", "dada", "baba", "mama",
         "mtoto", "wanawake", "wanaume", "jina", "langu", "lako",
         "nini", "nani", "wapi", "lini", "vipi", "kwa", "na", "ya",
-        "kwaheri", "tutaonana", "kesho", "jana", "leo", "jioni",
+        "tutaonana", "kesho", "jana", "leo", "jioni",
         "asubuhi", "mchana", "usiku", "wiki", "mwaka", "mwezi",
         "safari", "gari", "basi", "shule", "hospitali", "polisi",
         "kazi", "kitabu", "simu", "pesa", "siku", "wakati",
@@ -110,7 +110,7 @@ LANG_HINTS = {
         "nina", "una", "ana", "tuna", "mna", "wana",
         "niko", "uko", "yuko", "tuko", "mko", "wako",
         "naku", "napenda", "nakupenda", "nampenda",
-        "nime", "una", "ame", "tume", "mme", "wame",
+        "nime", "ame", "tume", "mme", "wame",
     },
     "luganda": {
         "oli", "otya", "gyendi", "webale", "weebale", "nyo",
@@ -118,11 +118,11 @@ LANG_HINTS = {
         "mukwano", "amazzi", "emmere", "akatale", "ennyumba",
         "nze", "ggwe", "ye", "ffe", "mmwe", "bo",
         "nkwagala", "njagala", "nneetaaga", "oyitibwa", "ani",
-        "ndi", "oli", "ali", "tuli", "muli", "bali",
-        "genda", "jja", "jja", "wano", "wano", "eyo", "eri",
+        "ndi", "ali", "tuli", "muli", "bali",
+        "genda", "jja", "wano", "eyo", "eri",
     },
     "acholi": {
-        "itye", "nining", "apwoyo", "apwoyo", "matek",
+        "itye", "nining", "apwoyo", "matek",
         "atye", "maber", "ee", "pe", "kica", "konya",
         "pii", "kec", "gwok", "ot", "lakwor",
         "an", "in", "en", "wan", "wun", "gin",
@@ -132,13 +132,13 @@ LANG_HINTS = {
         "ori", "ota", "webare", "munonga", "mwaramutse",
         "mwabonaho", "eego", "nanga", "kyangye", "ndakwiheka",
         "amaizi", "ekyokurya", "omukyaalo", "enju", "munywani",
-        "nyowe", "iwe", "we", "itwe", "imwe", "bo",
+        "nyowe", "iwe", "itwe", "imwe",
         "ninkukunda", "ninkwenda", "ibara", "ryawe", "nirii",
-        "ndi", "ori", "ari", "turi", "muri", "bari",
+        "ndi", "ari", "turi", "muri", "bari",
     },
     "french": {
         "bonjour", "salut", "merci", "oui", "non", "s'il",
-        "vous", "plaît", "au", "revoir", "comment", "ça",
+        "vous", "plaît", "revoir", "comment", "ça",
         "va", "bien", "très", "je", "tu", "il", "elle",
         "nous", "ils", "elles", "le", "la", "les", "un",
         "une", "des", "et", "ou", "mais", "où", "quand",
@@ -149,12 +149,12 @@ LANG_HINTS = {
         "adiós", "cómo", "estás", "bien", "muy", "yo",
         "tú", "él", "ella", "nosotros", "ellos", "el",
         "la", "los", "las", "un", "una", "unos", "y",
-        "o", "pero", "dónde", "cuándo", "por", "qué",
+        "o", "pero", "dónde", "cuándo", "qué",
     },
     "german": {
         "hallo", "danke", "ja", "nein", "bitte", "guten",
         "morgen", "tag", "abend", "nacht", "wie", "geht",
-        "es", "dir", "ihnen", "ich", "du", "er", "sie",
+        "dir", "ihnen", "ich", "du", "er", "sie",
         "wir", "ihr", "der", "die", "das", "und", "oder",
         "aber", "wo", "wann", "warum", "wer", "was",
     },
@@ -167,7 +167,7 @@ LANG_HINTS = {
         "what", "where", "when", "why", "who", "this", "that",
     },
     "italian": {
-        "ciao", "grazie", "sì", "no", "per", "favore",
+        "ciao", "grazie", "sì", "per", "favore",
         "arrivederci", "come", "stai", "bene", "molto",
         "io", "tu", "lui", "lei", "noi", "loro", "il",
         "la", "i", "le", "un", "una", "e", "o", "ma",
@@ -258,7 +258,7 @@ def looks_like_english(text: str) -> bool:
         'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their',
         'what', 'how', 'where', 'when', 'who', 'why', 'yes', 'no', 'hello',
         'hi', 'thanks', 'thank', 'good', 'morning', 'please', 'sorry',
-        'you', 'are', 'coming',
+        'coming',
     }
     words = set(re.findall(r'\w+', text.lower()))
     if not words:
@@ -388,8 +388,8 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {"Authorization": f"Bearer {SUNBIRD_API_KEY}", "Content-Type": "application/json"}
         payload = {"messages": [{"role": "user", "content": prompt}], "target_language": code, "temperature": 0.1}
-        # Sunbird can take 30-60s on Render free tier
-        resp = _session.post(url, headers=headers, json=payload, timeout=(10, 60))
+        # Sunbird can take a while but not 60s — cap at 30
+        resp = _session.post(url, headers=headers, json=payload, timeout=(5, 30))
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data.get("content", ""))
@@ -435,32 +435,33 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 
+# ============== DIRECT TRANSLATION (REORDERED) ==============
+
 def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
+    """Fast path: dictionary → Groq → Sunbird → MyMemory."""
+    # 1. Dictionary first (instant)
     result = translate_via_dict(text, target_lang, source_lang)
     if result:
         print(f"Dict hit: {source_lang} -> {target_lang}")
         return result
 
+    # 2. Groq (fast, 2-3 seconds, works for all languages)
+    result = groq_translate(text, target_lang, source_lang)
+    if result:
+        print(f"Groq: {source_lang} -> {target_lang}")
+        return result
+
+    # 3. Sunbird (slow, only if Groq fails)
     if target_lang in SUNBIRD_TARGETS:
         result = sunbird_translate(text, target_lang, source_lang)
         if result:
-            return result
-        result = groq_translate(text, target_lang, source_lang)
-        if result:
-            return result
-        return None
-
-    if not IS_CLOUD:
-        result = google_translate(text, target_lang, source_lang)
-        if result:
+            print(f"Sunbird: {source_lang} -> {target_lang}")
             return result
 
+    # 4. MyMemory (last resort)
     result = mymemory_translate(text, target_lang, source_lang)
     if result:
-        return result
-
-    result = groq_translate(text, target_lang, source_lang)
-    if result:
+        print(f"MyMemory: {source_lang} -> {target_lang}")
         return result
 
     return None
@@ -473,14 +474,14 @@ def to_english(text: str, source_lang: str) -> Optional[str]:
     if result:
         print(f"Dict pivot: {source_lang} -> english")
         return result
+    result = groq_translate(text, "english", source_lang)
+    if result and looks_like_english(result):
+        return result
     if not IS_CLOUD:
         result = google_translate(text, "english", source_lang)
         if result and looks_like_english(result):
             return result
     result = mymemory_translate(text, "english", source_lang)
-    if result and looks_like_english(result):
-        return result
-    result = groq_translate(text, "english", source_lang)
     if result and looks_like_english(result):
         return result
     return None
@@ -513,15 +514,12 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"Detected: {detected}")
         source_lang = detected
 
-    result = translate_via_dict(text, target_lang, source_lang)
-    if result:
-        print(f"Dict hit: {source_lang} -> {target_lang}")
-        return _save(result)
-
+    # 1. Direct: dictionary → Groq → Sunbird → MyMemory
     result = _translate_direct(text, source_lang, target_lang)
     if result:
         return _save(result)
 
+    # 2. English pivot (for non-English ↔ non-English pairs)
     if source_lang != "english" and target_lang != "english":
         print(f"Pivot: {source_lang} -> en -> {target_lang}")
         english_text = to_english(text, source_lang)

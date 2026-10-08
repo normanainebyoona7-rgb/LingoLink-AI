@@ -17,7 +17,7 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "qwen/qwen3.8-27b"
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 SYSTEM_PROMPT = (
     "You are a friendly, professional customer service assistant for LingoLink AI, "
@@ -31,7 +31,7 @@ SYSTEM_PROMPT = (
 
 
 class ChatMessage(BaseModel):
-    role: str       # "user" or "assistant"
+    role: str
     content: str
 
 
@@ -49,12 +49,7 @@ class AIResponse(BaseModel):
 
 
 def _translate(text: str, source: str, target: str) -> str:
-    """
-    Call the existing fast_translate pipeline internally.
-
-    Signature in fast_translate.py: fast_translate(text, target_lang, source_lang="auto")
-    NOTE the argument order: TARGET first, SOURCE second.
-    """
+    """Call fast_translate to bridge between caller language and English."""
     if not text or not text.strip():
         return text
 
@@ -69,13 +64,13 @@ def _translate(text: str, source: str, target: str) -> str:
         tgt = "english"
 
     try:
-        from app.fast_translate import fast_translate  # type: ignore
+        from app.fast_translate import fast_translate
         result = fast_translate(text, tgt, src)
         if result and result.strip():
             return result
         return text
     except Exception as e:
-        print(f"[ai._translate] failed ({src}->{tgt}): {e}")
+        print(f"ai._translate failed ({src}->{tgt}): {e}")
         return text
 
 
@@ -90,13 +85,13 @@ async def ai_reply(req: AIRequest):
 
     caller_lang = (req.caller_language or "english").lower()
 
-    # ---- 1. Translate caller message to English for the LLM ----
+    # 1. Translate caller message to English for the LLM
     if caller_lang in ("english", "en", "auto"):
         caller_text_en = caller_text
     else:
         caller_text_en = _translate(caller_text, caller_lang, "english")
 
-    # ---- 2. Build messages for Groq ----
+    # 2. Build messages for Groq
     messages: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     for m in req.context or []:
@@ -105,9 +100,9 @@ async def ai_reply(req: AIRequest):
 
     messages.append({"role": "user", "content": caller_text_en})
 
-    # ---- 3. Call Groq ----
+    # 3. Call Groq
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             r = await client.post(
                 GROQ_URL,
                 headers={
@@ -118,11 +113,11 @@ async def ai_reply(req: AIRequest):
                     "model": GROQ_MODEL,
                     "messages": messages,
                     "temperature": 0.5,
-                    "max_tokens": 300,
+                    "max_tokens": 200,
                 },
             )
             if r.status_code != 200:
-                print(f"[ai.reply] Groq error {r.status_code}: {r.text[:400]}")
+                print(f"ai.reply Groq error {r.status_code}: {r.text[:400]}")
                 raise HTTPException(status_code=502, detail=f"Groq error: {r.status_code}")
             data = r.json()
             reply_en = (data["choices"][0]["message"]["content"] or "").strip()
@@ -131,16 +126,16 @@ async def ai_reply(req: AIRequest):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[ai.reply] unexpected: {e}")
+        print(f"ai.reply unexpected: {e}")
         raise HTTPException(status_code=500, detail="AI generation failed")
 
-    # ---- 4. Translate reply back to caller's language ----
+    # 4. Translate reply back to caller's language
     if caller_lang in ("english", "en", "auto"):
         reply_original = reply_en
     else:
         reply_original = _translate(reply_en, "english", caller_lang)
 
-    # ---- 5. Update rolling context ----
+    # 5. Update rolling context
     new_context = list(req.context or [])
     new_context.append(ChatMessage(role="user", content=caller_text_en))
     new_context.append(ChatMessage(role="assistant", content=reply_en))

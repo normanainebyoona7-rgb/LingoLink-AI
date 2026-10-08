@@ -15,7 +15,7 @@ interface Turn {
   text: string;
   language: string;
   ts: number;
-  spoke?: boolean; // did the AI voice play for this turn?
+  spoke?: boolean;
 }
 
 const LANGS: { code: string; label: string }[] = [
@@ -26,6 +26,9 @@ const LANGS: { code: string; label: string }[] = [
   { code: 'acholi', label: 'Acholi' },
   { code: 'ateso', label: 'Ateso' },
   { code: 'runyankole', label: 'Runyankole' },
+  { code: 'lugbara', label: 'Lugbara' },
+  { code: 'lusoga', label: 'Lusoga' },
+  { code: 'rutooro', label: 'Rutooro' },
   { code: 'french', label: 'French' },
   { code: 'spanish', label: 'Spanish' },
 ];
@@ -51,6 +54,7 @@ export default function CallCenter({ token }: Props) {
   const [micMuted, setMicMuted] = useState(false);
   const [volume, setVolume] = useState(0);
   const [micStatus, setMicStatus] = useState<'listening' | 'hearing' | 'paused'>('listening');
+  const [detectedLang, setDetectedLang] = useState<string>('');
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -70,6 +74,7 @@ export default function CallCenter({ token }: Props) {
   const speakingRef = useRef<boolean>(false);
   const thinkingRef = useRef<boolean>(false);
   const callActiveRef = useRef<boolean>(false);
+  const sessionLangRef = useRef<string>('english');
 
   useEffect(() => { muteRef.current = micMuted; }, [micMuted]);
   useEffect(() => { speakingRef.current = isSpeaking; }, [isSpeaking]);
@@ -110,11 +115,9 @@ export default function CallCenter({ token }: Props) {
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  // ============ AUDIO UNLOCK ============
   const unlockAudio = () => {
     if (audioUnlockedRef.current) return;
     try {
-      // Play a silent 100ms buffer to open the audio channel
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -125,15 +128,13 @@ export default function CallCenter({ token }: Props) {
       osc.stop(ctx.currentTime + 0.05);
       setTimeout(() => ctx.close().catch(() => {}), 300);
       audioUnlockedRef.current = true;
-      console.log('🔊 Audio unlocked');
     } catch (e) {
       console.warn('Audio unlock failed:', e);
     }
   };
 
-  // ============ TTS ============
+  // ============ TTS — Uses the DETECTED language ============
   const speakAI = async (text: string, lang: string, turnIndex: number) => {
-    // Cancel any in-flight TTS
     if (currentAudioAbortRef.current) {
       currentAudioAbortRef.current.abort();
     }
@@ -144,6 +145,10 @@ export default function CallCenter({ token }: Props) {
     const abort = new AbortController();
     currentAudioAbortRef.current = abort;
 
+    const ttsLang = (lang && lang !== 'auto') ? lang : sessionLangRef.current;
+
+    console.log(`Speaking [${ttsLang}]: ${text.slice(0, 60)}`);
+
     try {
       const res = await fetch(`${API_URL}/tts/speak`, {
         method: 'POST',
@@ -153,7 +158,7 @@ export default function CallCenter({ token }: Props) {
         },
         body: JSON.stringify({
           text,
-          language: lang === 'auto' ? 'english' : lang,
+          language: ttsLang,
           gender,
           speed: 1.0,
         }),
@@ -177,7 +182,6 @@ export default function CallCenter({ token }: Props) {
       audioRef.current.onended = () => {
         setIsSpeaking(false);
         if (callActiveRef.current) setMicStatus('listening');
-        // Mark this turn as successfully spoken
         setTurns((prev) => {
           const next = [...prev];
           if (next[turnIndex]) next[turnIndex] = { ...next[turnIndex], spoke: true };
@@ -212,7 +216,6 @@ export default function CallCenter({ token }: Props) {
     if (callActiveRef.current) setMicStatus('listening');
   };
 
-  // Retry voice for a specific AI turn
   const replayTurn = (index: number) => {
     const turn = turns[index];
     if (!turn || turn.role !== 'ai') return;
@@ -225,9 +228,13 @@ export default function CallCenter({ token }: Props) {
     if (!trimmed) return;
 
     setError('');
-    const lang = detectedLang && detectedLang !== 'auto'
-      ? detectedLang
-      : (language === 'auto' ? 'english' : language);
+
+    const lang = language !== 'auto'
+      ? language
+      : (detectedLang && detectedLang !== 'auto' ? detectedLang : sessionLangRef.current);
+
+    sessionLangRef.current = lang;
+    setDetectedLang(lang);
 
     const userTurn: Turn = {
       role: 'user',
@@ -271,7 +278,6 @@ export default function CallCenter({ token }: Props) {
         spoke: false,
       };
 
-      // Compute index this turn will have
       let newIndex = 0;
       setTurns((prev) => {
         newIndex = prev.length;
@@ -279,9 +285,7 @@ export default function CallCenter({ token }: Props) {
       });
       setIsThinking(false);
 
-      // Speak it (every AI reply speaks)
       if (aiTurn.text) {
-        // small delay to let state update
         setTimeout(() => speakAI(aiTurn.text, lang, newIndex), 0);
       } else {
         if (callActiveRef.current) setMicStatus('listening');
@@ -297,12 +301,10 @@ export default function CallCenter({ token }: Props) {
   // ============ MIC / VAD ============
   const stopMic = () => {
     loopActiveRef.current = false;
-
     if (recorderRef.current && recorderRef.current.state === 'recording') {
       try { recorderRef.current.stop(); } catch {}
     }
     recorderRef.current = null;
-
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -461,7 +463,16 @@ export default function CallCenter({ token }: Props) {
 
       if (!text || text.length < 2) return;
 
-      await sendToAI(text, detected);
+      console.log(`STT: "${text}" [${detected}]`);
+
+      const effectiveLang = language !== 'auto' ? language : detected;
+
+      if (effectiveLang && effectiveLang !== 'auto') {
+        sessionLangRef.current = effectiveLang;
+        setDetectedLang(effectiveLang);
+      }
+
+      await sendToAI(text, effectiveLang);
     } catch (e) {
       console.error('Transcribe failed:', e);
     }
@@ -476,7 +487,9 @@ export default function CallCenter({ token }: Props) {
     setCallStartTs(Date.now());
     setCallState('connecting');
 
-    // Unlock audio BEFORE first AI reply
+    const initialLang = language === 'auto' ? 'english' : language;
+    sessionLangRef.current = initialLang;
+
     unlockAudio();
 
     setTimeout(async () => {
@@ -484,8 +497,41 @@ export default function CallCenter({ token }: Props) {
       await startMic();
 
       const greetingLang = language === 'auto' ? 'english' : language;
-      const greeting = "Hello! I'm the LingoLink AI assistant. How can I help you today?";
-      sendToAI(greeting, greetingLang);
+      const greetingEn = "Hello! I'm the LingoLink AI assistant. How can I help you today?";
+
+      // If English, send as-is. Otherwise, translate first.
+      if (greetingLang === 'english') {
+        sendToAI(greetingEn, 'english');
+      } else {
+        try {
+          console.log(`Translating greeting to ${greetingLang}...`);
+          const res = await fetch(`${API_URL}/translate/text`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              text: greetingEn,
+              source_language: 'english',
+              target_language: greetingLang,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const greetingTranslated = (data.translated_text || greetingEn).trim();
+            console.log(`Greeting [${greetingLang}]: ${greetingTranslated}`);
+            sendToAI(greetingTranslated, greetingLang);
+            return;
+          } else {
+            console.warn(`Greeting translation failed: ${res.status}`);
+          }
+        } catch (e) {
+          console.error('Greeting translation error:', e);
+        }
+        // Fallback: send English anyway
+        sendToAI(greetingEn, greetingLang);
+      }
     }, 700);
   };
 
@@ -502,6 +548,7 @@ export default function CallCenter({ token }: Props) {
     setElapsed(0);
     setError('');
     setVolume(0);
+    setDetectedLang('');
     setCallState('idle');
   };
 
@@ -590,7 +637,9 @@ export default function CallCenter({ token }: Props) {
             <div className="cc-active-info">
               <h3>AI Assistant</h3>
               <span className="cc-active-meta">
-                {language === 'auto' ? 'Auto' : LANGS.find(l => l.code === language)?.label} • {gender === 'female' ? 'Female' : 'Male'} voice
+                {detectedLang ? `Detected: ${detectedLang}` : (language === 'auto' ? 'Auto' : LANGS.find(l => l.code === language)?.label)}
+                {' • '}
+                {gender === 'female' ? 'Female' : 'Male'} voice
               </span>
             </div>
             <div className="cc-active-timer">
