@@ -36,7 +36,7 @@ const LANGS: { code: string; label: string }[] = [
 const SILENCE_THRESHOLD = 0.02;
 const SILENCE_DURATION_MS = 900;
 const MIN_CHUNK_MS = 1200;
-const MAX_CHUNK_MS = 15000;
+const MAX_CHUNK_MS = 8000;
 
 export default function CallCenter({ token }: Props) {
   const { darkMode } = useTheme();
@@ -133,7 +133,6 @@ export default function CallCenter({ token }: Props) {
     }
   };
 
-  // ============ TTS — Uses the DETECTED language ============
   const speakAI = async (text: string, lang: string, turnIndex: number) => {
     if (currentAudioAbortRef.current) {
       currentAudioAbortRef.current.abort();
@@ -222,7 +221,6 @@ export default function CallCenter({ token }: Props) {
     speakAI(turn.text, turn.language, index);
   };
 
-  // ============ AI ============
   const sendToAI = async (text: string, detectedLang?: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -298,7 +296,6 @@ export default function CallCenter({ token }: Props) {
     }
   };
 
-  // ============ MIC / VAD ============
   const stopMic = () => {
     loopActiveRef.current = false;
     if (recorderRef.current && recorderRef.current.state === 'recording') {
@@ -478,7 +475,6 @@ export default function CallCenter({ token }: Props) {
     }
   };
 
-  // ============ CALL CONTROL ============
   const startCall = async () => {
     setTurns([]);
     contextRef.current = [];
@@ -499,7 +495,6 @@ export default function CallCenter({ token }: Props) {
       const greetingLang = language === 'auto' ? 'english' : language;
       const greetingEn = "Hello! I'm the LingoLink AI assistant. How can I help you today?";
 
-      // If English, send as-is. Otherwise, translate first.
       if (greetingLang === 'english') {
         sendToAI(greetingEn, 'english');
       } else {
@@ -529,7 +524,6 @@ export default function CallCenter({ token }: Props) {
         } catch (e) {
           console.error('Greeting translation error:', e);
         }
-        // Fallback: send English anyway
         sendToAI(greetingEn, greetingLang);
       }
     }, 700);
@@ -568,7 +562,6 @@ export default function CallCenter({ token }: Props) {
     }
   };
 
-  // ============ RENDER ============
   return (
     <div className={`callcenter-root ${darkMode ? 'callcenter-dark' : 'callcenter-light'}`}>
 

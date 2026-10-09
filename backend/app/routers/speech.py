@@ -21,14 +21,18 @@ IS_CLOUD = os.getenv("RENDER", "") == "true" or os.getenv("IS_CLOUD", "") == "tr
 
 SUNBIRD_REPO = "Sunbird/faster-whisper-51-african-languages"
 
-# Ugandan + African languages Sunbird STT handles
 SUNBIRD_LANGS = {
     "luganda", "acholi", "ateso", "runyankole", "runyankore", "rukiga",
     "lugbara", "lusoga", "rutooro", "lumasaba", "alur", "lango",
     "lugwere", "jopadhola", "swahili", "kinyarwanda",
 }
 
-# App language name → Sunbird ISO code
+GROQ_UNSUPPORTED = {
+    "luganda", "acholi", "ateso", "runyankole", "runyankore", "rukiga",
+    "lugbara", "lusoga", "rutooro", "lumasaba", "alur", "lango",
+    "lugwere", "jopadhola",
+}
+
 NAME_TO_SUNBIRD = {
     "luganda": "lug", "acholi": "ach", "ateso": "teo",
     "runyankole": "nyn", "runyankore": "nyn", "rukiga": "cgg",
@@ -38,7 +42,6 @@ NAME_TO_SUNBIRD = {
     "kinyarwanda": "kin",
 }
 
-# ISO → app name
 ISO_TO_NAME = {
     "en": "english", "fr": "french", "es": "spanish", "de": "german",
     "pt": "portuguese", "it": "italian", "nl": "dutch", "ru": "russian",
@@ -59,7 +62,6 @@ ISO_TO_NAME = {
     "kin": "kinyarwanda",
 }
 
-# Known Whisper hallucinations (short phrases it invents from silence)
 HALLUCINATIONS = {
     "thank you", "thank you.", "thanks", "thanks.",
     "subtitles by", "subtitle by", "subtitles:", "please subscribe",
@@ -90,28 +92,18 @@ def get_lang_map():
 
 
 def get_whisper_model():
-    """Load local faster-whisper model (only when NOT in cloud mode)."""
     global _whisper_model, _sunbird_load_attempted
-
     if IS_CLOUD:
         return None
-
     if _whisper_model is not None:
         return _whisper_model
-
     if _sunbird_load_attempted:
         return None
-
     _sunbird_load_attempted = True
-
     try:
         from faster_whisper import WhisperModel
         print("Loading Sunbird faster-whisper model (CPU, int8)...")
-        _whisper_model = WhisperModel(
-            SUNBIRD_REPO,
-            device="cpu",
-            compute_type="int8",
-        )
+        _whisper_model = WhisperModel(SUNBIRD_REPO, device="cpu", compute_type="int8")
         print("Sunbird local model loaded")
         return _whisper_model
     except Exception as e:
@@ -120,7 +112,6 @@ def get_whisper_model():
 
 
 def is_hallucination(text: str) -> bool:
-    """Reject known Whisper hallucinations and garbage."""
     if not text:
         return True
     cleaned = text.strip().lower()
@@ -138,54 +129,47 @@ def is_hallucination(text: str) -> bool:
 
 def convert_to_16k_mono(input_path: str) -> str:
     """
-    Convert audio to 16kHz mono WAV.
-    Sunbird STT recommends 16kHz mono for best results.
+    Convert audio to 16kHz mono MP3 for smaller upload to Sunbird.
+    MP3 at 32kbps is ~10x smaller than WAV, which Sunbird handles better.
     """
     try:
         from pydub import AudioSegment
         audio = AudioSegment.from_file(input_path)
         audio = audio.set_frame_rate(16000).set_channels(1)
-        output_path = input_path.rsplit(".", 1)[0] + "_16k.wav"
-        audio.export(output_path, format="wav")
+        output_path = input_path.rsplit(".", 1)[0] + "_16k.mp3"
+        audio.export(output_path, format="mp3", bitrate="32k")
+        print(f"Converted to 16kHz mono MP3: {os.path.getsize(output_path)} bytes")
         return output_path
     except Exception as e:
         print(f"Audio conversion failed: {e}")
-        return input_path  # return original if conversion fails
+        return input_path
 
-
-# ============================================================
-# Sunbird STT API (hosted) — preferred for Ugandan languages
-# ============================================================
 
 def transcribe_sunbird_api(audio_path: str, language: str = None) -> dict:
-    """Call Sunbird's hosted STT API. Requires SUNBIRD_API_KEY."""
     if not SUNBIRD_API_KEY:
         raise HTTPException(status_code=500, detail="SUNBIRD_API_KEY not set")
 
-    # Convert to 16kHz mono — required for best Sunbird STT results
+    original_size = os.path.getsize(audio_path)
+    if original_size < 5000:
+        print(f"Audio too short: {original_size} bytes")
+        return {"text": "", "language": "auto"}
+
     converted = convert_to_16k_mono(audio_path)
 
     url = "https://api.sunbird.ai/tasks/stt"
     headers = {"Authorization": f"Bearer {SUNBIRD_API_KEY}"}
 
-    # Map to Sunbird code
     if language and language.lower() in NAME_TO_SUNBIRD:
         sunbird_lang = NAME_TO_SUNBIRD[language.lower()]
     else:
-        sunbird_lang = "lug"  # default to Luganda
+        sunbird_lang = "lug"
 
     try:
         with open(converted, "rb") as f:
-            files = {"audio": (os.path.basename(converted), f, "audio/wav")}
+            files = {"audio": (os.path.basename(converted), f, "audio/mp3")}
             data = {"language": sunbird_lang}
-            # 20s connect, 120s read — Sunbird STT is slow under load
-            resp = requests.post(
-                url,
-                files=files,
-                data=data,
-                headers=headers,
-                timeout=(20, 120),
-            )
+            print(f"Sunbird STT: lang={sunbird_lang}, size={os.path.getsize(converted)} bytes")
+            resp = requests.post(url, files=files, data=data, headers=headers, timeout=(20, 120))
     except requests.exceptions.Timeout:
         print(f"Sunbird STT timeout for {language}")
         raise HTTPException(status_code=504, detail="Sunbird STT timed out")
@@ -193,7 +177,6 @@ def transcribe_sunbird_api(audio_path: str, language: str = None) -> dict:
         print(f"Sunbird STT request failed: {e}")
         raise HTTPException(status_code=500, detail=f"Sunbird request failed: {e}")
     finally:
-        # Clean up converted file
         if converted != audio_path:
             try:
                 os.unlink(converted)
@@ -202,7 +185,6 @@ def transcribe_sunbird_api(audio_path: str, language: str = None) -> dict:
 
     if resp.status_code == 200:
         result = resp.json()
-        # Try both possible keys — API varies
         text = (
             result.get("audio_transcription")
             or result.get("text")
@@ -210,24 +192,16 @@ def transcribe_sunbird_api(audio_path: str, language: str = None) -> dict:
             or ""
         ).strip()
         detected = result.get("language", language or "auto")
-        # Map ISO code back to app name
         if detected in ISO_TO_NAME:
             detected = ISO_TO_NAME[detected]
+        print(f"Sunbird STT OK: [{detected}] {text[:80]}")
         return {"text": text, "language": detected}
     else:
         print(f"Sunbird STT error {resp.status_code}: {resp.text[:200]}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Sunbird STT failed: {resp.status_code}",
-        )
+        raise HTTPException(status_code=500, detail=f"Sunbird STT failed: {resp.status_code}")
 
-
-# ============================================================
-# Local faster-whisper (offline, only when model available)
-# ============================================================
 
 def transcribe_sunbird_local(audio_path: str, language: str = None) -> dict:
-    """Transcribe using locally-loaded Sunbird faster-whisper model."""
     model = get_whisper_model()
     if not model:
         raise HTTPException(status_code=503, detail="Local model not available")
@@ -238,7 +212,6 @@ def transcribe_sunbird_local(audio_path: str, language: str = None) -> dict:
         sunbird_code = NAME_TO_SUNBIRD.get(language.lower())
         if lang_map and sunbird_code:
             lang_code = lang_map.get(sunbird_code)
-            print(f"Local: {language} → sunbird={sunbird_code} → whisper={lang_code}")
 
     try:
         segments, info = model.transcribe(
@@ -260,12 +233,7 @@ def transcribe_sunbird_local(audio_path: str, language: str = None) -> dict:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============================================================
-# Groq Whisper Large v3 (cloud fallback)
-# ============================================================
-
 def transcribe_groq(audio_path: str, language: str = None) -> dict:
-    """Transcribe using Groq Whisper Large v3."""
     if not GROQ_API_KEY:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY not set")
 
@@ -282,15 +250,16 @@ def transcribe_groq(audio_path: str, language: str = None) -> dict:
                 "prompt": " ",
             }
 
-            # Only pass language if it's a Whisper-supported one
             if language and language not in ("auto", None):
-                iso_map = {v: k for k, v in ISO_TO_NAME.items()}
-                iso = iso_map.get(language.lower())
-                if iso:
-                    data["language"] = iso
-                    print(f"Groq: {language} → iso={iso}")
+                lang_lower = language.lower()
+                if lang_lower in GROQ_UNSUPPORTED:
+                    print(f"Groq: skipping language hint for {language} (unsupported)")
                 else:
-                    print(f"Groq doesn't natively support {language}, using auto-detect")
+                    iso_map = {v: k for k, v in ISO_TO_NAME.items()}
+                    iso = iso_map.get(lang_lower)
+                    if iso:
+                        data["language"] = iso
+                        print(f"Groq: {language} -> iso={iso}")
 
             resp = requests.post(url, headers=headers, files=files, data=data, timeout=(10, 60))
 
@@ -307,31 +276,16 @@ def transcribe_groq(audio_path: str, language: str = None) -> dict:
         raise HTTPException(status_code=504, detail="Groq timed out")
 
 
-# ============================================================
-# Smart router — Sunbird STT first, Groq fallback
-# ============================================================
-
 def transcribe_smart(audio_path: str, requested_language: str = None, auto_detect: bool = True) -> dict:
-    """
-    Route:
-      1. Sunbird hosted STT (best for Ugandan/African languages)
-      2. Groq Whisper Large v3 (fallback for everything)
-    """
-    # Try Sunbird STT first (if key is set)
     if SUNBIRD_API_KEY:
         try:
-            print(f"Sunbird STT: lang={requested_language or 'auto'}")
+            print(f"Trying Sunbird STT: lang={requested_language or 'auto'}")
             return transcribe_sunbird_api(audio_path, requested_language)
         except HTTPException as e:
             print(f"Sunbird STT failed ({e.detail}), falling back to Groq")
 
-    # Fallback: Groq
     return transcribe_groq(audio_path, requested_language)
 
-
-# ============================================================
-# Endpoints
-# ============================================================
 
 @router.post("/transcribe")
 async def transcribe_audio(
@@ -351,14 +305,17 @@ async def transcribe_audio(
         wants_auto = auto_detect.lower() == "true" or language == "auto"
         print(f"Transcribing {len(content)} bytes (lang={language}, auto={wants_auto})...")
 
-        # Skip tiny chunks (likely silence)
         if len(content) < 5000:
             os.unlink(tmp_path)
             print("Skipped: audio too small")
             return {"text": "", "language": "auto"}
 
         result = transcribe_smart(tmp_path, language, auto_detect=wants_auto)
-        os.unlink(tmp_path)
+
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
         text = result.get("text", "").strip()
 
@@ -366,12 +323,9 @@ async def transcribe_audio(
             print(f"Rejected hallucination: '{text}'")
             return {"text": "", "language": "auto"}
 
-        print(f"[{result['language']}] {text[:100]}")
+        print(f"Final: [{result['language']}] {text[:100]}")
 
-        return {
-            "text": text,
-            "language": result["language"],
-        }
+        return {"text": text, "language": result["language"]}
     except HTTPException:
         raise
     except Exception as e:
@@ -396,7 +350,11 @@ async def translate_voice(
 
         wants_auto = source_language == "auto"
         result = transcribe_smart(tmp_path, source_language, auto_detect=wants_auto)
-        os.unlink(tmp_path)
+
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
         full_text = result["text"]
         detected = result.get("language", source_language)
@@ -448,7 +406,11 @@ async def voice_to_voice(
 
         wants_auto = source_language == "auto"
         result = transcribe_smart(tmp_path, source_language, auto_detect=wants_auto)
-        os.unlink(tmp_path)
+
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
         full_text = result["text"]
         detected = result.get("language", source_language)
