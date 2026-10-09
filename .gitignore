@@ -58,3 +58,5 @@ backend/test_sunbird*.py
 backend/test_16k.wav
 backend/test_*.wav
 test_16k.wav
+
+LINGOLINK_BACKUP.json
