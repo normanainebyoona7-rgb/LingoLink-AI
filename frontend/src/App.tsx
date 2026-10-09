@@ -82,7 +82,7 @@ function App() {
   const [email, setEmail] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [token, setToken] = useState('');
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>('translate');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -90,6 +90,7 @@ function App() {
   const [authSuccess, setAuthSuccess] = useState('');
   const authBoxRef = useRef<HTMLDivElement | null>(null);
 
+  // Load saved theme
   useEffect(() => {
     const saved = localStorage.getItem('themeMode') as ThemeMode | null;
     if (saved === 'light' || saved === 'dark' || saved === 'system') {
@@ -97,9 +98,9 @@ function App() {
     }
   }, []);
 
+  // React to system theme
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-
     const update = () => {
       if (themeMode === 'system') {
         setDarkMode(mq.matches);
@@ -107,7 +108,6 @@ function App() {
         setDarkMode(themeMode === 'dark');
       }
     };
-
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
@@ -127,8 +127,17 @@ function App() {
     const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('username');
     const savedAdmin = localStorage.getItem('is_admin');
-    if (savedToken && savedUser) { setToken(savedToken); setUsername(savedUser); setIsLoggedIn(true); }
-    if (savedAdmin !== null) setIsAdmin(savedAdmin === 'true');
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUsername(savedUser);
+      setIsLoggedIn(true);
+    }
+    if (savedAdmin !== null) {
+      const admin = savedAdmin === 'true';
+      setIsAdmin(admin);
+      // Land on dashboard for admin, translate for others
+      setActiveTab(admin ? 'dashboard' : 'translate');
+    }
 
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
@@ -180,7 +189,10 @@ function App() {
   const login = async () => {
     setAuthError('');
     setAuthSuccess('');
-    if (!username || !password) { setAuthError('Please fill all fields'); return; }
+    if (!username || !password) {
+      setAuthError('Please fill all fields');
+      return;
+    }
     try {
       const formData = new URLSearchParams();
       formData.append('username', username);
@@ -192,26 +204,43 @@ function App() {
       });
       if (res.ok) {
         const data = await res.json();
+        const admin = data.is_admin || data.username === 'admin';
         setToken(data.access_token);
         setIsLoggedIn(true);
-        setIsAdmin(data.is_admin || data.username === 'admin');
+        setIsAdmin(admin);
+        // Land on dashboard for admin, translate for everyone else
+        setActiveTab(admin ? 'dashboard' : 'translate');
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', data.username);
-        localStorage.setItem('is_admin', String(data.is_admin || data.username === 'admin'));
+        localStorage.setItem('is_admin', String(admin));
       } else {
         setAuthError('Invalid username or password');
       }
-    } catch { setAuthError('Backend not running. Start it first.'); }
+    } catch {
+      setAuthError('Backend not running. Start it first.');
+    }
   };
 
   const register = async () => {
     setAuthError('');
     setAuthSuccess('');
-    if (!username || !email || !password || !confirmPassword) { setAuthError('Please fill all fields'); return; }
-    if (!email.includes('@') || !email.includes('.')) { setAuthError('Please enter a valid email'); return; }
+    if (!username || !email || !password || !confirmPassword) {
+      setAuthError('Please fill all fields');
+      return;
+    }
+    if (!email.includes('@') || !email.includes('.')) {
+      setAuthError('Please enter a valid email');
+      return;
+    }
     const passError = validatePassword(password);
-    if (passError) { setAuthError(passError); return; }
-    if (password !== confirmPassword) { setAuthError('Passwords do not match'); return; }
+    if (passError) {
+      setAuthError(passError);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setAuthError('Passwords do not match');
+      return;
+    }
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -227,13 +256,18 @@ function App() {
         const data = await res.json();
         setAuthError(data.detail || 'Registration failed');
       }
-    } catch { setAuthError('Backend not running. Start it first.'); }
+    } catch {
+      setAuthError('Backend not running. Start it first.');
+    }
   };
 
   const forgotPassword = () => {
     setAuthError('');
     setAuthSuccess('');
-    if (!email || !email.includes('@')) { setAuthError('Enter a valid email address'); return; }
+    if (!email || !email.includes('@')) {
+      setAuthError('Enter a valid email address');
+      return;
+    }
     setAuthSuccess(`Password reset link sent to ${email}. Check your inbox.`);
     setTimeout(() => setAuthPage('login'), 2000);
   };
@@ -244,6 +278,7 @@ function App() {
     setIsAdmin(false);
     setAuthPage('landing');
     setMobileSidebarOpen(false);
+    setActiveTab('translate');
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('is_admin');
@@ -335,8 +370,10 @@ function App() {
     );
   }
 
+  // ============ SIDEBAR ITEMS ============
+  // Dashboard is only shown for admin users.
   const sidebarItems: SidebarItem[] = [
-    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+    ...(isAdmin ? [{ id: 'dashboard' as Tab, icon: 'dashboard' as IconName, label: 'Dashboard' }] : []),
     { id: 'translate', icon: 'translate', label: 'Translate' },
     { id: 'history', icon: 'history', label: 'History' },
     { id: 'voice', icon: 'voice', label: 'Voice' },
@@ -415,7 +452,7 @@ function App() {
           </header>
 
           <div className="sb-content">
-            {activeTab === 'dashboard' && <Dashboard token={token} onNavigate={(tab) => handleNavigate(tab as Tab)} username={username} />}
+            {activeTab === 'dashboard' && isAdmin && <Dashboard token={token} onNavigate={(tab) => handleNavigate(tab as Tab)} username={username} />}
             {activeTab === 'translate' && <Translate token={token} />}
             {activeTab === 'history' && <History token={token} />}
             {activeTab === 'voice' && <Voice token={token} />}
