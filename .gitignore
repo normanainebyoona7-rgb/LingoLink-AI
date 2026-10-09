@@ -60,3 +60,5 @@ backend/test_*.wav
 test_16k.wav
 
 LINGOLINK_BACKUP.json
+
+backend/app/voice_cache_mms_backup/
