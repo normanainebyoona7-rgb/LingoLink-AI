@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    LingoLink AI - Landing Page Stylesheet
    Theme: Savanna Gold
    Motion: Warm & Natural
@@ -1028,7 +1028,7 @@
 }
 
 /* ============================================================
-   LANDING — PREMIUM OVERRIDES v2
+   LANDING â€” PREMIUM OVERRIDES v2
    ============================================================ */
 
 .ln-nav {
@@ -1147,7 +1147,7 @@
 }
 
 /* ============================================================
-   FIX — Hero title text visibility
+   FIX â€” Hero title text visibility
    ============================================================ */
 
 /* Base: hero title is always readable text */
@@ -1169,7 +1169,7 @@
   display: inline-block;
 }
 
-/* Light mode — hero title should be dark, not invisible */
+/* Light mode â€” hero title should be dark, not invisible */
 .app-light .ln-hero-title,
 .landing-light .ln-hero-title {
   color: #2a1a08 !important;
@@ -1185,7 +1185,7 @@
 }
 
 /* ============================================================
-   FIX — Other possibly-invisible text on landing
+   FIX â€” Other possibly-invisible text on landing
    ============================================================ */
 
 /* Hero subtitle */
@@ -1297,7 +1297,7 @@
 }
 
 /* ============================================================
-   FIX — Primary button text always visible
+   FIX â€” Primary button text always visible
    Covers: Start Free Trial, Start Translating Now, Get Started, etc.
    ============================================================ */
 
@@ -1325,7 +1325,7 @@
   box-shadow: 0 8px 32px rgba(224, 179, 74, 0.45) !important;
 }
 
-/* Secondary button (Explore Features, etc.) — visible in dark */
+/* Secondary button (Explore Features, etc.) â€” visible in dark */
 .ln-btn-secondary {
   background: transparent !important;
   color: #e0b34a !important;
@@ -1341,7 +1341,7 @@
   border-color: #e0b34a !important;
 }
 
-/* Sign In button — outlined */
+/* Sign In button â€” outlined */
 .ln-login-btn {
   background: transparent !important;
   color: #f5ecd9 !important;
@@ -1399,7 +1399,7 @@
 }
 
 /* ============================================================
-   FIX — Theme toggle icon visibility on landing nav
+   FIX â€” Theme toggle icon visibility on landing nav
    ============================================================ */
 
 .ln-theme-toggle {
@@ -1434,7 +1434,7 @@
 }
 
 /* ============================================================
-   FIX — "MOST POPULAR" badge on pricing cards
+   FIX â€” "MOST POPULAR" badge on pricing cards
    ============================================================ */
 
 .ln-pricing-badge {
@@ -1515,7 +1515,7 @@
 }
 
 /* ============================================================
-   SANITY SWEEP — anything with gradient text-fill that shouldn't be
+   SANITY SWEEP â€” anything with gradient text-fill that shouldn't be
    ============================================================ */
 
 /* Reset any accidental text-fill: transparent on children */
@@ -1531,3 +1531,4 @@
 .ln-faq-question span:first-child {
   -webkit-text-fill-color: currentColor !important;
 }
+

@@ -135,7 +135,6 @@ function App() {
     if (savedAdmin !== null) {
       const admin = savedAdmin === 'true';
       setIsAdmin(admin);
-      // Land on dashboard for admin, translate for others
       setActiveTab(admin ? 'dashboard' : 'translate');
     }
 
@@ -208,7 +207,6 @@ function App() {
         setToken(data.access_token);
         setIsLoggedIn(true);
         setIsAdmin(admin);
-        // Land on dashboard for admin, translate for everyone else
         setActiveTab(admin ? 'dashboard' : 'translate');
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('username', data.username);
@@ -308,7 +306,7 @@ function App() {
         {authPage === 'landing' ? (
           <Landing onLoginClick={() => setAuthPage('login')} onRegisterClick={() => setAuthPage('register')} />
         ) : (
-          <div className={`auth-full ${darkMode ? 'auth-dark' : 'auth-light'}`}>
+          <div className={`auth-full savanna-theme ${darkMode ? 'auth-dark' : 'auth-light'}`}>
             <div
               className="auth-box"
               ref={authBoxRef}
@@ -371,7 +369,6 @@ function App() {
   }
 
   // ============ SIDEBAR ITEMS ============
-  // Dashboard is only shown for admin users.
   const sidebarItems: SidebarItem[] = [
     ...(isAdmin ? [{ id: 'dashboard' as Tab, icon: 'dashboard' as IconName, label: 'Dashboard' }] : []),
     { id: 'translate', icon: 'translate', label: 'Translate' },
@@ -387,7 +384,7 @@ function App() {
 
   return (
     <ThemeContext.Provider value={{ darkMode, themeMode, setThemeMode, toggleDarkMode }}>
-      <div className={`app-root ${darkMode ? 'app-dark' : 'app-light'} ${sidebarCollapsed && !isMobile ? 'sb-collapsed' : ''}`}>
+      <div className={`app-root savanna-theme ${darkMode ? 'app-dark' : 'app-light'} ${sidebarCollapsed && !isMobile ? 'sb-collapsed' : ''}`}>
         {isMobile && mobileSidebarOpen && (
           <div className="mobile-overlay" onClick={() => setMobileSidebarOpen(false)} />
         )}

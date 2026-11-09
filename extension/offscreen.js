@@ -2,16 +2,30 @@ let mediaRecorder = null;
 let audioChunks = [];
 let stream = null;
 let isRecording = false;
-let currentTargetLanguage = 'en';
-let recordInterval = null;
+let sourceLang = 'english';
+let targetLang = 'luganda';
+
+// Web Audio API for silence detection
 let audioContext = null;
 let audioSource = null;
+let analyser = null;
+let vadInterval = null;
+let silenceStartTime = 0;
 
+// LOWERED THRESHOLD: 0.005 makes it more sensitive to quiet voices in meetings/videos
+const SILENCE_THRESHOLD = 0.005; 
+const SILENCE_DURATION_MS = 800; // How long silence lasts before we cut
+const MAX_CHUNK_MS = 6000;       // Max time before forcing a cut
+let chunkStartTime = 0;
+
+// NOTE: Change this to your Render URL when testing production
+// Local: http://127.0.0.1:8000
+// Prod: https://lingolink-ai.onrender.com
 const API_URL = 'http://127.0.0.1:8000';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'startRecording') {
-    startAudioCapture(message.streamId, message.targetLanguage)
+    startAudioCapture(message.streamId, message.sourceLanguage, message.targetLanguage)
       .then(() => sendResponse({ success: true }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
@@ -23,15 +37,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-async function startAudioCapture(streamId, targetLanguage) {
+async function startAudioCapture(streamId, sourceLanguage, targetLanguage) {
   try {
-    if (isRecording) {
-      stopAudioCapture();
-    }
+    if (isRecording) stopAudioCapture();
 
-    currentTargetLanguage = targetLanguage;
+    sourceLang = sourceLanguage;
+    targetLang = targetLanguage;
 
-    // Get the media stream from the stream ID
     stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         mandatory: {
@@ -42,54 +54,22 @@ async function startAudioCapture(streamId, targetLanguage) {
       video: false
     });
 
-    // Create AudioContext to route audio back to output (so user hears it)
+    // Route audio to speakers so user can still hear it
     audioContext = new AudioContext();
     audioSource = audioContext.createMediaStreamSource(stream);
-    
-    // Connect to destination so audio still plays
     audioSource.connect(audioContext.destination);
 
-    // Set up MediaRecorder
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-      ? 'audio/webm;codecs=opus' 
-      : 'audio/webm';
-    
-    mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
-    audioChunks = [];
+    // Setup Analyser for VAD
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    audioSource.connect(analyser);
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
-    };
-
-    mediaRecorder.onstop = async () => {
-      if (audioChunks.length > 0) {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        await sendAudioForTranslation(audioBlob, currentTargetLanguage);
-      }
-    };
-
-    mediaRecorder.start(1000);
+    setupMediaRecorder();
     isRecording = true;
-    console.log('Recording started - audio is playing AND being captured');
+    chunkStartTime = Date.now();
 
-    // Record in 8-second chunks
-    recordInterval = setInterval(() => {
-      if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        setTimeout(() => {
-          if (isRecording) {
-            audioChunks = [];
-            try {
-              mediaRecorder.start(1000);
-            } catch (e) {
-              console.error('Restart error:', e);
-            }
-          }
-        }, 300);
-      }
-    }, 8000);
+    // Start VAD loop
+    startVAD();
 
   } catch (error) {
     console.error('Offscreen error:', error);
@@ -97,52 +77,132 @@ async function startAudioCapture(streamId, targetLanguage) {
   }
 }
 
+function setupMediaRecorder() {
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm';
+
+  mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) audioChunks.push(event.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+    if (audioChunks.length > 0) {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      // Don't process if it's too short (like a tiny click)
+      if (audioBlob.size > 2000) {
+        await processAudioChunk(audioBlob);
+      }
+    }
+    // If still recording, restart the recorder for the next chunk
+    if (isRecording) {
+      audioChunks = [];
+      mediaRecorder.start();
+      chunkStartTime = Date.now();
+    }
+  };
+
+  mediaRecorder.start();
+}
+
+// The VAD (Voice Activity Detection) Loop
+function startVAD() {
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  
+  if (vadInterval) clearInterval(vadInterval);
+  silenceStartTime = 0;
+
+  vadInterval = setInterval(() => {
+    if (!isRecording || !analyser) return;
+
+    analyser.getByteTimeDomainData(dataArray);
+
+    // Calculate RMS (Root Mean Square) to measure volume
+    let sum = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      const x = (dataArray[i] - 128) / 128;
+      sum += x * x;
+    }
+    const rms = Math.sqrt(sum / bufferLength);
+
+    const now = Date.now();
+    const timeSinceChunkStart = now - chunkStartTime;
+
+    if (rms < SILENCE_THRESHOLD) {
+      // It's quiet
+      if (silenceStartTime === 0) silenceStartTime = now;
+      
+      // If it's been quiet long enough AND we've recorded at least 1.5 seconds
+      if ((now - silenceStartTime) > SILENCE_DURATION_MS && timeSinceChunkStart > 1500) {
+        console.log('Silence detected, cutting chunk.');
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+        silenceStartTime = 0; // reset
+      }
+    } else {
+      // Sound detected
+      silenceStartTime = 0;
+      
+      // If we hit max length (6s), force cut even if they are still speaking
+      if (timeSinceChunkStart > MAX_CHUNK_MS) {
+        console.log('Max chunk length reached, forcing cut.');
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+      }
+    }
+  }, 100); // Check every 100ms
+}
+
 function stopAudioCapture() {
   isRecording = false;
-  
-  if (recordInterval) {
-    clearInterval(recordInterval);
-    recordInterval = null;
+
+  if (vadInterval) {
+    clearInterval(vadInterval);
+    vadInterval = null;
   }
-  
+
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    try {
-      mediaRecorder.stop();
-    } catch (e) {}
+    try { mediaRecorder.stop(); } catch (e) {}
   }
-  
+
   if (audioContext) {
-    try {
-      audioContext.close();
-    } catch (e) {}
+    try { audioContext.close(); } catch (e) {}
     audioContext = null;
   }
-  
+
   if (stream) {
     stream.getTracks().forEach(track => track.stop());
     stream = null;
   }
-  
+
   mediaRecorder = null;
   audioChunks = [];
-  console.log('Recording stopped');
+  analyser = null;
 }
 
-async function sendAudioForTranslation(audioBlob, targetLanguage) {
+async function processAudioChunk(audioBlob) {
   try {
-    console.log('Sending audio chunk, size:', audioBlob.size);
-    
+    console.log(`Processing chunk: ${(audioBlob.size / 1024).toFixed(1)} KB`);
+
+    // 1. Transcribe
     const formData = new FormData();
     formData.append('file', audioBlob, 'audio.webm');
+    formData.append('language', sourceLang); 
 
-    // Transcribe
     const transcribeResponse = await fetch(`${API_URL}/speech/transcribe`, {
       method: 'POST',
       body: formData
     });
 
     if (!transcribeResponse.ok) {
-      console.error('Transcription failed:', transcribeResponse.status);
+      const errText = await transcribeResponse.text();
+      console.error(`Transcription failed (${transcribeResponse.status}):`, errText);
       return;
     }
 
@@ -150,25 +210,26 @@ async function sendAudioForTranslation(audioBlob, targetLanguage) {
     const text = data.text || data.transcribed_text || '';
 
     if (!text.trim()) {
-      console.log('No speech detected');
+      console.log("Heard silence or hallucination, skipping.");
       return;
     }
 
-    console.log('Transcribed:', text);
+    console.log(`Heard: "${text}"`);
 
-    // Translate
+    // 2. Translate
     const translateResponse = await fetch(`${API_URL}/translate/text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text: text,
-        source_language: 'auto',
-        target_language: targetLanguage
+        source_language: sourceLang,
+        target_language: targetLang
       })
     });
 
     if (!translateResponse.ok) {
-      console.error('Translation failed:', translateResponse.status);
+      const errText = await translateResponse.text();
+      console.error(`Translation failed (${translateResponse.status}):`, errText);
       return;
     }
 
@@ -176,10 +237,9 @@ async function sendAudioForTranslation(audioBlob, targetLanguage) {
     const translatedText = translateData.translated_text || '';
 
     if (!translatedText.trim()) return;
+    console.log(`Translated: "${translatedText}"`);
 
-    console.log('Translated:', translatedText);
-
-    // Send to content script for display
+    // 3. Send to content script for display
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tabs[0]) {
       try {
@@ -192,6 +252,6 @@ async function sendAudioForTranslation(audioBlob, targetLanguage) {
       }
     }
   } catch (error) {
-    console.error('Translation error:', error);
+    console.error('Processing error:', error);
   }
 }

@@ -1,4 +1,4 @@
-/* ============================================
+﻿/* ============================================
    LingoLink AI - All Pages Stylesheet
    Theme: Savanna Gold
    Motion: Warm & Natural
@@ -154,7 +154,7 @@
 .hts-button.processing { background: linear-gradient(135deg, var(--pale-gold), var(--bright-amber)); border-color: var(--pale-gold); color: #1a1208; opacity: 0.85; cursor: not-allowed; pointer-events: none; }
 .hts-button:disabled { cursor: not-allowed; opacity: 0.7; }
 
-/* Subtle breath — no bouncing */
+/* Subtle breath â€” no bouncing */
 @keyframes htsBreath {
   0%, 100% { box-shadow: 0 6px 25px rgba(255, 65, 108, 0.45); }
   50% { box-shadow: 0 6px 42px rgba(255, 65, 108, 0.7); }
@@ -310,7 +310,7 @@
 .app-dark .mic-section { background: var(--night-amber); border: 1px solid rgba(212, 160, 74, 0.12); }
 .app-light .mic-section { background: var(--parchment); border: 1px solid var(--border-light); box-shadow: 0 2px 12px rgba(26, 18, 8, 0.05); }
 
-/* Gentle spinner — slower, calmer */
+/* Gentle spinner â€” slower, calmer */
 @keyframes quietSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 .loading-container { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; min-height: 150px; }
 .loading-spinner { width: 34px; height: 34px; border: 3px solid rgba(212, 160, 74, 0.2); border-top-color: var(--bright-amber); border-radius: 50%; animation: quietSpin 1s linear infinite; }
@@ -1326,7 +1326,7 @@
 .app-dark .twoway-speaker { background: var(--night-amber); border-color: rgba(212, 160, 74, 0.15); }
 .app-light .twoway-speaker { background: var(--parchment); border-color: var(--border-light); }
 
-/* Gentle breath glow — calm, not urgent */
+/* Gentle breath glow â€” calm, not urgent */
 .twoway-speaker.twoway-active {
   border-color: var(--bright-amber);
   animation: speakerBreath 2.6s var(--ease-breath) infinite;
@@ -2096,7 +2096,7 @@
   justify-content: center;
 }
 
-/* TwoWay uses a vertical swap (⇅) vs the horizontal one in Translate/Voice */
+/* TwoWay uses a vertical swap (â‡…) vs the horizontal one in Translate/Voice */
 .twoway-swap-btn .ll-icon {
   transform: rotate(90deg);
   transition: transform 0.25s ease;
@@ -2365,7 +2365,7 @@
 }
 
 /* ============================================================
-   CALL CENTER — Real-time translated calls
+   CALL CENTER â€” Real-time translated calls
    ============================================================ */
 
 .callcenter-root {
@@ -2578,7 +2578,7 @@
   border-color: #d4a537;
 }
 
-/* ---------- CONNECTED — CALL VIEW ---------- */
+/* ---------- CONNECTED â€” CALL VIEW ---------- */
 .callcenter-callview {
   display: flex;
   flex-direction: column;
@@ -2855,7 +2855,7 @@
 }
 
 /* ============================================================
-   JOIN CALL — caller side
+   JOIN CALL â€” caller side
    ============================================================ */
 
 .joincall-root {
@@ -3129,7 +3129,7 @@
 }
 
 /* ============================================================
-   JOIN CALL — caller side
+   JOIN CALL â€” caller side
    ============================================================ */
 
 .joincall-root {
@@ -3336,7 +3336,7 @@
 }
 
 /* ============================================================
-   CALLCENTER — updates for hybrid AI
+   CALLCENTER â€” updates for hybrid AI
    ============================================================ */
 
 .callcenter-mode-btn {
@@ -3405,7 +3405,7 @@
 }
 
 /* ============================================================
-   CALL CENTER — real-call UX with continuous mic
+   CALL CENTER â€” real-call UX with continuous mic
    ============================================================ */
 
 .callcenter-root {
@@ -3873,9 +3873,9 @@
 }
 
 /* ============================================================
-   LINGOLINK AI — PREMIUM THEME OVERRIDES v2
+   LINGOLINK AI â€” PREMIUM THEME OVERRIDES v2
    Applies to ALL pages. Both dark + light modes.
-   Non-destructive — delete this block to revert.
+   Non-destructive â€” delete this block to revert.
    ============================================================ */
 
 /* ---------- GENERIC CARD ---------- */
@@ -3998,7 +3998,7 @@
   color: #4ade80 !important;
 }
 
-/* ---------- BUTTONS — GOLD GRADIENT ---------- */
+/* ---------- BUTTONS â€” GOLD GRADIENT ---------- */
 .dash-refresh,
 .send-btn,
 .auth-btn,
@@ -4311,6 +4311,7 @@ textarea:focus {
   font-size: 13px;
   margin-bottom: 12px;
 }
+
 
 
 

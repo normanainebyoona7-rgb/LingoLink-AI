@@ -273,7 +273,7 @@ export default function Translate({ token }: Props) {
   }, []);
 
   return (
-    <div className="translate-page">
+    <div className="translate-page savanna-theme">
       {/* Offline mode banner */}
       {showBanner && !offlineReady && (
         <div className="offline-banner fade-in-up">
@@ -319,13 +319,11 @@ export default function Translate({ token }: Props) {
 
       {/* Professional Unified Status Pill */}
       <div className="system-status-pill fade-in-up">
-        {/* Network Status */}
         <div className={`status-item ${browserOffline ? 'status-offline' : 'status-online'}`}>
           <span className="status-dot" />
           <span>{browserOffline ? 'Offline' : 'Online'}</span>
         </div>
 
-        {/* Offline Pack Status */}
         {offlineReady ? (
           <div className="status-item status-ready" title={`Luganda: ${offlineAudioCounts['luganda'] || 0} | Swahili: ${offlineAudioCounts['swahili'] || 0} audio files`}>
             <Icon name="check" size={12} strokeWidth={3} />

@@ -1,7 +1,30 @@
 /* ============================================
    LingoLink AI - Base Stylesheet
-   Theme: Savanna Gold
+   Theme: Savanna Gold (Global)
    ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ============ THEME VARIABLES ============ */
+:root {
+  /* Backgrounds */
+  --bg-main: #120c06;        /* Deep Earth */
+  --bg-surface: #1f150b;     /* Panels/Cards */
+  --bg-elevated: #2d1f10;    /* Dropdowns/Modals */
+  
+  /* Brand Colors */
+  --gold-primary: #F59E0B;   /* Savanna Gold */
+  --gold-hover: #D97706;     /* Darker Amber */
+  --gold-text: #FDE68A;      /* Light Cream Text */
+  
+  /* Accents & Text */
+  --text-main: #FDE68A;
+  --text-muted: #B08D57;
+  --border-color: rgba(245, 158, 11, 0.2);
+  
+  /* Typography */
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
 
 /* ============ GLOBAL RESET ============ */
 * {
@@ -17,15 +40,15 @@ html {
 }
 
 body {
-  font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-main);
   font-size: 15px;
   line-height: 1.5;
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  background-color: var(--bg-main);
+  color: var(--text-main);
 }
 
 #root {
@@ -44,93 +67,175 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(212, 160, 74, 0.3);
+  background: rgba(245, 158, 11, 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 160, 74, 0.5);
+  background: rgba(245, 158, 11, 0.5);
 }
 
 /* ============ GLOBAL ELEMENT BEHAVIOR ============ */
-button {
+button, input, textarea, select {
   font-family: inherit;
+}
+
+button {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 2px solid #f4c26c;
+  outline: 2px solid var(--gold-primary);
   outline-offset: 2px;
-}
-
-input,
-textarea,
-select {
-  font-family: inherit;
-  font-size: inherit;
-}
-
-img,
-video,
-svg {
-  max-width: 100%;
-  display: block;
 }
 
 a {
   color: inherit;
   text-decoration: none;
-  -webkit-tap-highlight-color: transparent;
 }
 
-/* ============ MOBILE BASE ============ */
-@media (max-width: 768px) {
-  body {
-    font-size: 15px;
-  }
+/* ============================================================
+   GLOBAL SAVANNA THEME OVERRIDES (Forces all pages to match)
+   ============================================================ */
 
-  /* Prevent iOS zoom on input focus */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
+/* Force the whole app to use deep earth background */
+.savanna-theme, 
+.savanna-theme.app-root, 
+.savanna-theme .sb-main,
+.savanna-theme .sb-content,
+.savanna-theme .gpanel {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
 }
 
-/* ============ SAFE AREA HELPERS ============ */
-@supports (padding: env(safe-area-inset-top)) {
-  body {
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  }
+/* Sidebar */
+.savanna-theme .sb-sidebar {
+  background-color: var(--bg-surface) !important;
+  border-right: 1px solid var(--border-color) !important;
 }
 
-/* ============ REDUCED MOTION ============ */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+/* Topbar */
+.savanna-theme .sb-topbar {
+  background-color: var(--bg-surface) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
-/* ============ PRINT ============ */
-@media print {
-  .sb-sidebar,
-  .sb-topbar,
-  .mobile-overlay {
-    display: none !important;
-  }
+/* Text & Headings */
+.savanna-theme h1, 
+.savanna-theme h2, 
+.savanna-theme h3,
+.savanna-theme .sb-brand-text,
+.savanna-theme .sb-title,
+.savanna-theme .sb-label {
+  color: var(--gold-text) !important;
+}
 
-  .sb-content {
-    padding: 0 !important;
-    overflow: visible !important;
-  }
+/* Sidebar Items */
+.savanna-theme .sb-item {
+  color: var(--text-muted) !important;
+  border-radius: 8px;
+  margin: 2px 8px;
+}
+
+.savanna-theme .sb-item:hover {
+  background-color: rgba(245, 158, 11, 0.08) !important;
+  color: var(--gold-primary) !important;
+}
+
+.savanna-theme .sb-item.sb-active {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: var(--gold-primary) !important;
+  border-left: 3px solid var(--gold-primary) !important;
+}
+
+/* Inputs, Dropdowns, Textareas */
+.savanna-theme input,
+.savanna-theme textarea,
+.savanna-theme select {
+  background-color: var(--bg-surface) !important;
+  color: var(--gold-text) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.savanna-theme input::placeholder,
+.savanna-theme textarea::placeholder {
+  color: rgba(253, 230, 138, 0.3) !important;
+}
+
+.savanna-theme select option {
+  background-color: var(--bg-elevated) !important;
+  color: var(--gold-text) !important;
+}
+
+/* Generic Panels & Cards (Applies to Dashboard, History, etc) */
+.savanna-theme .gpanel,
+.savanna-theme .card,
+.savanna-theme .panel,
+.savanna-theme .stat-box {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+}
+
+/* Primary Buttons everywhere */
+.savanna-theme button:not(.sb-item):not(.sb-theme-btn):not(.sb-logout) {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%);
+  color: #120c06 !important; /* Dark text on gold */
+  border: none;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.savanna-theme button:not(.sb-item):not(.sb-theme-btn):not(.sb-logout):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* Translate Page Specifics */
+.savanna-theme .swap-btn {
+  background: var(--bg-elevated) !important;
+  color: var(--gold-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 50% !important;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.savanna-theme .icon-btn, 
+.savanna-theme .clear-btn {
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+}
+
+.savanna-theme .icon-btn:hover, 
+.savanna-theme .clear-btn:hover {
+  color: var(--gold-primary) !important;
+}
+
+/* Tables (History page) */
+.savanna-theme table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.savanna-theme th {
+  color: var(--gold-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 12px;
+  text-align: left;
+}
+.savanna-theme td {
+  color: var(--gold-text) !important;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.05) !important;
+  padding: 12px;
 }

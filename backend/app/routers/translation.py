@@ -6,7 +6,7 @@ from sqlalchemy import func
 import requests
 import os
 import re
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.routers.auth import get_current_user
 import app.models as models
 import app.schemas as schemas
@@ -54,7 +54,6 @@ LANGUAGES = {
     "lingala": "Lingala", "kikongo": "Kikongo", "bemba": "Bemba",
     "zulu": "Zulu", "xhosa": "Xhosa", "afrikaans": "Afrikaans",
     "sesotho": "Sesotho", "setswana": "Setswana",
-    # === UgandaLex2 additions ===
     "adhola": "Adhola", "kakwa": "Kakwa", "kumam": "Kumam",
     "karamojong": "Karamojong", "lumasaba": "Lumasaba", "lugisu": "Lugisu",
     "nyole": "Nyole", "aringa": "Aringa", "gungu": "Gungu",
@@ -79,7 +78,6 @@ CODES = {
     "acholi": "ach", "alur": "alz", "ateso": "teo",
     "lango": "laj", "lugbara": "lgg",
     "lusoga": "xog", "lugwere": "gwr", "dholuo": "luo",
-    # === UgandaLex2 additions ===
     "adhola": "adh", "kakwa": "keo", "kumam": "kdi",
     "karamojong": "kdj", "lumasaba": "myx", "lugisu": "myx",
     "nyole": "nuj", "aringa": "luc", "gungu": "rub",
@@ -89,16 +87,13 @@ CODES = {
 
 CODE_TO_LANG = {v: k for k, v in CODES.items()}
 
-
 def get_cached(key):
     return _cache.get(key)
-
 
 def set_cache(key, value):
     if len(_cache) >= CACHE_LIMIT:
         _cache.clear()
     _cache[key] = value
-
 
 def normalize_language(lang: str) -> str:
     lang = lang.lower().strip()
@@ -113,30 +108,24 @@ def normalize_language(lang: str) -> str:
             return name
     return lang
 
-
 def clean_translation(text: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     text = text.strip('"').strip("'").strip()
     return text
 
-
 @router.get("/languages")
 async def get_languages():
     return {"languages": LANGUAGES}
 
-
 @router.get("/detect")
 async def detect_language_endpoint(text: str):
-    """Auto-detect language - basic English default"""
     return {"detected_language": "english", "confidence": 0.5}
-
 
 @router.post("/quick")
 async def quick_translate(
     request: schemas.TranslationRequest,
     current_user: models.User = Depends(get_current_user)
 ):
-    """Fast translation for live typing - Google only, no DB save"""
     source_lang = normalize_language(request.source_language)
     target_lang = normalize_language(request.target_language)
     result = google_translate(request.text, target_lang, source_lang)
@@ -150,23 +139,16 @@ async def quick_translate(
         "success": result is not None
     }
 
-
 @router.post("/text")
 async def translate_text(
     request: schemas.TranslationRequest,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
+    """
+    Public translation endpoint for the Chrome Extension.
+    Does not require a JWT token. Saves history under a guest user.
+    """
     try:
-        today = datetime.utcnow().date()
-        if current_user.last_translation_date is None or current_user.last_translation_date.date() != today:
-            current_user.daily_translation_count = 0
-            current_user.last_translation_date = datetime.utcnow()
-        if not current_user.is_premium and current_user.daily_translation_count >= 100:
-            raise HTTPException(status_code=403, detail="Daily limit reached.")
-        current_user.daily_translation_count += 1
-        db.commit()
-
         source_lang = normalize_language(request.source_language)
         if source_lang == "auto" or source_lang not in LANGUAGES:
             source_lang = "english"
@@ -183,18 +165,18 @@ async def translate_text(
             }
 
         result = fast_translate(request.text, target_lang, source_lang)
-
         if not result:
             result = request.text
 
+        # Save to history as guest (user_id=1 is admin, so we use 999 for guest)
         try:
             db_translation = models.Translation(
-                user_id=current_user.id,
+                user_id=999, # Guest user
                 source_text=request.text,
                 translated_text=result,
                 source_language=source_lang,
                 target_language=target_lang,
-                translation_type="text"
+                translation_type="extension"
             )
             db.add(db_translation)
             db.commit()
@@ -212,12 +194,9 @@ async def translate_text(
     except HTTPException:
         raise
     except Exception as e:
-        try:
-            db.rollback()
-        except:
-            pass
+        try: db.rollback()
+        except: pass
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/history")
 async def get_translation_history(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -234,20 +213,15 @@ async def get_translation_history(db: Session = Depends(get_db), current_user: m
         "created_at": t.created_at
     } for t in translations]
 
-
 @router.get("/stats/me")
 async def get_my_stats(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Personal usage stats for the current logged-in user only."""
     base_query = db.query(models.Translation).filter(models.Translation.user_id == current_user.id)
-
     total_translations = base_query.count()
-
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_translations = base_query.filter(models.Translation.created_at >= today_start).count()
-
     week_start = datetime.utcnow() - timedelta(days=7)
     week_translations = base_query.filter(models.Translation.created_at >= week_start).count()
 
@@ -264,17 +238,9 @@ async def get_my_stats(
     )
 
     languages_used = len(lang_rows)
-    top_languages = [
-        {"language": row[0], "count": row[1]}
-        for row in lang_rows
-    ]
+    top_languages = [{"language": row[0], "count": row[1]} for row in lang_rows]
 
-    recent = (
-        base_query
-        .order_by(models.Translation.created_at.desc())
-        .limit(5)
-        .all()
-    )
+    recent = base_query.order_by(models.Translation.created_at.desc()).limit(5).all()
     recent_list = [{
         "id": t.id,
         "source_text": t.source_text,
@@ -293,7 +259,6 @@ async def get_my_stats(
         "recent": recent_list,
     }
 
-
 @router.delete("/{translation_id}")
 async def delete_translation(translation_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     translation = db.query(models.Translation).filter(
@@ -305,7 +270,6 @@ async def delete_translation(translation_id: int, db: Session = Depends(get_db),
     db.delete(translation)
     db.commit()
     return {"message": "Deleted"}
-
 
 @router.get("/providers")
 async def get_providers():
