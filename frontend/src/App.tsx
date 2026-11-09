@@ -117,6 +117,11 @@ function App() {
     localStorage.setItem('themeMode', themeMode);
   }, [themeMode]);
 
+  // NEW: Apply data-theme to <html> so the global CSS variables swap
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
   const toggleDarkMode = () => {
     const idx = THEME_CYCLE.indexOf(themeMode);
     const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
@@ -304,7 +309,9 @@ function App() {
     return (
       <ThemeContext.Provider value={{ darkMode, themeMode, setThemeMode, toggleDarkMode }}>
         {authPage === 'landing' ? (
-          <Landing onLoginClick={() => setAuthPage('login')} onRegisterClick={() => setAuthPage('register')} />
+          <div className="savanna-theme">
+            <Landing onLoginClick={() => setAuthPage('login')} onRegisterClick={() => setAuthPage('register')} />
+          </div>
         ) : (
           <div className={`auth-full savanna-theme ${darkMode ? 'auth-dark' : 'auth-light'}`}>
             <div

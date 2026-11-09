@@ -7,23 +7,37 @@
 
 /* ============ THEME VARIABLES ============ */
 :root {
-  /* Backgrounds */
+  /* Dark Mode (Default Savanna) */
   --bg-main: #120c06;        /* Deep Earth */
   --bg-surface: #1f150b;     /* Panels/Cards */
   --bg-elevated: #2d1f10;    /* Dropdowns/Modals */
   
-  /* Brand Colors */
   --gold-primary: #F59E0B;   /* Savanna Gold */
   --gold-hover: #D97706;     /* Darker Amber */
   --gold-text: #FDE68A;      /* Light Cream Text */
   
-  /* Accents & Text */
   --text-main: #FDE68A;
   --text-muted: #B08D57;
   --border-color: rgba(245, 158, 11, 0.2);
   
-  /* Typography */
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ============ LIGHT MODE OVERRIDES ============ */
+html[data-theme="light"], 
+body.light-mode, 
+.app-light {
+  --bg-main: #f8f9fa;        /* Clean White */
+  --bg-surface: #ffffff;     /* Pure White Panels */
+  --bg-elevated: #f1f3f5;    /* Light Gray for Dropdowns */
+  
+  --gold-primary: #D97706;   /* Darker Amber for contrast on white */
+  --gold-hover: #B45309;     
+  --gold-text: #1f150b;      /* Dark Brown Text */
+  
+  --text-main: #1f150b;
+  --text-muted: #6b5a3a;
+  --border-color: rgba(217, 119, 6, 0.3);
 }
 
 /* ============ GLOBAL RESET ============ */
@@ -49,6 +63,7 @@ body {
   -webkit-font-smoothing: antialiased;
   background-color: var(--bg-main);
   color: var(--text-main);
+  transition: background-color 0.3s, color 0.3s;
 }
 
 #root {
@@ -57,33 +72,14 @@ body {
 }
 
 /* ============ SCROLLBARS ============ */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(245, 158, 11, 0.3);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.5);
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-primary); }
 
 /* ============ GLOBAL ELEMENT BEHAVIOR ============ */
-button, input, textarea, select {
-  font-family: inherit;
-}
-
-button {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
+button, input, textarea, select { font-family: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 
 button:focus-visible,
 input:focus-visible,
@@ -93,16 +89,12 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+a { color: inherit; text-decoration: none; }
 
 /* ============================================================
-   GLOBAL SAVANNA THEME OVERRIDES (Forces all pages to match)
+   1. GLOBAL SAVANNA THEME OVERRIDES (App Pages)
    ============================================================ */
 
-/* Force the whole app to use deep earth background */
 .savanna-theme, 
 .savanna-theme.app-root, 
 .savanna-theme .sb-main,
@@ -112,19 +104,12 @@ a {
   color: var(--text-main) !important;
 }
 
-/* Sidebar */
-.savanna-theme .sb-sidebar {
-  background-color: var(--bg-surface) !important;
-  border-right: 1px solid var(--border-color) !important;
-}
-
-/* Topbar */
+.savanna-theme .sb-sidebar,
 .savanna-theme .sb-topbar {
   background-color: var(--bg-surface) !important;
-  border-bottom: 1px solid var(--border-color) !important;
+  border-color: var(--border-color) !important;
 }
 
-/* Text & Headings */
 .savanna-theme h1, 
 .savanna-theme h2, 
 .savanna-theme h3,
@@ -134,7 +119,6 @@ a {
   color: var(--gold-text) !important;
 }
 
-/* Sidebar Items */
 .savanna-theme .sb-item {
   color: var(--text-muted) !important;
   border-radius: 8px;
@@ -152,7 +136,6 @@ a {
   border-left: 3px solid var(--gold-primary) !important;
 }
 
-/* Inputs, Dropdowns, Textareas */
 .savanna-theme input,
 .savanna-theme textarea,
 .savanna-theme select {
@@ -165,7 +148,8 @@ a {
 
 .savanna-theme input::placeholder,
 .savanna-theme textarea::placeholder {
-  color: rgba(253, 230, 138, 0.3) !important;
+  color: var(--text-muted) !important;
+  opacity: 0.6;
 }
 
 .savanna-theme select option {
@@ -173,7 +157,6 @@ a {
   color: var(--gold-text) !important;
 }
 
-/* Generic Panels & Cards (Applies to Dashboard, History, etc) */
 .savanna-theme .gpanel,
 .savanna-theme .card,
 .savanna-theme .panel,
@@ -184,21 +167,20 @@ a {
 }
 
 /* Primary Buttons everywhere */
-.savanna-theme button:not(.sb-item):not(.sb-theme-btn):not(.sb-logout) {
+.savanna-theme button:not(.sb-item):not(.sb-theme-btn):not(.sb-logout):not(.auth-link) {
   background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%);
-  color: #120c06 !important; /* Dark text on gold */
+  color: #ffffff !important; /* White text on buttons for both modes */
   border: none;
   font-weight: 600;
   border-radius: 8px;
   transition: all 0.2s;
 }
 
-.savanna-theme button:not(.sb-item):not(.sb-theme-btn):not(.sb-logout):hover {
+.savanna-theme button:not(.sb-item):not(.sb-theme-btn):not(.sb-logout):not(.auth-link):hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
-/* Translate Page Specifics */
 .savanna-theme .swap-btn {
   background: var(--bg-elevated) !important;
   color: var(--gold-primary) !important;
@@ -223,86 +205,132 @@ a {
   color: var(--gold-primary) !important;
 }
 
-/* Tables (History page) */
-.savanna-theme table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.savanna-theme th {
-  color: var(--gold-primary) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  padding: 12px;
-  text-align: left;
-}
-.savanna-theme td {
-  color: var(--gold-text) !important;
-  border-bottom: 1px solid rgba(245, 158, 11, 0.05) !important;
-  padding: 12px;
-}
+.savanna-theme table { width: 100%; border-collapse: collapse; }
+.savanna-theme th { color: var(--gold-primary) !important; border-bottom: 1px solid var(--border-color) !important; padding: 12px; text-align: left; }
+.savanna-theme td { color: var(--text-main) !important; border-bottom: 1px solid var(--border-color) !important; padding: 12px; }
 
 /* ============================================================
-   LANDING & AUTH PAGE OVERRIDES
+   2. LANDING PAGE OVERRIDES
    ============================================================ */
 
-/* --- Landing Page --- */
-.savanna-theme .landing-container,
-.savanna-theme .landing-page,
-.savanna-theme .landing-hero {
+.savanna-theme .landing-root {
   background-color: var(--bg-main) !important;
-  color: var(--gold-text) !important;
+  background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-main) 100%) !important;
 }
 
-.savanna-theme .landing-nav {
-  background-color: rgba(18, 12, 6, 0.8) !important;
+.savanna-theme .ln-nav {
+  background-color: var(--bg-surface) !important;
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-color) !important;
 }
 
-.savanna-theme .landing-hero h1,
-.savanna-theme .landing-hero h2 {
-  color: var(--gold-text) !important;
+.savanna-theme .ln-logo-text,
+.savanna-theme .ln-hero-title,
+.savanna-theme .ln-section-title {
+  color: var(--text-main) !important;
 }
 
-.savanna-theme .landing-hero h1 span,
-.savanna-theme .landing-hero .highlight {
-  color: var(--gold-primary) !important;
+.savanna-theme .ln-gradient {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
-.savanna-theme .landing-features,
-.savanna-theme .landing-pricing,
-.savanna-theme .landing-footer {
+.savanna-theme .ln-hero-sub,
+.savanna-theme .ln-section-sub {
+  color: var(--text-muted) !important;
+}
+
+.savanna-theme .ln-platform-card,
+.savanna-theme .ln-feature,
+.savanna-theme .ln-pricing-card,
+.savanna-theme .ln-testimonial-card,
+.savanna-theme .ln-faq-item {
   background-color: var(--bg-surface) !important;
-  color: var(--gold-text) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+  border-radius: 16px !important;
 }
 
-/* --- Auth Page (Login / Register) --- */
-.savanna-theme .auth-full {
+.savanna-theme .ln-pricing-highlighted {
+  border: 2px solid var(--gold-primary) !important;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.2) !important;
+}
+
+.savanna-theme .ln-btn-primary,
+.savanna-theme .ln-register-btn {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.savanna-theme .ln-btn-secondary,
+.savanna-theme .ln-login-btn {
+  background: transparent !important;
+  color: var(--gold-primary) !important;
+  border: 1px solid var(--gold-primary) !important;
+}
+
+.savanna-theme .ln-lang-chip {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.savanna-theme .ln-stat-num { color: var(--gold-primary) !important; }
+.savanna-theme .ln-stat-label { color: var(--text-muted) !important; }
+
+/* ============================================================
+   3. AUTH PAGE OVERRIDES
+   ============================================================ */
+
+.savanna-theme.auth-full,
+.savanna-theme .auth-full,
+.savanna-theme.auth-dark,
+.savanna-theme.auth-light {
   background-color: var(--bg-main) !important;
-  background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.05), transparent 40%) !important;
 }
 
 .savanna-theme .auth-box {
   background-color: var(--bg-surface) !important;
   border: 1px solid var(--border-color) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+  padding: 40px 32px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 16px;
 }
 
-.savanna-theme .auth-box h1 {
-  color: var(--gold-primary) !important;
-}
+.savanna-theme .auth-box h1 { color: var(--gold-primary) !important; }
+.savanna-theme .auth-box p { color: var(--text-muted) !important; }
 
-.savanna-theme .auth-box p {
-  color: var(--text-muted) !important;
-}
-
-.savanna-theme .auth-btn {
+.savanna-theme .auth-box .auth-btn {
   background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%) !important;
-  color: #120c06 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 15px;
 }
 
-.savanna-theme .auth-link {
+.savanna-theme .auth-box .auth-link {
+  background: transparent !important;
   color: var(--gold-primary) !important;
+  box-shadow: none !important;
+  border: none !important;
+  font-size: 14px;
+  padding: 6px;
+  display: block;
+  width: 100%;
+  text-align: center;
+  transition: color 0.2s;
 }
 
-.savanna-theme .auth-link:hover {
-  color: var(--gold-text) !important;
+.savanna-theme .auth-box .auth-link:hover {
+  color: var(--gold-hover) !important;
 }
