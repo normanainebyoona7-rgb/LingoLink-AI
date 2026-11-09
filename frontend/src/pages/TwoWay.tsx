@@ -1,93 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
 import Icon from '../components/Icon';
+import AudioVisualizer from '../components/AudioVisualizer';
 
 interface Props {
   token: string;
 }
 
-type Gender = 'male' | 'female';
-
-interface Turn {
-  speaker: 'A' | 'B';
-  original: string;
+interface Message {
+  sender: 'A' | 'B';
+  text: string;
   translated: string;
-  sourceLang: string;
-  targetLang: string;
-  timestamp: number;
+  language: string;
 }
-
-const STORAGE_KEY = 'lingolink_twoway_conversation';
-const STORAGE_SETTINGS = 'lingolink_twoway_settings';
 
 export default function TwoWay({ token }: Props) {
   const { darkMode } = useTheme();
-
-  // ---- Settings ----
   const [langA, setLangA] = useState('english');
   const [langB, setLangB] = useState('luganda');
-  const [gender, setGender] = useState<Gender>('female');
-  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [isRecordingA, setIsRecordingA] = useState(false);
+  const [isRecordingB, setIsRecordingB] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // ---- State ----
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [activeSpeaker, setActiveSpeaker] = useState<'A' | 'B'>('A');
-  const [busySpeaker, setBusySpeaker] = useState<'A' | 'B' | null>(null);
-  const [error, setError] = useState('');
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
-
-  // ---- Load from localStorage ----
-  useEffect(() => {
-    try {
-      const savedTurns = localStorage.getItem(STORAGE_KEY);
-      if (savedTurns) setTurns(JSON.parse(savedTurns));
-
-      const savedSettings = localStorage.getItem(STORAGE_SETTINGS);
-      if (savedSettings) {
-        const s = JSON.parse(savedSettings);
-        if (s.langA) setLangA(s.langA);
-        if (s.langB) setLangB(s.langB);
-        if (s.gender) setGender(s.gender);
-        if (typeof s.autoSpeak === 'boolean') setAutoSpeak(s.autoSpeak);
-      }
-    } catch {}
-  }, []);
-
-  // ---- Save to localStorage ----
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(turns));
-    } catch {}
-  }, [turns]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        STORAGE_SETTINGS,
-        JSON.stringify({ langA, langB, gender, autoSpeak })
-      );
-    } catch {}
-  }, [langA, langB, gender, autoSpeak]);
-
-  // ---- Auto-scroll transcript ----
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [turns]);
-
-  // ---- Handle speech from a speaker ----
-  const handleTranscribed = async (speaker: 'A' | 'B', text: string) => {
+  const handleTranscribed = async (text: string, sender: 'A' | 'B') => {
+    if (sender === 'A') setIsRecordingA(false);
+    if (sender === 'B') setIsRecordingB(false);
+    
     if (!text.trim()) return;
+    setIsProcessing(true);
 
-    const sourceLang = speaker === 'A' ? langA : langB;
-    const targetLang = speaker === 'A' ? langB : langA;
-
-    setBusySpeaker(speaker);
-    setError('');
+    const sourceLang = sender === 'A' ? langA : langB;
+    const targetLang = sender === 'A' ? langB : langA;
 
     try {
       const res = await fetch(`${API_URL}/translate/text`, {
@@ -103,233 +50,113 @@ export default function TwoWay({ token }: Props) {
         }),
       });
 
-      if (!res.ok) {
-        setError('Translation failed. Check backend.');
-        setBusySpeaker(null);
-        return;
-      }
-
-      const data = await res.json();
-      const translatedText = data.translated_text || '';
-
-      const turn: Turn = {
-        speaker,
-        original: text,
-        translated: translatedText,
-        sourceLang,
-        targetLang,
-        timestamp: Date.now(),
-      };
-
-      setTurns((prev) => [...prev, turn]);
-
-      if (autoSpeak && translatedText) {
-        speak(translatedText, targetLang);
-      }
-
-      setActiveSpeaker(speaker === 'A' ? 'B' : 'A');
-    } catch (err) {
-      console.error('Translation failed:', err);
-      setError('Connection error. Is backend running?');
-    } finally {
-      setBusySpeaker(null);
-    }
-  };
-
-  const speak = async (text: string, language: string) => {
-    try {
-      const res = await fetch(`${API_URL}/tts/speak`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          text,
-          language,
-          gender,
-          speed: 1.0,
-        }),
-      });
-
       if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (!audioRef.current) audioRef.current = new Audio();
-        audioRef.current.pause();
-        audioRef.current.src = url;
-        audioRef.current.play();
+        const data = await res.json();
+        setMessages(prev => [...prev, {
+          sender,
+          text,
+          translated: data.translated_text,
+          language: sourceLang
+        }]);
       }
     } catch (err) {
-      console.error('TTS failed:', err);
+      console.error('Two-way translation failed:', err);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const swapLanguages = () => {
+    const temp = langA;
     setLangA(langB);
-    setLangB(langA);
-  };
-
-  const clearConversation = () => {
-    if (!window.confirm('Clear entire conversation?')) return;
-    setTurns([]);
-    setActiveSpeaker('A');
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    setLangB(temp);
+    setMessages([]); // Clear chat on swap
   };
 
   return (
-    <div className={`twoway-root ${darkMode ? 'twoway-dark' : 'twoway-light'}`}>
-
-      {/* Header */}
-      <div className="twoway-header">
-        <h2><Icon name="message-circle" size={22} /> Two-Way Conversation</h2>
-        <p>Two people, two languages — one phone</p>
-      </div>
-
-      {/* Shared settings */}
-      <div className="twoway-settings">
-        <div className="twoway-setting-group">
-          <span className="twoway-setting-label">Voice</span>
-          <div className="twoway-gender-toggle">
-            <button
-              type="button"
-              className={`twoway-gender-btn ${gender === 'female' ? 'active' : ''}`}
-              onClick={() => setGender('female')}
-              title="Female voice"
-            >
-              <Icon name="user-female" size={16} /> Female
-            </button>
-            <button
-              type="button"
-              className={`twoway-gender-btn ${gender === 'male' ? 'active' : ''}`}
-              onClick={() => setGender('male')}
-              title="Male voice"
-            >
-              <Icon name="user-male" size={16} /> Male
-            </button>
-          </div>
+    <div className="twoway-root savanna-theme" style={{ padding: '24px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* Header & Language Switcher */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', background: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginLeft: '8px' }}>Person A</span>
+          <SearchableDropdown value={langA} onChange={setLangA} placeholder="Language A" />
         </div>
-        <div className="twoway-setting-group">
-          <span className="twoway-setting-label">Auto-Speak</span>
-          <button
-            className={`slider-toggle ${autoSpeak ? 'on' : 'off'}`}
-            onClick={() => setAutoSpeak(!autoSpeak)}
-            role="switch"
-            aria-checked={autoSpeak}
-          >
-            <span className="slider-knob"></span>
-          </button>
-        </div>
-      </div>
-
-      {/* Speaker A */}
-      <div className={`twoway-speaker ${activeSpeaker === 'A' ? 'twoway-active' : ''}`}>
-        <div className="twoway-speaker-header">
-          <div className="twoway-speaker-info">
-            <span className="twoway-avatar"><Icon name="user" size={18} /></span>
-            <span className="twoway-speaker-name">Speaker A</span>
-          </div>
-          <SearchableDropdown
-            value={langA}
-            onChange={setLangA}
-            placeholder="language"
-          />
-        </div>
-        <div className="twoway-mic">
-          <HoldToSpeak
-            token={token}
-            language={langA}
-            onTranscribed={(text) => handleTranscribed('A', text)}
-          />
-        </div>
-        {busySpeaker === 'A' && (
-          <p className="twoway-status">
-            <Icon name="loader" size={14} className="spin" /> Translating…
-          </p>
-        )}
-      </div>
-
-      {/* Swap */}
-      <div className="twoway-swap-row">
-        <button className="twoway-swap-btn" onClick={swapLanguages} title="Swap languages">
-          <Icon name="swap" size={20} />
+        
+        <button className="swap-btn" onClick={swapLanguages} style={{ margin: '0 16px' }}>
+          <Icon name="swap" size={18} />
         </button>
+
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginLeft: '8px' }}>Person B</span>
+          <SearchableDropdown value={langB} onChange={setLangB} placeholder="Language B" />
+        </div>
       </div>
 
-      {/* Speaker B */}
-      <div className={`twoway-speaker ${activeSpeaker === 'B' ? 'twoway-active' : ''}`}>
-        <div className="twoway-speaker-header">
-          <div className="twoway-speaker-info">
-            <span className="twoway-avatar"><Icon name="user" size={18} /></span>
-            <span className="twoway-speaker-name">Speaker B</span>
-          </div>
-          <SearchableDropdown
-            value={langB}
-            onChange={setLangB}
-            placeholder="language"
-          />
-        </div>
-        <div className="twoway-mic">
-          <HoldToSpeak
-            token={token}
-            language={langB}
-            onTranscribed={(text) => handleTranscribed('B', text)}
-          />
-        </div>
-        {busySpeaker === 'B' && (
-          <p className="twoway-status">
-            <Icon name="loader" size={14} className="spin" /> Translating…
+      {/* Chat Area */}
+      <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+        {messages.length === 0 ? (
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>
+            Hold the mic for Person A or Person B to start a conversation.
           </p>
+        ) : (
+          messages.map((msg, idx) => (
+            <div key={idx} style={{
+              alignSelf: msg.sender === 'A' ? 'flex-start' : 'flex-end',
+              background: msg.sender === 'A' ? 'var(--bg-elevated)' : 'var(--gold-primary)',
+              color: msg.sender === 'A' ? 'var(--text-main)' : '#ffffff',
+              padding: '12px 16px',
+              borderRadius: '16px',
+              borderBottomLeftRadius: msg.sender === 'A' ? '4px' : '16px',
+              borderBottomRightRadius: msg.sender === 'B' ? '4px' : '16px',
+              maxWidth: '80%'
+            }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '12px', opacity: 0.7 }}>{msg.text}</p>
+              <p style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>{msg.translated}</p>
+            </div>
+          ))
+        )}
+        {isProcessing && (
+           <div style={{ alignSelf: 'center', color: 'var(--gold-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <Icon name="loader" size={16} className="spin" /> Translating...
+           </div>
         )}
       </div>
 
-      {error && <p className="twoway-error"><Icon name="alert" size={16} /> {error}</p>}
-
-      {/* Transcript */}
-      <div className="twoway-transcript">
-        <div className="twoway-transcript-header">
-          <h3><Icon name="message-circle" size={18} /> Conversation</h3>
-          {turns.length > 0 && (
-            <button className="twoway-clear-btn" onClick={clearConversation}>
-              <Icon name="trash" size={16} /> Clear
-            </button>
-          )}
+      {/* Dual Mics */}
+      <div style={{ display: 'flex', gap: '24px' }}>
+        {/* Person A Mic */}
+        <div 
+          className="twoway-mic-section"
+          style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', margin: 0 }}
+          onMouseDown={() => setIsRecordingA(true)}
+          onMouseUp={() => setIsRecordingA(false)}
+          onMouseLeave={() => setIsRecordingA(false)}
+          onTouchStart={() => setIsRecordingA(true)}
+          onTouchEnd={() => setIsRecordingA(false)}
+        >
+          <AudioVisualizer isRecording={isRecordingA} />
+          <div style={{ opacity: isRecordingA ? 0 : 1, transition: 'opacity 0.2s' }}>
+             <HoldToSpeak token={token} language={langA} onTranscribed={(text) => handleTranscribed(text, 'A')} />
+          </div>
         </div>
 
-        {turns.length === 0 ? (
-          <div className="twoway-empty">
-            <span className="twoway-empty-icon"><Icon name="message-circle" size={48} strokeWidth={1.4} /></span>
-            <p>No conversation yet</p>
-            <span>Hold a mic above to start</span>
+        {/* Person B Mic */}
+        <div 
+          className="twoway-mic-section"
+          style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', margin: 0 }}
+          onMouseDown={() => setIsRecordingB(true)}
+          onMouseUp={() => setIsRecordingB(false)}
+          onMouseLeave={() => setIsRecordingB(false)}
+          onTouchStart={() => setIsRecordingB(true)}
+          onTouchEnd={() => setIsRecordingB(false)}
+        >
+          <AudioVisualizer isRecording={isRecordingB} />
+          <div style={{ opacity: isRecordingB ? 0 : 1, transition: 'opacity 0.2s' }}>
+             <HoldToSpeak token={token} language={langB} onTranscribed={(text) => handleTranscribed(text, 'B')} />
           </div>
-        ) : (
-          <div className="twoway-transcript-list">
-            {turns.map((turn, index) => (
-              <div
-                key={index}
-                className={`twoway-turn twoway-turn-${turn.speaker.toLowerCase()}`}
-              >
-                <div className="twoway-turn-header">
-                  <span className={`twoway-turn-speaker twoway-turn-speaker-${turn.speaker.toLowerCase()}`}>
-                    {turn.speaker === 'A' ? 'Speaker A' : 'Speaker B'}
-                  </span>
-                  <span className="twoway-turn-lang">
-                    {turn.sourceLang} → {turn.targetLang}
-                  </span>
-                </div>
-                <p className="twoway-turn-original">{turn.original}</p>
-                <p className="twoway-turn-translated">{turn.translated}</p>
-              </div>
-            ))}
-            <div ref={transcriptEndRef} />
-          </div>
-        )}
+        </div>
       </div>
-
-      <audio ref={audioRef} style={{ display: 'none' }} />
     </div>
   );
 }

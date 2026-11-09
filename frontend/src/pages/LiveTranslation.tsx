@@ -2,440 +2,178 @@ import React, { useState, useRef, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
+import HoldToSpeak from '../components/HoldToSpeak';
 import Icon from '../components/Icon';
+import AudioVisualizer from '../components/AudioVisualizer';
 
 interface Props {
   token: string;
 }
 
-type Gender = 'male' | 'female';
-
-interface LiveSegment {
-  id: number;
-  detectedLang: string;
-  originalText: string;
-  translatedText: string;
-  timestamp: number;
-}
-
-const STORAGE_KEY = 'lingolink_live_transcript';
-
-const SILENCE_THRESHOLD = 0.02;
-const SILENCE_DURATION_MS = 900;
-const MIN_CHUNK_MS = 1500;
-const MAX_CHUNK_MS = 15000;
-
 export default function LiveTranslation({ token }: Props) {
   const { darkMode } = useTheme();
-
-  const [targetLang, setTargetLang] = useState('english');
-  const [gender, setGender] = useState<Gender>('female');
-  const [autoSpeak, setAutoSpeak] = useState(true);
-
+  const [sourceLanguage, setSourceLanguage] = useState('auto');
+  const [targetLanguage, setTargetLanguage] = useState('english');
   const [isRecording, setIsRecording] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [segments, setSegments] = useState<LiveSegment[]>([]);
-  const [error, setError] = useState('');
-  const [volume, setVolume] = useState(0);
+  
+  const [subtitles, setSubtitles] = useState<{ original: string; translated: string }[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const stopRef = useRef(false);
-  const idCounterRef = useRef(1);
-  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
-  const recordingStartRef = useRef<number>(0);
-  const lastSoundTimeRef = useRef<number>(0);
-
+  // Auto-scroll to bottom when new subtitles arrive
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setSegments(parsed);
-        const maxId = Math.max(0, ...parsed.map((s: LiveSegment) => s.id));
-        idCounterRef.current = maxId + 1;
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(segments));
-    } catch {}
-  }, [segments]);
-
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [segments]);
-
-  useEffect(() => {
-    return () => {
-      stopRef.current = true;
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-      if (audioContextRef.current) audioContextRef.current.close();
-    };
-  }, []);
-
-  const startRecording = async () => {
-    setError('');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-        }
-      });
-
-      streamRef.current = stream;
-      setIsRecording(true);
-      stopRef.current = false;
-
-      const audioContext = new AudioContext();
-      audioContextRef.current = audioContext;
-      const source = audioContext.createMediaStreamSource(stream);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 512;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-
-      const checkVolume = () => {
-        if (stopRef.current || !analyserRef.current) return;
-
-        const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255;
-        setVolume(avg);
-
-        const now = Date.now();
-        const isSound = avg > SILENCE_THRESHOLD;
-
-        if (isSound) {
-          lastSoundTimeRef.current = now;
-        }
-
-        if (
-          mediaRecorderRef.current &&
-          mediaRecorderRef.current.state === 'recording' &&
-          now - lastSoundTimeRef.current > SILENCE_DURATION_MS
-        ) {
-          mediaRecorderRef.current.stop();
-        }
-
-        if (
-          (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') &&
-          isSound
-        ) {
-          startChunk();
-        }
-
-        requestAnimationFrame(checkVolume);
-      };
-
-      const startChunk = () => {
-        if (!streamRef.current || stopRef.current) return;
-
-        const mimeTypes = [
-          'audio/webm;codecs=opus', 'audio/webm',
-          'audio/mp4;codecs=mp4a.40.2', 'audio/mp4',
-          'audio/ogg;codecs=opus', 'audio/ogg', ''
-        ];
-        let mimeType = '';
-        for (const m of mimeTypes) {
-          if (m === '' || MediaRecorder.isTypeSupported(m)) { mimeType = m; break; }
-        }
-
-        const recorder = mimeType
-          ? new MediaRecorder(streamRef.current, { mimeType })
-          : new MediaRecorder(streamRef.current);
-
-        const chunks: Blob[] = [];
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) chunks.push(e.data);
-        };
-
-        recorder.onstop = async () => {
-          const duration = Date.now() - recordingStartRef.current;
-
-          if (chunks.length > 0 && duration >= MIN_CHUNK_MS) {
-            const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
-            if (blob.size > 5000) {
-              await processChunk(blob);
-            }
-          }
-        };
-
-        mediaRecorderRef.current = recorder;
-        recordingStartRef.current = Date.now();
-        lastSoundTimeRef.current = Date.now();
-        recorder.start();
-
-        setTimeout(() => {
-          if (recorder.state === 'recording') recorder.stop();
-        }, MAX_CHUNK_MS);
-      };
-
-      checkVolume();
-    } catch (err: any) {
-      console.error('Mic error:', err);
-      setError('Microphone access denied or unavailable');
-      setIsRecording(false);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  };
+  }, [subtitles]);
 
-  const stopRecording = () => {
-    stopRef.current = true;
+  const handleTranscribed = async (text: string) => {
     setIsRecording(false);
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-  };
+    if (!text.trim()) return;
 
-  const processChunk = async (blob: Blob) => {
-    setProcessing(true);
+    setIsProcessing(true);
     try {
-      const formData = new FormData();
-      const ext = blob.type.includes('webm') ? 'webm'
-                : blob.type.includes('mp4') ? 'm4a'
-                : blob.type.includes('ogg') ? 'ogg' : 'wav';
-      formData.append('file', blob, `chunk.${ext}`);
-      formData.append('language', 'auto');
-      formData.append('auto_detect', 'true');
-
-      const tRes = await fetch(`${API_URL}/speech/transcribe`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!tRes.ok) { setProcessing(false); return; }
-
-      const tData = await tRes.json();
-      const originalText = (tData.text || '').trim();
-      const detectedLang = (tData.language || 'auto').toLowerCase();
-
-      if (!originalText || originalText.length < 2) {
-        setProcessing(false);
-        return;
-      }
-
-      let translatedText = originalText;
-      try {
-        const trRes = await fetch(`${API_URL}/translate/text`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            text: originalText,
-            source_language: detectedLang === 'auto' ? 'auto' : detectedLang,
-            target_language: targetLang,
-          }),
-        });
-
-        if (trRes.ok) {
-          const trData = await trRes.json();
-          const result = (trData.translated_text || '').trim();
-          if (result && result !== originalText) {
-            translatedText = result;
-          }
-        }
-      } catch (err) {
-        console.error('Translation call failed:', err);
-      }
-
-      const isEchoed = translatedText.trim() === originalText.trim();
-
-      const segment: LiveSegment = {
-        id: idCounterRef.current++,
-        detectedLang,
-        originalText,
-        translatedText: isEchoed ? '' : translatedText,
-        timestamp: Date.now(),
-      };
-
-      setSegments((prev) => [...prev, segment]);
-
-      if (autoSpeak && translatedText && !isEchoed) {
-        speak(translatedText, targetLang);
-      }
-    } catch (err) {
-      console.error('Chunk processing failed:', err);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const speak = async (text: string, language: string) => {
-    try {
-      const res = await fetch(`${API_URL}/tts/speak`, {
+      const res = await fetch(`${API_URL}/translate/text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ text, language, gender, speed: 1.0 }),
+        body: JSON.stringify({
+          text,
+          source_language: sourceLanguage,
+          target_language: targetLanguage,
+        }),
       });
+
       if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (!audioRef.current) audioRef.current = new Audio();
-        audioRef.current.pause();
-        audioRef.current.src = url;
-        audioRef.current.play();
+        const data = await res.json();
+        setSubtitles(prev => [...prev, {
+          original: text,
+          translated: data.translated_text
+        }]);
       }
-    } catch {}
+    } catch (err) {
+      console.error('Live translation failed:', err);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const clearTranscript = () => {
-    if (!window.confirm('Clear the live transcript?')) return;
-    setSegments([]);
-    localStorage.removeItem(STORAGE_KEY);
+  const clearSubtitles = () => {
+    setSubtitles([]);
   };
 
   return (
-    <div className={`live-root ${darkMode ? 'live-dark' : 'live-light'}`}>
-
-      <div className="live-header">
-        <h2><Icon name="mic" size={22} /> Live Translation</h2>
-        <p>Auto-detects language and translates on natural pauses</p>
+    <div className="live-root savanna-theme" style={{ padding: '24px', minHeight: '100vh' }}>
+      <div style={{ marginBottom: '24px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '0 0 8px 0', fontSize: '24px' }}>
+          <Icon name="live" size={24} /> Live Translation
+        </h2>
+        <p style={{ margin: 0, color: 'var(--text-muted)' }}>Push to speak, see live subtitles appear instantly.</p>
       </div>
 
-      <div className="live-controls">
-        <div className="live-control-row">
-          <span className="live-control-label">Show everything in</span>
-          <div className="live-dropdown-wrap">
-            <SearchableDropdown
-              value={targetLang}
-              onChange={setTargetLang}
-              placeholder="target language"
-            />
-          </div>
-        </div>
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px' }}>
+        <SearchableDropdown
+          value={sourceLanguage}
+          onChange={setSourceLanguage}
+          placeholder="source language"
+          includeAutoDetect
+        />
+        <button className="swap-btn" onClick={() => {
+          if (sourceLanguage !== 'auto') {
+            const temp = sourceLanguage;
+            setSourceLanguage(targetLanguage);
+            setTargetLanguage(temp);
+          }
+        }}>
+          <Icon name="swap" size={18} />
+        </button>
+        <SearchableDropdown
+          value={targetLanguage}
+          onChange={setTargetLanguage}
+          placeholder="target language"
+        />
+      </div>
 
-        <div className="live-control-row">
-          <span className="live-control-label">Voice</span>
-          <div className="live-gender-toggle">
-            <button
-              type="button"
-              className={`live-gender-btn ${gender === 'female' ? 'active' : ''}`}
-              onClick={() => setGender('female')}
-            >
-              <Icon name="user-female" size={16} /> Female
-            </button>
-            <button
-              type="button"
-              className={`live-gender-btn ${gender === 'male' ? 'active' : ''}`}
-              onClick={() => setGender('male')}
-            >
-              <Icon name="user-male" size={16} /> Male
-            </button>
-          </div>
+      <div 
+        className="live-mic-section"
+        onMouseDown={() => setIsRecording(true)}
+        onMouseUp={() => setIsRecording(false)}
+        onMouseLeave={() => setIsRecording(false)}
+        onTouchStart={() => setIsRecording(true)}
+        onTouchEnd={() => setIsRecording(false)}
+      >
+        <AudioVisualizer isRecording={isRecording} />
+        <div style={{ opacity: isRecording ? 0 : 1, transition: 'opacity 0.2s' }}>
+          <HoldToSpeak
+            token={token}
+            language={sourceLanguage}
+            onTranscribed={handleTranscribed}
+          />
         </div>
+      </div>
 
-        <div className="live-control-row">
-          <span className="live-control-label">Auto-Speak</span>
-          <button
-            className={`slider-toggle ${autoSpeak ? 'on' : 'off'}`}
-            onClick={() => setAutoSpeak(!autoSpeak)}
-            role="switch"
-            aria-checked={autoSpeak}
+      <div style={{ 
+        background: 'var(--bg-surface)', 
+        border: '1px solid var(--border-color)', 
+        borderRadius: '12px',
+        height: '400px',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div style={{ 
+          padding: '16px', 
+          borderBottom: '1px solid var(--border-color)', 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, color: 'var(--gold-primary)' }}>Live Transcript</h3>
+          <button 
+            className="clear-btn" 
+            onClick={clearSubtitles}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
           >
-            <span className="slider-knob"></span>
+            <Icon name="trash" size={16} /> Clear
           </button>
         </div>
-      </div>
-
-      <div className="live-record-section">
-        {!isRecording ? (
-          <button className="live-record-btn" onClick={startRecording}>
-            <span className="live-record-dot"></span>
-            Start Live Record
-          </button>
-        ) : (
-          <button className="live-record-btn live-record-btn-active" onClick={stopRecording}>
-            <span className="live-record-dot-pulse"></span>
-            Stop Recording
-          </button>
-        )}
-        {isRecording && (
-          <>
-            <div className="live-volume-bar">
-              <div
-                className="live-volume-fill"
-                style={{ width: `${Math.min(100, volume * 300)}%` }}
-              />
-            </div>
-            <p className="live-status">
-              {processing ? (
-                <><Icon name="loader" size={14} className="spin" /> Processing…</>
-              ) : volume > 0.02 ? (
-                <><Icon name="headphones" size={14} /> Hearing you…</>
-              ) : (
-                <><Icon name="volume-off" size={14} /> Listening for speech…</>
-              )}
+        
+        <div 
+          ref={scrollRef}
+          style={{ 
+            flex: 1, 
+            overflowY: 'auto', 
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}
+        >
+          {subtitles.length === 0 ? (
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>
+              Press and hold the mic to start translating...
             </p>
-          </>
-        )}
-      </div>
-
-      {error && <p className="live-error"><Icon name="alert" size={16} /> {error}</p>}
-
-      <div className="live-transcript">
-        <div className="live-transcript-header">
-          <h3><Icon name="message-circle" size={18} /> Live Transcript</h3>
-          {segments.length > 0 && (
-            <button className="live-clear-btn" onClick={clearTranscript}>
-              <Icon name="trash" size={16} /> Clear
-            </button>
+          ) : (
+            subtitles.map((sub, idx) => (
+              <div key={idx} style={{ 
+                background: 'var(--bg-elevated)', 
+                padding: '12px 16px', 
+                borderRadius: '12px',
+                borderLeft: '4px solid var(--gold-primary)'
+              }}>
+                <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: 'var(--text-muted)' }}>{sub.original}</p>
+                <p style={{ margin: 0, fontSize: '16px', fontWeight: '500', color: 'var(--text-main)' }}>{sub.translated}</p>
+              </div>
+            ))
+          )}
+          {isProcessing && (
+            <div style={{ textAlign: 'center', color: 'var(--gold-primary)' }}>
+              <Icon name="loader" size={20} className="spin" /> Translating...
+            </div>
           )}
         </div>
-
-        {segments.length === 0 ? (
-          <div className="live-empty">
-            <span className="live-empty-icon"><Icon name="mic" size={48} strokeWidth={1.4} /></span>
-            <p>Nothing captured yet</p>
-            <span>Press "Start Live Record" and speak</span>
-          </div>
-        ) : (
-          <div className="live-transcript-list">
-            {segments.map((seg) => (
-              <div key={seg.id} className="live-segment">
-                <div className="live-segment-header">
-                  <span className="live-segment-lang">[{seg.detectedLang}]</span>
-                  <span className="live-segment-time">
-                    {new Date(seg.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="live-segment-original">{seg.originalText}</p>
-                {seg.translatedText ? (
-                  <p className="live-segment-translated">→ {seg.translatedText}</p>
-                ) : (
-                  <p className="live-segment-no-translation">
-                    (translation unavailable)
-                  </p>
-                )}
-              </div>
-            ))}
-            <div ref={transcriptEndRef} />
-          </div>
-        )}
       </div>
-
-      <audio ref={audioRef} style={{ display: 'none' }} />
     </div>
   );
 }

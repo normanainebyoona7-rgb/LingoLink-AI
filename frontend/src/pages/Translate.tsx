@@ -4,6 +4,7 @@ import SearchableDropdown, { LANGUAGES } from '../components/SearchableDropdown'
 import HoldToSpeak from '../components/HoldToSpeak';
 import Icon from '../components/Icon';
 import { useOfflineTranslation } from '../offline/useOfflineTranslation';
+import AudioVisualizer from '../components/AudioVisualizer';
 
 interface Props {
   token: string;
@@ -19,6 +20,7 @@ export default function Translate({ token }: Props) {
   const [detectedLanguage, setDetectedLanguage] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [voiceGender, setVoiceGender] = useState<Gender>('female');
   const [error, setError] = useState('');
   const [offlineAudioBlob, setOfflineAudioBlob] = useState<Blob | null>(null);
@@ -179,6 +181,7 @@ export default function Translate({ token }: Props) {
   };
 
   const handleVoiceTranscribed = (text: string) => {
+    setIsRecording(false);
     setInputText(text);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     fromVoiceRef.current = true;
@@ -462,12 +465,23 @@ export default function Translate({ token }: Props) {
 
       {error && <p className="error-text">{error}</p>}
 
-      <div className="mic-section">
-        <HoldToSpeak
-          token={token}
-          language={sourceLanguage}
-          onTranscribed={handleVoiceTranscribed}
-        />
+      <div 
+        className="mic-section"
+        style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginTop: '20px' }}
+        onMouseDown={() => setIsRecording(true)}
+        onMouseUp={() => setIsRecording(false)}
+        onMouseLeave={() => setIsRecording(false)}
+        onTouchStart={() => setIsRecording(true)}
+        onTouchEnd={() => setIsRecording(false)}
+      >
+        <AudioVisualizer isRecording={isRecording} />
+        <div style={{ opacity: isRecording ? 0 : 1, transition: 'opacity 0.2s', position: 'relative', zIndex: 10 }}>
+          <HoldToSpeak
+            token={token}
+            language={sourceLanguage}
+            onTranscribed={handleVoiceTranscribed}
+          />
+        </div>
       </div>
     </div>
   );

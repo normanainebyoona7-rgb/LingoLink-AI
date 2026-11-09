@@ -5,6 +5,7 @@ import SearchableDropdown from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
 import VoiceSettings from '../components/VoiceSettings';
 import Icon from '../components/Icon';
+import AudioVisualizer from '../components/AudioVisualizer';
 
 interface Props {
   token: string;
@@ -25,9 +26,14 @@ export default function Voice({ token }: Props) {
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [voiceGender, setVoiceGender] = useState<Gender>('female');
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
+  
+  // NEW: Track if the user is currently holding the mic button
+  const [isRecording, setIsRecording] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleTranscribed = async (text: string) => {
+    setIsRecording(false); // Turn off visualizer when text is ready
     setSourceText(text);
     await translateVoice(text);
   };
@@ -134,7 +140,7 @@ export default function Voice({ token }: Props) {
   );
 
   return (
-    <div className={`voice-root ${darkMode ? 'voice-dark' : 'voice-light'}`}>
+    <div className={`voice-root savanna-theme ${darkMode ? 'voice-dark' : 'voice-light'}`}>
       <div className="voice-header">
         <h2><Icon name="voice" size={22} /> Voice Translation</h2>
         <p>Speak in one language, hear translation in another</p>
@@ -162,12 +168,24 @@ export default function Voice({ token }: Props) {
         onSpeedChange={setVoiceSpeed}
       />
 
-      <div className="voice-mic-section">
-        <HoldToSpeak
-          token={token}
-          language={sourceLanguage}
-          onTranscribed={handleTranscribed}
-        />
+      {/* The Audio Visualizer replaces the mic button visually while recording */}
+      <div 
+        className="voice-mic-section"
+        onMouseDown={() => setIsRecording(true)}
+        onMouseUp={() => setIsRecording(false)}
+        onMouseLeave={() => setIsRecording(false)}
+        onTouchStart={() => setIsRecording(true)}
+        onTouchEnd={() => setIsRecording(false)}
+      >
+        <AudioVisualizer isRecording={isRecording} />
+        
+        <div style={{ opacity: isRecording ? 0 : 1, transition: 'opacity 0.2s' }}>
+          <HoldToSpeak
+            token={token}
+            language={sourceLanguage}
+            onTranscribed={handleTranscribed}
+          />
+        </div>
       </div>
 
       <div className="voice-current">

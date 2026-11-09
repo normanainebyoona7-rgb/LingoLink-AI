@@ -181,6 +181,14 @@ a { color: inherit; text-decoration: none; }
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
+.savanna-theme button:disabled {
+  opacity: 0.5;
+  background: #5a4a35 !important; /* Muted brown when disabled */
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .savanna-theme .swap-btn {
   background: var(--bg-elevated) !important;
   color: var(--gold-primary) !important;
@@ -333,4 +341,94 @@ a { color: inherit; text-decoration: none; }
 
 .savanna-theme .auth-box .auth-link:hover {
   color: var(--gold-hover) !important;
+}
+
+/* ============================================================
+   4. AUDIO VISUALIZER (Used in Voice, Live, Two-Way, Call Center)
+   ============================================================ */
+
+.voice-mic-section,
+.live-mic-section,
+.twoway-mic-section,
+.callcenter-mic-section,
+.mic-section {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 120px;
+  margin: 20px 0;
+  z-index: 10;
+}
+
+.audio-visualizer-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 400px;
+  height: 120px;
+  pointer-events: none; 
+  z-index: 5;
+  background: radial-gradient(circle, rgba(31, 21, 11, 0.8) 0%, rgba(31, 21, 11, 0) 70%);
+  border-radius: 50%;
+}
+
+.audio-visualizer-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Offline Status Pill styling */
+.system-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.status-online {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-offline {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.status-ready {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--gold-primary);
+  border-color: var(--border-color);
 }
