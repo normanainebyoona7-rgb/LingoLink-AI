@@ -239,3 +239,70 @@ a {
   border-bottom: 1px solid rgba(245, 158, 11, 0.05) !important;
   padding: 12px;
 }
+
+/* ============================================================
+   LANDING & AUTH PAGE OVERRIDES
+   ============================================================ */
+
+/* --- Landing Page --- */
+.savanna-theme .landing-container,
+.savanna-theme .landing-page,
+.savanna-theme .landing-hero {
+  background-color: var(--bg-main) !important;
+  color: var(--gold-text) !important;
+}
+
+.savanna-theme .landing-nav {
+  background-color: rgba(18, 12, 6, 0.8) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.savanna-theme .landing-hero h1,
+.savanna-theme .landing-hero h2 {
+  color: var(--gold-text) !important;
+}
+
+.savanna-theme .landing-hero h1 span,
+.savanna-theme .landing-hero .highlight {
+  color: var(--gold-primary) !important;
+}
+
+.savanna-theme .landing-features,
+.savanna-theme .landing-pricing,
+.savanna-theme .landing-footer {
+  background-color: var(--bg-surface) !important;
+  color: var(--gold-text) !important;
+}
+
+/* --- Auth Page (Login / Register) --- */
+.savanna-theme .auth-full {
+  background-color: var(--bg-main) !important;
+  background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.05), transparent 40%) !important;
+}
+
+.savanna-theme .auth-box {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+.savanna-theme .auth-box h1 {
+  color: var(--gold-primary) !important;
+}
+
+.savanna-theme .auth-box p {
+  color: var(--text-muted) !important;
+}
+
+.savanna-theme .auth-btn {
+  background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%) !important;
+  color: #120c06 !important;
+}
+
+.savanna-theme .auth-link {
+  color: var(--gold-primary) !important;
+}
+
+.savanna-theme .auth-link:hover {
+  color: var(--gold-text) !important;
+}
