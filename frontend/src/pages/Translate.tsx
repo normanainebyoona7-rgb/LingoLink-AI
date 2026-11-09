@@ -62,7 +62,6 @@ export default function Translate({ token }: Props) {
     setShowBanner(false);
   };
 
-  // Calculate total offline audio files
   const totalAudioFiles = Object.values(offlineAudioCounts).reduce((a, b) => a + b, 0);
 
   // ---- Translation ----
@@ -465,17 +464,23 @@ export default function Translate({ token }: Props) {
 
       {error && <p className="error-text">{error}</p>}
 
+      {/* Mic Section with Pointer Events for Mobile */}
       <div 
         className="mic-section"
         style={{ position: 'relative', display: 'flex', justifyContent: 'center', marginTop: '20px' }}
-        onMouseDown={() => setIsRecording(true)}
-        onMouseUp={() => setIsRecording(false)}
-        onMouseLeave={() => setIsRecording(false)}
-        onTouchStart={() => setIsRecording(true)}
-        onTouchEnd={() => setIsRecording(false)}
+        onPointerDown={() => setIsRecording(true)}
+        onPointerUp={() => setIsRecording(false)}
+        onPointerLeave={() => setIsRecording(false)}
+        onPointerCancel={() => setIsRecording(false)}
       >
         <AudioVisualizer isRecording={isRecording} />
-        <div style={{ opacity: isRecording ? 0 : 1, transition: 'opacity 0.2s', position: 'relative', zIndex: 10 }}>
+        <div style={{ 
+          opacity: isRecording ? 0 : 1, 
+          visibility: isRecording ? 'hidden' : 'visible',
+          transition: 'opacity 0.2s', 
+          position: 'relative', 
+          zIndex: 10 
+        }}>
           <HoldToSpeak
             token={token}
             language={sourceLanguage}

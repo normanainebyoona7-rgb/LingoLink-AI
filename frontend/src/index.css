@@ -399,6 +399,22 @@ a { color: inherit; text-decoration: none; }
   }
 }
 
+/* Mobile specific fixes */
+@media (max-width: 768px) {
+  .mic-section,
+  .voice-mic-section,
+  .live-mic-section,
+  .twoway-mic-section {
+    height: 180px !important; /* Taller on mobile so waves have room */
+    width: 100% !important;
+  }
+  
+  .audio-visualizer-container {
+    max-width: 250px;
+    height: 80px;
+  }
+}
+
 .fade-in {
   animation: fadeIn 0.3s ease-in-out forwards;
 }
