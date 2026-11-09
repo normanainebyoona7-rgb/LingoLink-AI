@@ -26,14 +26,11 @@ export default function Voice({ token }: Props) {
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [voiceGender, setVoiceGender] = useState<Gender>('female');
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
-  
-  // NEW: Track if the user is currently holding the mic button
   const [isRecording, setIsRecording] = useState(false);
-  
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleTranscribed = async (text: string) => {
-    setIsRecording(false); // Turn off visualizer when text is ready
+    setIsRecording(false);
     setSourceText(text);
     await translateVoice(text);
   };
@@ -68,8 +65,6 @@ export default function Voice({ token }: Props) {
         if (autoSpeak && voiceEnabled) {
           speakTranslation(data.translated_text);
         }
-      } else {
-        console.error('Translation failed:', res.status);
       }
     } catch (err) {
       console.error('Translation failed:', err);
@@ -168,24 +163,23 @@ export default function Voice({ token }: Props) {
         onSpeedChange={setVoiceSpeed}
       />
 
-      {/* The Audio Visualizer replaces the mic button visually while recording */}
       <div 
         className="voice-mic-section"
-        onMouseDown={() => setIsRecording(true)}
-        onMouseUp={() => setIsRecording(false)}
-        onMouseLeave={() => setIsRecording(false)}
-        onTouchStart={() => setIsRecording(true)}
-        onTouchEnd={() => setIsRecording(false)}
+        style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100px' }}
+        onPointerDown={() => setIsRecording(true)}
+        onPointerUp={() => setIsRecording(false)}
+        onPointerLeave={() => setIsRecording(false)}
+        onPointerCancel={() => setIsRecording(false)}
       >
-        <AudioVisualizer isRecording={isRecording} />
-        
-        <div style={{ opacity: isRecording ? 0 : 1, transition: 'opacity 0.2s' }}>
+        {isRecording ? (
+          <AudioVisualizer isRecording={true} />
+        ) : (
           <HoldToSpeak
             token={token}
             language={sourceLanguage}
             onTranscribed={handleTranscribed}
           />
-        </div>
+        )}
       </div>
 
       <div className="voice-current">

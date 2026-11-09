@@ -29,7 +29,6 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         const audioCtx = new AudioContextClass();
         
-        // Mobile fix: Resume the context if it's suspended
         if (audioCtx.state === 'suspended') {
           await audioCtx.resume();
         }
@@ -55,12 +54,9 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Handle high-DPI screens (mobile)
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
+      // Force fixed width/height for Android stability
+      canvas.width = 300;
+      canvas.height = 100;
 
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
@@ -69,21 +65,19 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
         animationRef.current = requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArray);
 
-        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const width = rect.width;
-        const height = rect.height;
+        const width = canvas.width;
+        const height = canvas.height;
         const centerY = height / 2;
         
-        const numBars = 30; // Fewer bars for smaller mobile screens
-        const barWidth = 4;
-        const gap = 4;
+        const numBars = 24; 
+        const barWidth = 6;
+        const gap = 6;
         const totalWidth = numBars * (barWidth + gap);
         const startX = (width - totalWidth) / 2;
 
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#F59E0B';
-        ctx.fillStyle = '#F59E0B';
+        ctx.fillStyle = '#F59E0B'; // Savanna Gold
 
         for (let i = 0; i < numBars; i++) {
           const index = Math.floor((i / numBars) * bufferLength);
@@ -97,9 +91,9 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
           const x = startX + i * (barWidth + gap);
           const y = centerY - (barHeight / 2);
 
+          // Standard rectangle draw (no roundRect to avoid WebView bugs)
           ctx.beginPath();
-          ctx.roundRect(x, y, barWidth, barHeight, barWidth / 2);
-          ctx.fill();
+          ctx.fillRect(x, y, barWidth, barHeight);
         }
       };
 
@@ -120,11 +114,16 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
   if (!isRecording) return null;
 
   return (
-    <div className="audio-visualizer-container fade-in">
+    <div style={{
+      width: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: '20px 0'
+    }}>
       <canvas
         ref={canvasRef}
-        className="audio-visualizer-canvas"
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '300px', height: '100px' }}
       />
     </div>
   );
