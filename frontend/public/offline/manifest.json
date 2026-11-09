@@ -1,0 +1,21 @@
+{
+  "version": "1794221732989",
+  "generated_at": "2026-11-09T10:55:32.989Z",
+  "languages": [
+    "luganda",
+    "swahili"
+  ],
+  "voice_languages": [
+    "luganda",
+    "swahili"
+  ],
+  "voice": {
+    "totalFiles": 130,
+    "totalBytes": 3330397,
+    "perLangCounts": {
+      "luganda": 81,
+      "swahili": 49
+    },
+    "skipped": 0
+  }
+}

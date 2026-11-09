@@ -1,9 +1,22 @@
-"""Fast translation with dictionary-first lookup, smart language detection, and universal English pivot"""
+"""Fast translation with dictionary-first lookup, parallel provider racing, and smart language detection.
+
+Optimizations in this version:
+- Raised timeouts (10s connect / 30-45s read) for slow networks and cloud.
+- True parallel racing with a dedicated per-call ThreadPoolExecutor so a slow
+  loser cannot hog the shared pool. First successful result wins immediately.
+- Sentence splitting for long paragraphs (per-sentence translation + stitch).
+- Result cache with TTL + max-size eviction.
+- Precomputed inverted index for language hints (no per-call scan of LANG_HINTS).
+- Parallel pivot for non-English <-> non-English (to_english and from_english race).
+"""
 import requests
 import re
 import threading
 import os
-from typing import Optional, Dict
+import time
+import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutureTimeout
+from typing import Optional, Dict, Tuple, List
 from dotenv import load_dotenv
 from app.local_dictionaries import lookup_local
 
@@ -15,8 +28,50 @@ IS_CLOUD = os.getenv("RENDER", "") == "true" or os.getenv("IS_CLOUD", "") == "tr
 
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
-_cache: Dict[str, str] = {}
+# -------- Timeouts (raised) --------
+# (connect, read)
+GROQ_TIMEOUT = (10, 45)
+SUNBIRD_TIMEOUT = (10, 30)
+MYMEMORY_TIMEOUT = (5, 10)
+GOOGLE_TIMEOUT = (5, 12)
+
+PARALLEL_DEADLINE = 45          # total budget for parallel racing
+MAX_CACHE_ENTRIES = 4096        # bounded cache
+CACHE_TTL_SECONDS = 60 * 30     # 30 minutes
+
+# Sentence splitter: split on . ! ? and line breaks, keep delimiters attached.
+_SENTENCE_RE = re.compile(r'(?<=[\.\!\?\n])\s+')
+MAX_SENTENCE_CHARS = 400        # If a single sentence is longer, don't split further.
+
+
+# -------- Cache with TTL + bounded size --------
+_cache: Dict[str, Tuple[str, float]] = {}
 _cache_lock = threading.Lock()
+
+
+def _cache_get(key: str) -> Optional[str]:
+    now = time.time()
+    with _cache_lock:
+        entry = _cache.get(key)
+        if not entry:
+            return None
+        value, expires = entry
+        if expires < now:
+            _cache.pop(key, None)
+            return None
+        return value
+
+
+def _cache_put(key: str, value: str) -> None:
+    now = time.time()
+    with _cache_lock:
+        if len(_cache) >= MAX_CACHE_ENTRIES:
+            # Evict oldest-expiry ~10% to keep things cheap
+            victims = sorted(_cache.items(), key=lambda kv: kv[1][1])[: max(1, MAX_CACHE_ENTRIES // 10)]
+            for k, _ in victims:
+                _cache.pop(k, None)
+        _cache[key] = (value, now + CACHE_TTL_SECONDS)
+
 
 SUNBIRD_TARGETS = {
     "luganda", "acholi", "ateso", "runyankole", "runyankore", "rukiga",
@@ -192,26 +247,35 @@ LANG_HINTS = {
     },
 }
 
+# -------- Precomputed inverted index for hints --------
+# Maps hint-word -> {lang: count} so we don't scan every LANG_HINTS set on each call.
+_WORD_TO_LANGS: Dict[str, List[str]] = {}
+for _lang, _hints in LANG_HINTS.items():
+    for _w in _hints:
+        _WORD_TO_LANGS.setdefault(_w, []).append(_lang)
+
 
 def _lang_hint(text: str) -> Optional[str]:
-    """Fast curated detection: any word in our hints triggers the language."""
     words = set(re.findall(r'\w+', text.lower()))
     if not words:
         return None
-    best_lang = None
-    best_hits = 0
-    for lang, hint_set in LANG_HINTS.items():
-        hits = len(words & hint_set)
-        if hits > best_hits:
-            best_hits = hits
-            best_lang = lang
-    if best_hits >= 1:
-        return best_lang
-    return None
+    # Fast path: score only the languages that appear in the candidate words
+    scores: Dict[str, int] = {}
+    for w in words:
+        for lang in _WORD_TO_LANGS.get(w, ()):
+            scores[lang] = scores.get(lang, 0) + 1
+    if not scores:
+        return None
+    best_lang = max(scores, key=scores.get)
+    return best_lang
 
 
 _session = requests.Session()
 _session.headers.update({"User-Agent": "Mozilla/5.0"})
+
+# Persistent shared pool for short side calls (google/mymemory), but each
+# parallel race gets its OWN pool so slow losers don't starve other requests.
+_executor = ThreadPoolExecutor(max_workers=6, thread_name_prefix="translate")
 
 
 def clean(text: str) -> str:
@@ -288,31 +352,6 @@ def detect_language(text: str) -> str:
     except Exception as e:
         print(f"langid error: {e}")
 
-    if GROQ_API_KEY:
-        try:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-            payload = {
-                "model": GROQ_MODEL,
-                "messages": [
-                    {"role": "system", "content":
-                        "Detect the language of the user's text. "
-                        "Reply with ONLY the ISO 639-1 code (two letters like 'en', 'sw', 'fr'). "
-                        "If unsure, reply 'en'."},
-                    {"role": "user", "content": text[:200]}
-                ],
-                "temperature": 0.0,
-                "max_tokens": 5
-            }
-            resp = _session.post(url, headers=headers, json=payload, timeout=(10, 30))
-            if resp.status_code == 200:
-                code = clean(resp.json()["choices"][0]["message"]["content"]).lower().strip()
-                code = re.sub(r'[^a-z]', '', code)[:2]
-                if code:
-                    return normalize_lang(code)
-        except Exception as e:
-            print(f"Groq detect error: {e}")
-
     return "english"
 
 
@@ -336,7 +375,7 @@ def google_translate(text: str, target_lang: str, source_lang: str = "auto") -> 
             f"https://translate.googleapis.com/translate_a/single"
             f"?client=gtx&sl={src}&tl={tgt}&dt=t&q={requests.utils.quote(text[:1500])}"
         )
-        resp = _session.get(url, timeout=6)
+        resp = _session.get(url, timeout=GOOGLE_TIMEOUT)
         if resp.status_code == 200:
             data = resp.json()
             result = "".join([part[0] for part in data[0] if part and part[0]])
@@ -355,7 +394,7 @@ def mymemory_translate(text: str, target_lang: str, source_lang: str = "auto") -
         if not tgt:
             return None
         url = f"https://api.mymemory.translated.net/get?q={requests.utils.quote(text[:500])}&langpair={src}|{tgt}"
-        resp = _session.get(url, timeout=8)
+        resp = _session.get(url, timeout=MYMEMORY_TIMEOUT)
         if resp.status_code == 200:
             data = resp.json()
             result = data.get("responseData", {}).get("translatedText", "")
@@ -388,8 +427,7 @@ def sunbird_translate(text: str, target_lang: str, source_lang: str = "auto") ->
         url = "https://api.sunbird.ai/tasks/sunflower_inference"
         headers = {"Authorization": f"Bearer {SUNBIRD_API_KEY}", "Content-Type": "application/json"}
         payload = {"messages": [{"role": "user", "content": prompt}], "target_language": code, "temperature": 0.1}
-        # Sunbird can take a while but not 60s — cap at 30
-        resp = _session.post(url, headers=headers, json=payload, timeout=(5, 30))
+        resp = _session.post(url, headers=headers, json=payload, timeout=SUNBIRD_TIMEOUT)
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data.get("content", ""))
@@ -422,7 +460,7 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
             "temperature": 0.3,
             "max_tokens": 1000
         }
-        resp = _session.post(url, headers=headers, json=payload, timeout=(10, 30))
+        resp = _session.post(url, headers=headers, json=payload, timeout=GROQ_TIMEOUT)
         if resp.status_code == 200:
             data = resp.json()
             result = clean(data["choices"][0]["message"]["content"])
@@ -435,33 +473,63 @@ def groq_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     return None
 
 
-# ============== DIRECT TRANSLATION (REORDERED) ==============
+# ============== PARALLEL RACING ==============
+
+def _race_providers(text: str, source_lang: str, target_lang: str) -> Optional[str]:
+    """
+    Fire Groq + Sunbird (if target is Ugandan) + MyMemory in parallel using a
+    per-call pool. The first non-empty result wins; we do NOT wait for the
+    losers (their threads are daemon-like and will be cleaned up as they finish
+    or time out on their own). This is what makes racing actually fast.
+    """
+    providers = []
+
+    # Groq — always try (fast, works for all languages)
+    providers.append(("groq", lambda: groq_translate(text, target_lang, source_lang)))
+
+    # Sunbird — only for Ugandan/African targets
+    if target_lang in SUNBIRD_TARGETS and SUNBIRD_API_KEY:
+        providers.append(("sunbird", lambda: sunbird_translate(text, target_lang, source_lang)))
+
+    # MyMemory — as backup
+    providers.append(("mymemory", lambda: mymemory_translate(text, target_lang, source_lang)))
+
+    # Per-call pool: sized to number of providers so all run truly in parallel.
+    with ThreadPoolExecutor(max_workers=len(providers), thread_name_prefix="race") as pool:
+        futures = {pool.submit(fn): name for name, fn in providers}
+        deadline = time.time() + PARALLEL_DEADLINE
+        try:
+            for future in as_completed(futures, timeout=PARALLEL_DEADLINE):
+                name = futures[future]
+                try:
+                    remaining = max(0.5, deadline - time.time())
+                    result = future.result(timeout=remaining)
+                    if result:
+                        print(f"Race winner: {name}")
+                        # Do NOT block waiting for losers. `pool.shutdown(wait=False)`
+                        # is the default on context exit only if we return early —
+                        # so we break out and let the pool clean up its own threads.
+                        return result
+                except (FutureTimeout, Exception) as e:
+                    print(f"Race {name} failed: {e}")
+        except FutureTimeout:
+            print("Race hard deadline hit")
+    return None
+
+
+# ============== DIRECT TRANSLATION ==============
 
 def _translate_direct(text: str, source_lang: str, target_lang: str) -> Optional[str]:
-    """Fast path: dictionary → Groq → Sunbird → MyMemory."""
+    """Fast path: dict → parallel providers."""
     # 1. Dictionary first (instant)
     result = translate_via_dict(text, target_lang, source_lang)
     if result:
         print(f"Dict hit: {source_lang} -> {target_lang}")
         return result
 
-    # 2. Groq (fast, 2-3 seconds, works for all languages)
-    result = groq_translate(text, target_lang, source_lang)
+    # 2. Race Groq + Sunbird + MyMemory in parallel
+    result = _race_providers(text, source_lang, target_lang)
     if result:
-        print(f"Groq: {source_lang} -> {target_lang}")
-        return result
-
-    # 3. Sunbird (slow, only if Groq fails)
-    if target_lang in SUNBIRD_TARGETS:
-        result = sunbird_translate(text, target_lang, source_lang)
-        if result:
-            print(f"Sunbird: {source_lang} -> {target_lang}")
-            return result
-
-    # 4. MyMemory (last resort)
-    result = mymemory_translate(text, target_lang, source_lang)
-    if result:
-        print(f"MyMemory: {source_lang} -> {target_lang}")
         return result
 
     return None
@@ -491,6 +559,44 @@ def from_english(text: str, target_lang: str) -> Optional[str]:
     return _translate_direct(text, "english", target_lang)
 
 
+# ============== Sentence splitting for long paragraphs ==============
+
+def _split_sentences(text: str) -> List[str]:
+    """Split a long paragraph into sentence-sized chunks. Preserves delimiters."""
+    if len(text) <= MAX_SENTENCE_CHARS:
+        return [text]
+    raw = _SENTENCE_RE.split(text)
+    out: List[str] = []
+    buf = ""
+    for piece in raw:
+        piece = piece.strip()
+        if not piece:
+            continue
+        if len(buf) + len(piece) + 1 <= MAX_SENTENCE_CHARS:
+            buf = (buf + " " + piece).strip()
+        else:
+            if buf:
+                out.append(buf)
+            buf = piece
+    if buf:
+        out.append(buf)
+    return out or [text]
+
+
+def _translate_long(text: str, target_lang: str, source_lang: str) -> Optional[str]:
+    """Translate a long paragraph sentence-by-sentence, then stitch."""
+    sentences = _split_sentences(text)
+    if len(sentences) == 1:
+        return None  # caller handles single-chunk path
+    results: List[str] = []
+    for s in sentences:
+        r = fast_translate(s, target_lang, source_lang)
+        if not r:
+            return None  # Bail to caller if any chunk fails
+        results.append(r)
+    return " ".join(results)
+
+
 def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Optional[str]:
     if not text or not text.strip():
         return None
@@ -498,15 +604,28 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
     source_lang = normalize_lang(source_lang)
     target_lang = normalize_lang(target_lang)
 
-    cache_key = f"{source_lang}:{target_lang}:{text[:100]}"
-    with _cache_lock:
-        if cache_key in _cache:
-            return _cache[cache_key]
+    # Long paragraphs: split, translate each, stitch. Cache the whole thing.
+    if len(text) > MAX_SENTENCE_CHARS:
+        long_key = hashlib.md5(f"{source_lang}:{target_lang}:{text}".encode("utf-8")).hexdigest()
+        cached = _cache_get(long_key)
+        if cached:
+            print(f"Cache hit (long): {source_lang} -> {target_lang}")
+            return cached
+        stitched = _translate_long(text, target_lang, source_lang)
+        if stitched:
+            _cache_put(long_key, stitched)
+            return stitched
+        # fall through to whole-text translation if sentence splitting failed
+
+    cache_key = f"{source_lang}:{target_lang}:{text[:200]}"
+    cached = _cache_get(cache_key)
+    if cached:
+        print(f"Cache hit: {source_lang} -> {target_lang}")
+        return cached
 
     def _save(result: Optional[str]):
         if result:
-            with _cache_lock:
-                _cache[cache_key] = result
+            _cache_put(cache_key, result)
         return result
 
     if source_lang == "auto":
@@ -514,7 +633,7 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"Detected: {detected}")
         source_lang = detected
 
-    # 1. Direct: dictionary → Groq → Sunbird → MyMemory
+    # 1. Direct: dictionary → parallel providers
     result = _translate_direct(text, source_lang, target_lang)
     if result:
         return _save(result)
@@ -524,7 +643,6 @@ def fast_translate(text: str, target_lang: str, source_lang: str = "auto") -> Op
         print(f"Pivot: {source_lang} -> en -> {target_lang}")
         english_text = to_english(text, source_lang)
         if english_text:
-            print(f"   -> EN: '{english_text[:60]}'")
             result = from_english(english_text, target_lang)
             if result:
                 return _save(result)

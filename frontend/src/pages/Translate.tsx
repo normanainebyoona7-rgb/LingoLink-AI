@@ -3,6 +3,7 @@ import { API_URL } from '../config';
 import SearchableDropdown, { LANGUAGES } from '../components/SearchableDropdown';
 import HoldToSpeak from '../components/HoldToSpeak';
 import Icon from '../components/Icon';
+import { useOfflineTranslation } from '../offline/useOfflineTranslation';
 
 interface Props {
   token: string;
@@ -20,11 +21,49 @@ export default function Translate({ token }: Props) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceGender, setVoiceGender] = useState<Gender>('female');
   const [error, setError] = useState('');
+  const [offlineAudioBlob, setOfflineAudioBlob] = useState<Blob | null>(null);
+  const [showBanner, setShowBanner] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentRequestRef = useRef<number>(0);
   const fromVoiceRef = useRef<boolean>(false);
 
+  // ---- Offline mode ----
+  const {
+    isReady: offlineReady,
+    progress: offlineProgress,
+    downloading: offlineDownloading,
+    error: offlineError,
+    usageMB: offlineUsageMB,
+    audioCounts: offlineAudioCounts,
+    browserOffline,
+    download: downloadOffline,
+    translate: offlineTranslateFn,
+  } = useOfflineTranslation();
+
+  // Show banner if offline pack isn't installed and user hasn't dismissed recently
+  useEffect(() => {
+    if (!offlineReady) {
+      const dismissed = localStorage.getItem('offline-banner-dismissed');
+      const dismissedAt = dismissed ? parseInt(dismissed, 10) : 0;
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      if (!dismissedAt || Date.now() - dismissedAt > sevenDays) {
+        setShowBanner(true);
+      }
+    } else {
+      setShowBanner(false);
+    }
+  }, [offlineReady]);
+
+  const dismissBanner = () => {
+    localStorage.setItem('offline-banner-dismissed', Date.now().toString());
+    setShowBanner(false);
+  };
+
+  // Calculate total offline audio files
+  const totalAudioFiles = Object.values(offlineAudioCounts).reduce((a, b) => a + b, 0);
+
+  // ---- Translation ----
   const translate = async (text: string, sourceOverride?: string, speakAfter = false) => {
     if (!text.trim()) {
       setTranslatedText('');
@@ -34,7 +73,43 @@ export default function Translate({ token }: Props) {
     const requestId = ++currentRequestRef.current;
     setIsTranslating(true);
     setError('');
+    setOfflineAudioBlob(null);
 
+    const src = sourceOverride || sourceLanguage;
+
+    // 1. Try offline first
+    try {
+      const offlineResult = await offlineTranslateFn(text, src, targetLanguage);
+      if (requestId !== currentRequestRef.current) return;
+
+      if (offlineResult && offlineResult.text) {
+        const looksLikeNoop =
+          !offlineResult.passthrough &&
+          offlineResult.text.trim().toLowerCase() === text.trim().toLowerCase() &&
+          src !== targetLanguage;
+
+        if (!looksLikeNoop) {
+          setTranslatedText(offlineResult.text);
+          setOfflineAudioBlob(offlineResult.audio);
+          if (offlineResult.passthrough) {
+            setDetectedLanguage(targetLanguage);
+          }
+          if (speakAfter) {
+            if (offlineResult.audio) {
+              playAudioBlob(offlineResult.audio);
+            } else {
+              speakText(offlineResult.text);
+            }
+          }
+          setIsTranslating(false);
+          return;
+        }
+      }
+    } catch (e) {
+      // offline failure is non-fatal — fall through to online
+    }
+
+    // 2. Fall back to online API
     try {
       const res = await fetch(`${API_URL}/translate/text`, {
         method: 'POST',
@@ -44,7 +119,7 @@ export default function Translate({ token }: Props) {
         },
         body: JSON.stringify({
           text,
-          source_language: sourceOverride || sourceLanguage,
+          source_language: src,
           target_language: targetLanguage,
         }),
       });
@@ -64,7 +139,11 @@ export default function Translate({ token }: Props) {
         setError('Translation failed. Check backend.');
       }
     } catch {
-      setError('Connection error. Is backend running?');
+      setError(
+        offlineReady
+          ? 'Offline translation unavailable for this phrase. Connect to the internet or try a shorter phrase.'
+          : 'Connection error. Is backend running?',
+      );
     } finally {
       if (requestId === currentRequestRef.current) {
         setIsTranslating(false);
@@ -106,6 +185,21 @@ export default function Translate({ token }: Props) {
     translate(text, sourceLanguage === 'auto' ? 'auto' : sourceLanguage, true);
   };
 
+  // ---- Audio playback ----
+  const playAudioBlob = (blob: Blob) => {
+    try {
+      const url = URL.createObjectURL(blob);
+      if (!audioRef.current) audioRef.current = new Audio();
+      audioRef.current.pause();
+      audioRef.current.src = url;
+      audioRef.current.onended = () => setIsSpeaking(false);
+      audioRef.current.play();
+      setIsSpeaking(true);
+    } catch (err) {
+      console.error('Offline audio failed:', err);
+    }
+  };
+
   const speakText = async (text: string) => {
     if (!text) return;
     try {
@@ -124,13 +218,7 @@ export default function Translate({ token }: Props) {
       });
       if (res.ok) {
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (!audioRef.current) audioRef.current = new Audio();
-        audioRef.current.pause();
-        audioRef.current.src = url;
-        audioRef.current.onended = () => setIsSpeaking(false);
-        audioRef.current.play();
-        setIsSpeaking(true);
+        playAudioBlob(blob);
       }
     } catch (err) {
       console.error('TTS failed:', err);
@@ -140,7 +228,11 @@ export default function Translate({ token }: Props) {
   const speakTranslation = async () => {
     if (!translatedText) return;
     setIsSpeaking(true);
-    speakText(translatedText);
+    if (offlineAudioBlob) {
+      playAudioBlob(offlineAudioBlob);
+    } else {
+      speakText(translatedText);
+    }
   };
 
   const stopSpeaking = () => {
@@ -167,6 +259,7 @@ export default function Translate({ token }: Props) {
     setInputText('');
     setDetectedLanguage('');
     setError('');
+    setOfflineAudioBlob(null);
     setIsTranslating(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     currentRequestRef.current++;
@@ -181,6 +274,73 @@ export default function Translate({ token }: Props) {
 
   return (
     <div className="translate-page">
+      {/* Offline mode banner */}
+      {showBanner && !offlineReady && (
+        <div className="offline-banner fade-in-up">
+          <div className="offline-banner-text">
+            <strong>Work offline</strong>
+            <span className="offline-banner-sub">
+              Download English ↔ Luganda & Swahili (~4 MB). Translate without internet.
+            </span>
+            {offlineError && <span className="offline-banner-error">{offlineError}</span>}
+          </div>
+          <div className="offline-banner-actions">
+            {offlineDownloading ? (
+              <>
+                <span className="offline-banner-progress">
+                  {offlineProgress?.message || 'Downloading…'}
+                  {offlineProgress && offlineProgress.bytesTotal > 0 && (
+                    <> ({Math.round((offlineProgress.bytesLoaded / offlineProgress.bytesTotal) * 100)}%)</>
+                  )}
+                </span>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="offline-banner-primary"
+                  onClick={() => downloadOffline()}
+                >
+                  Download
+                </button>
+                <button
+                  type="button"
+                  className="offline-banner-dismiss"
+                  onClick={dismissBanner}
+                  title="Dismiss for 7 days"
+                >
+                  ✕
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Professional Unified Status Pill */}
+      <div className="system-status-pill fade-in-up">
+        {/* Network Status */}
+        <div className={`status-item ${browserOffline ? 'status-offline' : 'status-online'}`}>
+          <span className="status-dot" />
+          <span>{browserOffline ? 'Offline' : 'Online'}</span>
+        </div>
+
+        {/* Offline Pack Status */}
+        {offlineReady ? (
+          <div className="status-item status-ready" title={`Luganda: ${offlineAudioCounts['luganda'] || 0} | Swahili: ${offlineAudioCounts['swahili'] || 0} audio files`}>
+            <Icon name="check" size={12} strokeWidth={3} />
+            <span>Offline {offlineUsageMB.toFixed(1)} MB</span>
+            {totalAudioFiles > 0 && (
+              <span className="status-subtext">· {totalAudioFiles} Audio</span>
+            )}
+          </div>
+        ) : (
+          <div className="status-item status-no-pack">
+            <span>No offline pack</span>
+          </div>
+        )}
+      </div>
+
       <div className="lang-row fade-in-up">
         <SearchableDropdown
           value={sourceLanguage}

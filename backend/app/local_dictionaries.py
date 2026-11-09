@@ -1,18 +1,35 @@
-"""Local Ugandan + Swahili dictionaries: curated phrases + large extracted corpora"""
+"""Local Ugandan + Swahili dictionaries: curated phrases + large extracted corpora.
+
+Optimizations in this version:
+- Precomputed lowercase index for acholi dict at load (no .lower() per lookup).
+- Multi-word phrase matching: try full phrase, then progressively smaller
+  leading chunks, then word-level fallback.
+- Merged lookup path: common → corpus → big dict, single pass through the
+  unified `_lookup_any` helper.
+- Word-level fallback for long sentences where phrase lookup misses.
+"""
 import json
 import os
-from typing import Optional
+import re
+from typing import Optional, List, Tuple
 
 from app.common_phrases import PHRASES as COMMON_PHRASES, REVERSE as COMMON_REVERSE
 from app.corpus_dictionaries import lookup_corpus
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
+# Split points we use for multi-word matching
+_WORD_SPLIT_RE = re.compile(r"[\s,;:.!?]+")
+
+
 # ============================================================
 # Load Acholi JSON (72k entries, Bible-based)
 # ============================================================
 ACHOLI_ENG_TO_ACH = {}
 ACHOLI_ACH_TO_ENG = {}
+# Precomputed lowercase indexes
+ACHOLI_ENG_TO_ACH_LC = {}
+ACHOLI_ACH_TO_ENG_LC = {}
 try:
     path = os.path.join(BASE, 'acholi_dict.json')
     if os.path.exists(path):
@@ -20,6 +37,10 @@ try:
             data = json.load(f)
             ACHOLI_ENG_TO_ACH = data.get('eng_to_ach', {})
             ACHOLI_ACH_TO_ENG = data.get('ach_to_eng', {})
+        for k, v in ACHOLI_ENG_TO_ACH.items():
+            ACHOLI_ENG_TO_ACH_LC[k.strip().lower()] = v
+        for k, v in ACHOLI_ACH_TO_ENG.items():
+            ACHOLI_ACH_TO_ENG_LC[k.strip().lower()] = v
         print(f'✅ Acholi loaded: {len(ACHOLI_ENG_TO_ACH)} eng→ach, {len(ACHOLI_ACH_TO_ENG)} ach→eng')
     else:
         print(f'⚠️ acholi_dict.json not found at {path}')
@@ -31,6 +52,7 @@ except Exception as e:
 # ============================================================
 RUNYANKORE_DICT = {}
 RUNYANKORE_REVERSE = {}
+RUNYANKORE_DICT_LC = {}
 try:
     path = os.path.join(BASE, 'runyankore_dict.json')
     if os.path.exists(path):
@@ -47,6 +69,10 @@ try:
             key = key.strip()
             if key and key not in RUNYANKORE_REVERSE:
                 RUNYANKORE_REVERSE[key] = runy_word
+
+        # Lowercase source index
+        for k, v in RUNYANKORE_DICT.items():
+            RUNYANKORE_DICT_LC[k.strip().lower()] = v
 
         print(f'✅ Runyankole loaded: {len(RUNYANKORE_DICT)} runy→eng, {len(RUNYANKORE_REVERSE)} eng→runy')
     else:
@@ -127,42 +153,83 @@ def _lookup_corpus(text: str, target_lang: str, source_lang: str) -> Optional[st
     return lookup_corpus(text, target_lang, source_lang)
 
 
-def _lookup_big_dict(text: str, target_lang: str, source_lang: str) -> Optional[str]:
-    """Fall back to the large JSON dicts (Acholi, Runyankole, Swahili)"""
-    key = normalize_key(text)
+# ---- Big dict lookups (with precomputed lowercase indexes) ----
 
+def _lookup_big_dict_single(text: str, target_lang: str, source_lang: str) -> Optional[str]:
+    """Single-token lookup against big JSON dicts. Assumes `text` is already lowercased/normalized."""
     if source_lang == 'english' and target_lang == 'acholi':
-        result = ACHOLI_ENG_TO_ACH.get(key)
+        result = ACHOLI_ENG_TO_ACH_LC.get(text)
         if result:
             return result
 
     if source_lang == 'acholi' and target_lang == 'english':
-        result = ACHOLI_ACH_TO_ENG.get(key)
+        result = ACHOLI_ACH_TO_ENG_LC.get(text)
         if result:
             return result
 
     if source_lang in ('runyankole', 'runyankore', 'rukiga') and target_lang == 'english':
-        result = RUNYANKORE_DICT.get(key)
+        result = RUNYANKORE_DICT_LC.get(text)
         if result:
             return result.split('.')[0].strip()
 
     if source_lang == 'english' and target_lang in ('runyankole', 'runyankore', 'rukiga'):
-        result = RUNYANKORE_REVERSE.get(key)
+        result = RUNYANKORE_REVERSE.get(text)
         if result:
             return result
 
     if source_lang == 'swahili' and target_lang == 'english':
-        result = SWAHILI_DICT.get(key)
+        result = SWAHILI_DICT.get(text)
         if result:
             if len(result) <= 60 and '|' not in result:
                 return result
 
     if source_lang == 'english' and target_lang == 'swahili':
-        result = SWAHILI_REVERSE.get(key)
+        result = SWAHILI_REVERSE.get(text)
         if result:
             return result
 
     return None
+
+
+def _lookup_big_dict(text: str, target_lang: str, source_lang: str) -> Optional[str]:
+    """Try full phrase, then progressively shorter leading chunks, then word fallback."""
+    key = normalize_key(text)
+    if not key:
+        return None
+
+    # 1. Exact
+    result = _lookup_big_dict_single(key, target_lang, source_lang)
+    if result:
+        return result
+
+    # 2. Progressively smaller leading chunks (multi-word phrases like "good morning")
+    words = [w for w in _WORD_SPLIT_RE.split(key) if w]
+    if len(words) > 1:
+        for size in range(len(words) - 1, 0, -1):
+            chunk = " ".join(words[:size])
+            result = _lookup_big_dict_single(chunk, target_lang, source_lang)
+            if result:
+                return result
+
+        # 3. Word-level fallback: if source is a big-dict language, translate word by word
+        if _is_big_dict_lang(source_lang):
+            pieces: List[str] = []
+            matched_any = False
+            for w in words:
+                hit = _lookup_big_dict_single(w, target_lang, source_lang)
+                if hit:
+                    pieces.append(hit)
+                    matched_any = True
+                else:
+                    pieces.append(w)  # leave unmatched word as-is
+            if matched_any:
+                return " ".join(pieces)
+
+    return None
+
+
+def _is_big_dict_lang(lang: str) -> bool:
+    return lang in ('acholi', 'runyankole', 'runyankore', 'rukiga', 'swahili')
 
 
 def lookup_local(text: str, target_lang: str, source_lang: str = 'english') -> Optional[str]:
@@ -184,6 +251,7 @@ def lookup_local(text: str, target_lang: str, source_lang: str = 'english') -> O
         return result
 
     # 3. Big JSON dicts (Acholi 72k, Runyankole 8k, Swahili 16k)
+    #    Handles: exact phrase → leading chunk → word-level fallback.
     result = _lookup_big_dict(text, target_lang, source_lang)
     if result:
         return result

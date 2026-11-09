@@ -1,0 +1,184 @@
+/* ============================================================
+   Offline mode styles — LingoLink PWA
+   ============================================================ */
+
+.offline-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid #667eea;
+  border-radius: 10px;
+  color: #fff;
+  animation: offlineFadeIn 0.3s ease-out;
+}
+
+.offline-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.offline-banner-text strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.offline-banner-sub {
+  font-size: 12px;
+  color: #a0a0c0;
+  line-height: 1.35;
+}
+
+.offline-banner-error {
+  font-size: 12px;
+  color: #e74c3c;
+  margin-top: 2px;
+}
+
+.offline-banner-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.offline-banner-primary {
+  background: #667eea;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.offline-banner-primary:hover {
+  background: #764ba2;
+}
+
+.offline-banner-dismiss {
+  background: transparent;
+  color: #a0a0c0;
+  border: 1px solid #444;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.offline-banner-dismiss:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.offline-banner-progress {
+  font-size: 12px;
+  color: #a0a0c0;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------
+   Professional Unified Status Pill
+   ------------------------------------------------------------ */
+
+.system-status-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 4px;
+  margin-bottom: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #a0a0c0;
+  animation: offlineFadeIn 0.3s ease-out;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+
+.status-subtext {
+  font-weight: 400;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+/* Network States */
+.status-online {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.status-offline {
+  color: #f59e0b;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.status-online .status-dot {
+  animation: pulseGreen 2s infinite;
+}
+
+@keyframes pulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* Offline Pack States */
+.status-ready {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 16px 16px 0;
+}
+
+.status-no-pack {
+  color: #666;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 16px 16px 0;
+}
+
+@keyframes offlineFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Light theme overrides */
+[data-theme="light"] .system-status-pill {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .status-online { color: #16a34a; background: rgba(34, 197, 94, 0.15); }
+[data-theme="light"] .status-offline { color: #b45309; background: rgba(251, 191, 36, 0.2); }
+[data-theme="light"] .status-ready { color: #4f46e5; background: rgba(102, 126, 234, 0.15); }
+[data-theme="light"] .status-ready, [data-theme="light"] .status-no-pack { border-left-color: rgba(0, 0, 0, 0.08); }
