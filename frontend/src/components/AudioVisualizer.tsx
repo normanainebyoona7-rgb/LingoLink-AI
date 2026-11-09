@@ -13,7 +13,6 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
 
   useEffect(() => {
     if (!isRecording) {
-      // Clean up when recording stops
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
@@ -29,6 +28,12 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
 
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         const audioCtx = new AudioContextClass();
+        
+        // Mobile fix: Resume the context if it's suspended
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        
         audioContextRef.current = audioCtx;
 
         const analyser = audioCtx.createAnalyser();
@@ -50,47 +55,48 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      // Handle high-DPI screens (mobile)
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
 
       const draw = () => {
         animationRef.current = requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray); // Use frequency data for better visual
+        analyser.getByteFrequencyData(dataArray);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, rect.width, rect.height);
 
-        const width = canvas.width;
-        const height = canvas.height;
+        const width = rect.width;
+        const height = rect.height;
         const centerY = height / 2;
         
-        // We want a nice symmetrical wave in the center
-        const numBars = 40;
-        const barWidth = 6;
-        const gap = 6;
+        const numBars = 30; // Fewer bars for smaller mobile screens
+        const barWidth = 4;
+        const gap = 4;
         const totalWidth = numBars * (barWidth + gap);
         const startX = (width - totalWidth) / 2;
 
-        // Gold Glow Effect
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = '#F59E0B';
         ctx.fillStyle = '#F59E0B';
 
         for (let i = 0; i < numBars; i++) {
-          // Sample the data. Use a curve so the middle bars are taller.
           const index = Math.floor((i / numBars) * bufferLength);
           let value = dataArray[index];
           
-          // Boost the middle slightly so it naturally forms an arc
           const centerDist = Math.abs(i - numBars / 2) / (numBars / 2);
           const arcMultiplier = 1 - (centerDist * 0.5); 
           
-          // Calculate height (minimum 6px so it looks like a flat line when silent)
-          const barHeight = Math.max(6, (value / 255) * height * 0.8 * arcMultiplier);
+          const barHeight = Math.max(4, (value / 255) * height * 0.8 * arcMultiplier);
           
           const x = startX + i * (barWidth + gap);
           const y = centerY - (barHeight / 2);
 
-          // Draw a pill-shaped bar
           ctx.beginPath();
           ctx.roundRect(x, y, barWidth, barHeight, barWidth / 2);
           ctx.fill();
@@ -117,9 +123,8 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
     <div className="audio-visualizer-container fade-in">
       <canvas
         ref={canvasRef}
-        width={600}
-        height={120}
         className="audio-visualizer-canvas"
+        style={{ width: '100%', height: '100%' }}
       />
     </div>
   );
