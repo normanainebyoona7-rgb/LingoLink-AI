@@ -464,7 +464,7 @@ export default function Translate({ token }: Props) {
 
       {error && <p className="error-text">{error}</p>}
 
-      {/* Mic Section with Pointer Events for Mobile */}
+      {/* Mic Section */}
       <div 
         className="mic-section"
         style={{ 
@@ -473,24 +473,29 @@ export default function Translate({ token }: Props) {
           justifyContent: 'center', 
           alignItems: 'center',
           marginTop: '20px',
-          minHeight: '100px' 
+          minHeight: '120px' 
         }}
         onPointerDown={() => setIsRecording(true)}
         onPointerUp={() => setIsRecording(false)}
         onPointerLeave={() => setIsRecording(false)}
         onPointerCancel={() => setIsRecording(false)}
       >
-        {isRecording ? (
-          // When recording, ONLY show the visualizer (button is completely unmounted)
-          <AudioVisualizer isRecording={true} />
-        ) : (
-          // When not recording, show the button
+        <AudioVisualizer isRecording={isRecording} />
+        
+        {/* Keep button mounted but hide it visually so it keeps recording */}
+        <div style={{
+          opacity: isRecording ? 0 : 1,
+          pointerEvents: isRecording ? 'none' : 'auto',
+          transition: 'opacity 0.2s',
+          position: 'relative',
+          zIndex: 10
+        }}>
           <HoldToSpeak
             token={token}
             language={sourceLanguage}
             onTranscribed={handleVoiceTranscribed}
           />
-        )}
+        </div>
       </div>
     </div>
   );

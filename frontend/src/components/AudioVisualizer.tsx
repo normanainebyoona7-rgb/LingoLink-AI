@@ -7,107 +7,72 @@ interface AudioVisualizerProps {
 export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!isRecording) {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-      }
       return;
     }
 
-    const startAudio = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        const audioCtx = new AudioContextClass();
+    // Force fixed width/height for Android stability
+    canvas.width = 300;
+    canvas.height = 100;
+
+    let time = 0;
+
+    const draw = () => {
+      animationRef.current = requestAnimationFrame(draw);
+      time += 0.05;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerY = height / 2;
+      
+      const numBars = 24; 
+      const barWidth = 6;
+      const gap = 6;
+      const totalWidth = numBars * (barWidth + gap);
+      const startX = (width - totalWidth) / 2;
+
+      ctx.fillStyle = '#F59E0B'; // Savanna Gold
+
+      for (let i = 0; i < numBars; i++) {
+        // Create a natural, flowing wave using sine functions
+        const centerDist = Math.abs(i - numBars / 2) / (numBars / 2);
+        const arcMultiplier = 1 - (centerDist * 0.5); 
         
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
-        }
+        // Math to make the bars bounce like someone is speaking
+        const sine1 = Math.sin(time + i * 0.3);
+        const sine2 = Math.cos(time * 1.5 - i * 0.2);
+        const wave = (sine1 + sine2) / 2; // range -1 to 1
         
-        audioContextRef.current = audioCtx;
+        // Convert wave to positive height
+        let value = (wave + 1) / 2; // range 0 to 1
+        
+        // Add slight randomness to make it look organic
+        value = Math.max(0.1, value * (0.8 + Math.random() * 0.4));
 
-        const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        analyserRef.current = analyser;
+        const barHeight = Math.max(4, value * height * 0.8 * arcMultiplier);
+        
+        const x = startX + i * (barWidth + gap);
+        const y = centerY - (barHeight / 2);
 
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-
-        drawWave(analyser);
-      } catch (err) {
-        console.error('Mic access failed:', err);
+        ctx.beginPath();
+        ctx.fillRect(x, y, barWidth, barHeight);
       }
     };
 
-    const drawWave = (analyser: AnalyserNode) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Force fixed width/height for Android stability
-      canvas.width = 300;
-      canvas.height = 100;
-
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-
-      const draw = () => {
-        animationRef.current = requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray);
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const width = canvas.width;
-        const height = canvas.height;
-        const centerY = height / 2;
-        
-        const numBars = 24; 
-        const barWidth = 6;
-        const gap = 6;
-        const totalWidth = numBars * (barWidth + gap);
-        const startX = (width - totalWidth) / 2;
-
-        ctx.fillStyle = '#F59E0B'; // Savanna Gold
-
-        for (let i = 0; i < numBars; i++) {
-          const index = Math.floor((i / numBars) * bufferLength);
-          let value = dataArray[index];
-          
-          const centerDist = Math.abs(i - numBars / 2) / (numBars / 2);
-          const arcMultiplier = 1 - (centerDist * 0.5); 
-          
-          const barHeight = Math.max(4, (value / 255) * height * 0.8 * arcMultiplier);
-          
-          const x = startX + i * (barWidth + gap);
-          const y = centerY - (barHeight / 2);
-
-          // Standard rectangle draw (no roundRect to avoid WebView bugs)
-          ctx.beginPath();
-          ctx.fillRect(x, y, barWidth, barHeight);
-        }
-      };
-
-      draw();
-    };
-
-    startAudio();
+    draw();
 
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close();
-      }
     };
   }, [isRecording]);
 
@@ -119,7 +84,12 @@ export default function AudioVisualizer({ isRecording }: AudioVisualizerProps) {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      padding: '20px 0'
+      padding: '20px 0',
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      pointerEvents: 'none' // Let clicks pass through to the button
     }}>
       <canvas
         ref={canvasRef}

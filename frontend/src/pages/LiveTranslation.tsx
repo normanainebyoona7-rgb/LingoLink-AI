@@ -16,19 +16,16 @@ export default function LiveTranslation({ token }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Web Audio / MediaRecorder refs
   const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  // Auto-scroll to bottom when new subtitles arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [subtitles]);
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       stopRecording();
@@ -51,16 +48,14 @@ export default function LiveTranslation({ token }: Props) {
         }
       };
 
-      // When the 4-second chunk is done, process it
       mediaRecorder.onstop = async () => {
         if (chunksRef.current.length > 0) {
           const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-          chunksRef.current = []; // Reset for next chunk
+          chunksRef.current = [];
           await processAudioChunk(blob);
         }
       };
 
-      // Start recording and slice it into 4-second chunks automatically
       mediaRecorder.start(4000);
       setIsRecording(true);
     } catch (err) {
@@ -88,11 +83,10 @@ export default function LiveTranslation({ token }: Props) {
   };
 
   const processAudioChunk = async (audioBlob: Blob) => {
-    if (audioBlob.size < 2000) return; // Ignore tiny/silent chunks
+    if (audioBlob.size < 2000) return;
     setIsProcessing(true);
 
     try {
-      // 1. Transcribe Audio
       const formData = new FormData();
       formData.append('file', audioBlob, 'audio.webm');
       formData.append('language', sourceLanguage);
@@ -108,10 +102,9 @@ export default function LiveTranslation({ token }: Props) {
 
       if (!text.trim()) {
         setIsProcessing(false);
-        return; // No speech detected in this chunk
+        return;
       }
 
-      // 2. Translate Text
       const translateRes = await fetch(`${API_URL}/translate/text`, {
         method: 'POST',
         headers: {
@@ -144,9 +137,9 @@ export default function LiveTranslation({ token }: Props) {
   };
 
   return (
-    <div className="live-root savanna-theme" style={{ padding: '24px', minHeight: '100vh' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '0 0 8px 0', fontSize: '24px' }}>
+    <div className="live-root savanna-theme" style={{ padding: '24px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', margin: '0 0 8px 0', fontSize: '24px' }}>
           <Icon name="live" size={24} /> Live Translation
         </h2>
         <p style={{ margin: 0, color: 'var(--text-muted)' }}>
@@ -154,13 +147,15 @@ export default function LiveTranslation({ token }: Props) {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px' }}>
-        <SearchableDropdown
-          value={sourceLanguage}
-          onChange={setSourceLanguage}
-          placeholder="source language"
-          includeAutoDetect
-        />
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '24px', justifyContent: 'center' }}>
+        <div style={{ flex: 1 }}>
+          <SearchableDropdown
+            value={sourceLanguage}
+            onChange={setSourceLanguage}
+            placeholder="source language"
+            includeAutoDetect
+          />
+        </div>
         <button className="swap-btn" onClick={() => {
           if (sourceLanguage !== 'auto') {
             const temp = sourceLanguage;
@@ -170,14 +165,16 @@ export default function LiveTranslation({ token }: Props) {
         }}>
           <Icon name="swap" size={18} />
         </button>
-        <SearchableDropdown
-          value={targetLanguage}
-          onChange={setTargetLanguage}
-          placeholder="target language"
-        />
+        <div style={{ flex: 1 }}>
+          <SearchableDropdown
+            value={targetLanguage}
+            onChange={setTargetLanguage}
+            placeholder="target language"
+          />
+        </div>
       </div>
 
-      {/* Start / Stop Button with Visualizer */}
+      {/* Fixed Alignment for the Start/Stop Button */}
       <div 
         className="live-mic-section"
         style={{ 
@@ -185,8 +182,9 @@ export default function LiveTranslation({ token }: Props) {
           display: 'flex', 
           justifyContent: 'center', 
           alignItems: 'center', 
-          minHeight: '120px',
-          marginBottom: '24px'
+          minHeight: '150px',
+          marginBottom: '24px',
+          width: '100%'
         }}
       >
         {isRecording && <AudioVisualizer isRecording={true} />}
@@ -202,13 +200,16 @@ export default function LiveTranslation({ token }: Props) {
             borderRadius: '30px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '10px',
             background: isRecording ? '#ef4444' : 'linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-hover) 100%)',
             color: '#ffffff',
             border: 'none',
             boxShadow: isRecording ? '0 0 20px rgba(239, 68, 68, 0.5)' : '0 4px 12px rgba(245, 158, 11, 0.3)',
             cursor: 'pointer',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            width: 'auto',
+            maxWidth: '300px'
           }}
         >
           <Icon name={isRecording ? 'mic-off' : 'mic'} size={20} />
@@ -216,7 +217,7 @@ export default function LiveTranslation({ token }: Props) {
         </button>
       </div>
 
-      <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', height: '400px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '12px', display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
         <div style={{ padding: '16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, color: 'var(--gold-primary)' }}>Live Transcript</h3>
           <button className="clear-btn" onClick={clearSubtitles} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}>

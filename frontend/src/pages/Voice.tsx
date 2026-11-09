@@ -165,21 +165,33 @@ export default function Voice({ token }: Props) {
 
       <div 
         className="voice-mic-section"
-        style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100px' }}
+        style={{ 
+          position: 'relative', 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: '120px'
+        }}
         onPointerDown={() => setIsRecording(true)}
         onPointerUp={() => setIsRecording(false)}
         onPointerLeave={() => setIsRecording(false)}
         onPointerCancel={() => setIsRecording(false)}
       >
-        {isRecording ? (
-          <AudioVisualizer isRecording={true} />
-        ) : (
+        <AudioVisualizer isRecording={isRecording} />
+        
+        <div style={{
+          opacity: isRecording ? 0 : 1,
+          pointerEvents: isRecording ? 'none' : 'auto',
+          transition: 'opacity 0.2s',
+          position: 'relative',
+          zIndex: 10
+        }}>
           <HoldToSpeak
             token={token}
             language={sourceLanguage}
             onTranscribed={handleTranscribed}
           />
-        )}
+        </div>
       </div>
 
       <div className="voice-current">

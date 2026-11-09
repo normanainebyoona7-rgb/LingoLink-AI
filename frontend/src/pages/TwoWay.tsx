@@ -125,33 +125,65 @@ export default function TwoWay({ token }: Props) {
         {/* Person A Mic */}
         <div 
           className="twoway-mic-section"
-          style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', margin: 0, position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100px' }}
+          style={{ 
+            flex: 1, 
+            background: 'var(--bg-surface)', 
+            borderRadius: '12px', 
+            border: '1px solid var(--border-color)', 
+            margin: 0, 
+            position: 'relative', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            minHeight: '120px' 
+          }}
           onPointerDown={() => setIsRecordingA(true)}
           onPointerUp={() => setIsRecordingA(false)}
           onPointerLeave={() => setIsRecordingA(false)}
           onPointerCancel={() => setIsRecordingA(false)}
         >
-          {isRecordingA ? (
-            <AudioVisualizer isRecording={true} />
-          ) : (
-            <HoldToSpeak token={token} language={langA} onTranscribed={(text) => handleTranscribed(text, 'A')} />
-          )}
+          <AudioVisualizer isRecording={isRecordingA} />
+          <div style={{
+            opacity: isRecordingA ? 0 : 1,
+            pointerEvents: isRecordingA ? 'none' : 'auto',
+            transition: 'opacity 0.2s',
+            position: 'relative',
+            zIndex: 10
+          }}>
+             <HoldToSpeak token={token} language={langA} onTranscribed={(text) => handleTranscribed(text, 'A')} />
+          </div>
         </div>
 
         {/* Person B Mic */}
         <div 
           className="twoway-mic-section"
-          style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', margin: 0, position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100px' }}
+          style={{ 
+            flex: 1, 
+            background: 'var(--bg-surface)', 
+            borderRadius: '12px', 
+            border: '1px solid var(--border-color)', 
+            margin: 0, 
+            position: 'relative', 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            minHeight: '120px' 
+          }}
           onPointerDown={() => setIsRecordingB(true)}
           onPointerUp={() => setIsRecordingB(false)}
           onPointerLeave={() => setIsRecordingB(false)}
           onPointerCancel={() => setIsRecordingB(false)}
         >
-          {isRecordingB ? (
-            <AudioVisualizer isRecording={true} />
-          ) : (
-            <HoldToSpeak token={token} language={langB} onTranscribed={(text) => handleTranscribed(text, 'B')} />
-          )}
+          <AudioVisualizer isRecording={isRecordingB} />
+          <div style={{
+            opacity: isRecordingB ? 0 : 1,
+            pointerEvents: isRecordingB ? 'none' : 'auto',
+            transition: 'opacity 0.2s',
+            position: 'relative',
+            zIndex: 10
+          }}>
+             <HoldToSpeak token={token} language={langB} onTranscribed={(text) => handleTranscribed(text, 'B')} />
+          </div>
         </div>
       </div>
     </div>
