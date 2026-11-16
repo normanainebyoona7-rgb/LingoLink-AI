@@ -65,13 +65,18 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS: explicit origins for Vercel + local dev
+# CORS: explicit origins for Vercel + local dev + phone IP
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://lingolink-ai.vercel.app",
         "http://localhost:3000",
-        "http://localhost:5173",
+        "http://localhost:3001",
+        "http://192.168.1.3:3000",
+        "http://192.168.1.3:3001",
+        "http://192.168.1.3",
+        "capacitor://localhost",
+        "http://localhost"
     ],
     allow_credentials=True,
     allow_methods=["*"],

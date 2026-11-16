@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useTheme } from '../App';
 import SearchableDropdown from '../components/SearchableDropdown';
@@ -25,6 +25,15 @@ export default function TwoWay({ token }: Props) {
   const [isRecordingB, setIsRecordingB] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleTranscribed = async (text: string, sender: 'A' | 'B') => {
     if (sender === 'A') setIsRecordingA(false);
@@ -74,27 +83,51 @@ export default function TwoWay({ token }: Props) {
   };
 
   return (
-    <div className="twoway-root savanna-theme" style={{ padding: '24px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="twoway-root savanna-theme" style={{ padding: '16px', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', background: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-        <div style={{ flex: 1 }}>
+      {/* Language Selectors - Stack on Mobile, Side-by-Side on Desktop */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', 
+        gap: '12px', 
+        alignItems: 'center', 
+        marginBottom: '16px', 
+        background: 'var(--bg-surface)', 
+        padding: '16px', 
+        borderRadius: '12px', 
+        border: '1px solid var(--border-color)' 
+      }}>
+        <div style={{ flex: 1, width: '100%' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginLeft: '8px' }}>Person A</span>
           <SearchableDropdown value={langA} onChange={setLangA} placeholder="Language A" />
         </div>
         
-        <button className="swap-btn" onClick={swapLanguages} style={{ margin: '0 16px' }}>
-          <Icon name="swap" size={18} />
+        <button className="swap-btn" onClick={swapLanguages} style={{ margin: isMobile ? '8px 0' : '0 16px' }}>
+          <Icon name="swap" size={18} style={{ transform: isMobile ? 'rotate(90deg)' : 'none' }} />
         </button>
 
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, width: '100%' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, marginLeft: '8px' }}>Person B</span>
           <SearchableDropdown value={langB} onChange={setLangB} placeholder="Language B" />
         </div>
       </div>
 
-      <div style={{ flex: 1, background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-color)', padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+      {/* Chat Area */}
+      <div style={{ 
+        flex: 1, 
+        background: 'var(--bg-surface)', 
+        borderRadius: '12px', 
+        border: '1px solid var(--border-color)', 
+        padding: '16px', 
+        overflowY: 'auto', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '12px', 
+        marginBottom: '16px',
+        minHeight: '200px'
+      }}>
         {messages.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '40px' }}>
+          <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '20px' }}>
             Hold the mic for Person A or Person B to start a conversation.
           </p>
         ) : (
@@ -107,7 +140,7 @@ export default function TwoWay({ token }: Props) {
               borderRadius: '16px',
               borderBottomLeftRadius: msg.sender === 'A' ? '4px' : '16px',
               borderBottomRightRadius: msg.sender === 'B' ? '4px' : '16px',
-              maxWidth: '80%'
+              maxWidth: '85%'
             }}>
               <p style={{ margin: '0 0 4px 0', fontSize: '12px', opacity: 0.7 }}>{msg.text}</p>
               <p style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>{msg.translated}</p>
@@ -115,13 +148,18 @@ export default function TwoWay({ token }: Props) {
           ))
         )}
         {isProcessing && (
-           <div style={{ alignSelf: 'center', color: 'var(--gold-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+           <div style={{ alignSelf: 'center', color: 'var(--gold-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
              <Icon name="loader" size={16} className="spin" /> Translating...
            </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '24px' }}>
+      {/* Dual Mics - Stack on Mobile, Side-by-Side on Desktop */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row', 
+        gap: '16px' 
+      }}>
         {/* Person A Mic */}
         <div 
           className="twoway-mic-section"
@@ -148,7 +186,10 @@ export default function TwoWay({ token }: Props) {
             pointerEvents: isRecordingA ? 'none' : 'auto',
             transition: 'opacity 0.2s',
             position: 'relative',
-            zIndex: 10
+            zIndex: 10,
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center'
           }}>
              <HoldToSpeak token={token} language={langA} onTranscribed={(text) => handleTranscribed(text, 'A')} />
           </div>
@@ -180,7 +221,10 @@ export default function TwoWay({ token }: Props) {
             pointerEvents: isRecordingB ? 'none' : 'auto',
             transition: 'opacity 0.2s',
             position: 'relative',
-            zIndex: 10
+            zIndex: 10,
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center'
           }}>
              <HoldToSpeak token={token} language={langB} onTranscribed={(text) => handleTranscribed(text, 'B')} />
           </div>
